@@ -29,13 +29,13 @@ const Hero = () => {
           
           <p className="text-xl md:text-2xl text-primary-foreground/90 mb-12 max-w-4xl mx-auto leading-relaxed">
             Create targeted resume bullet points from your STAR-formatted experiences. 
-            Let AI match your achievements to any job description with precision.
+            Let AI craft compelling bullets that match any job description with precision.
           </p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
           <Button variant="accent" size="lg" className="text-lg px-8 py-6 h-auto">
-            Start Building Your Resume
+            Start Creating Bullet Points
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
           <Button variant="outline_primary" size="lg" className="text-lg px-8 py-6 h-auto border-white/30 text-primary-foreground hover:bg-white/10">

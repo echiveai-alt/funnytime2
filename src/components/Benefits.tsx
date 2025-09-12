@@ -12,14 +12,14 @@ const Benefits = () => {
     {
       icon: Clock,
       title: "Save Hours of Work",
-      description: "Transform tedious resume writing into a 5-minute automated process.",
+      description: "Transform tedious bullet point writing into a 5-minute automated process.",
       stats: "10x faster than manual writing"
     },
     {
       icon: RefreshCw,
-      title: "Reuse Your Experience",
-      description: "Build your STAR library once, generate unlimited targeted resumes for different roles.",
-      stats: "One library, infinite applications"
+      title: "Reuse Your Experience Library",
+      description: "Build your STAR library once, generate unlimited targeted bullet points for different roles and companies.",
+      stats: "One library, unlimited bullet points"
     },
     {
       icon: TrendingUp,
@@ -29,9 +29,9 @@ const Benefits = () => {
     },
     {
       icon: Users,
-      title: "ATS Optimized",
-      description: "Ensures your resume passes Applicant Tracking Systems with optimal keyword density.",
-      stats: "99% ATS compatibility"
+      title: "ATS Keyword Optimized",
+      description: "Ensures your bullet points include optimal keyword density and formatting for Applicant Tracking Systems.",
+      stats: "99% ATS keyword optimization"
     },
     {
       icon: CheckCircle,
@@ -49,7 +49,7 @@ const Benefits = () => {
             Why echive.ai?
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
-            Stop spending hours crafting resume bullets. Let AI do the heavy lifting while you focus on what matters most.
+            Stop spending hours crafting resume bullet points. Let AI do the heavy lifting while you focus on what matters most.
           </p>
         </div>
         
@@ -76,10 +76,10 @@ const Benefits = () => {
         {/* CTA Section */}
         <div className="bg-gradient-primary rounded-3xl p-12 text-center shadow-medium">
           <h3 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-6">
-            Ready to Transform Your Resume Strategy?
+            Ready to Transform Your Bullet Point Strategy?
           </h3>
           <p className="text-xl text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
-            Join thousands of professionals who've accelerated their career growth with AI-powered resume optimization.
+            Join thousands of professionals who've accelerated their career growth with AI-powered bullet point optimization.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">

@@ -17,13 +17,13 @@ const HowItWorks = () => {
     {
       icon: Target,
       title: "AI Matches & Creates",
-      description: "Advanced AI selects your most relevant experiences and crafts compelling bullet points with exact keyword matching.",
+      description: "Advanced AI selects your most relevant experiences and crafts compelling bullet points with exact keyword matching for the specific role.",
       color: "text-primary"
     },
     {
       icon: Zap,
       title: "Get Perfect Bullets",
-      description: "Receive tailored resume bullet points that showcase your achievements in the language employers want to see.",
+      description: "Receive tailored resume bullet points that showcase your achievements in the exact language employers want to see for that specific job.",
       color: "text-accent"
     }
   ];
@@ -36,7 +36,7 @@ const HowItWorks = () => {
             How echive.ai Works
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Transform your career story into targeted resume content with our AI-powered platform
+            Transform your career story into targeted bullet points with our AI-powered platform
           </p>
         </div>
         
