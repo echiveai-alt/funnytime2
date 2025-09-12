@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-soft transition-smooth",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        hero: "bg-gradient-primary text-primary-foreground hover:shadow-glow transform hover:scale-105 transition-bounce shadow-medium",
-        accent: "bg-gradient-hero text-primary-foreground hover:shadow-glow transform hover:scale-105 transition-bounce shadow-medium font-semibold",
-        outline_primary: "border-2 border-primary text-primary bg-transparent hover:bg-primary hover:text-primary-foreground transition-smooth",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-soft transition-smooth border-2 border-primary hover:border-primary/90",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 border-2 border-destructive hover:border-destructive/90",
+        outline: "border-2 border-primary bg-background hover:bg-primary hover:text-primary-foreground transition-smooth",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 border-2 border-secondary hover:border-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground border-2 border-transparent hover:border-accent/20",
+        link: "text-primary underline-offset-4 hover:underline border-2 border-transparent",
+        hero: "bg-gradient-primary text-primary-foreground hover:shadow-glow transform hover:scale-105 transition-bounce shadow-medium border-2 border-white/30 hover:border-white/50",
+        accent: "bg-gradient-hero text-primary-foreground hover:shadow-glow transform hover:scale-105 transition-bounce shadow-medium font-semibold border-2 border-white/40 hover:border-white/60",
+        outline_primary: "border-2 border-white/50 text-primary-foreground bg-transparent hover:bg-white/10 hover:border-white/70 transition-smooth",
       },
       size: {
         default: "h-10 px-4 py-2",
