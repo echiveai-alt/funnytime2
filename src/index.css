@@ -17,33 +17,33 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 26.9%;
 
-    --primary: 229 84% 47%;
+    --primary: 217 91% 52%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 215 25% 26.9%;
+    --secondary: 214 25% 95%;
+    --secondary-foreground: 217 32% 26%;
 
-    --muted: 220 14% 96%;
+    --muted: 214 25% 95%;
     --muted-foreground: 215 16% 46.9%;
 
-    --accent: 262 83% 58%;
+    --accent: 206 100% 50%;
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 229 84% 47%;
+    --border: 214 31% 91%;
+    --input: 214 31% 91%;
+    --ring: 217 91% 52%;
 
-    /* FinTech Design System */
-    --gradient-primary: linear-gradient(135deg, hsl(229 84% 47%), hsl(262 83% 58%));
-    --gradient-secondary: linear-gradient(135deg, hsl(220 14% 96%), hsl(220 13% 91%));
-    --gradient-hero: linear-gradient(135deg, hsl(229 84% 47%) 0%, hsl(262 83% 58%) 50%, hsl(300 88% 64%) 100%);
+    /* Blue-focused FinTech Design System */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 52%), hsl(206 100% 50%));
+    --gradient-secondary: linear-gradient(135deg, hsl(214 25% 95%), hsl(214 31% 91%));
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 52%) 0%, hsl(206 100% 50%) 50%, hsl(199 95% 55%) 100%);
     
-    --shadow-soft: 0 2px 8px -2px hsl(229 84% 47% / 0.08);
-    --shadow-medium: 0 8px 32px -8px hsl(229 84% 47% / 0.12);
-    --shadow-glow: 0 0 40px hsl(262 83% 58% / 0.15);
+    --shadow-soft: 0 2px 8px -2px hsl(217 91% 52% / 0.08);
+    --shadow-medium: 0 8px 32px -8px hsl(217 91% 52% / 0.12);
+    --shadow-glow: 0 0 40px hsl(206 100% 50% / 0.15);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -77,32 +77,32 @@ All colors MUST be HSL.
     --popover: 215 28% 7%;
     --popover-foreground: 220 14% 96%;
 
-    --primary: 229 84% 54%;
+    --primary: 217 91% 60%;
     --primary-foreground: 215 28% 7%;
 
     --secondary: 215 25% 15%;
-    --secondary-foreground: 220 14% 96%;
+    --secondary-foreground: 214 25% 95%;
 
     --muted: 215 25% 15%;
-    --muted-foreground: 215 16% 65%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 262 83% 65%;
+    --accent: 206 100% 60%;
     --accent-foreground: 215 28% 7%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 220 14% 96%;
+    --destructive-foreground: 214 25% 95%;
 
     --border: 215 25% 15%;
     --input: 215 25% 15%;
-    --ring: 229 84% 54%;
+    --ring: 217 91% 60%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(229 84% 54%), hsl(262 83% 65%));
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(206 100% 60%));
     --gradient-secondary: linear-gradient(135deg, hsl(215 25% 15%), hsl(215 25% 12%));
-    --gradient-hero: linear-gradient(135deg, hsl(229 84% 54%) 0%, hsl(262 83% 65%) 50%, hsl(300 88% 72%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(206 100% 60%) 50%, hsl(199 95% 65%) 100%);
     
     --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
     --shadow-medium: 0 8px 32px -8px hsl(0 0% 0% / 0.4);
-    --shadow-glow: 0 0 40px hsl(262 83% 65% / 0.2);
+    --shadow-glow: 0 0 40px hsl(206 100% 60% / 0.2);
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
