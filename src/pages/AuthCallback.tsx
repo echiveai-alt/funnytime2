@@ -24,24 +24,48 @@ const AuthCallback = () => {
         }
 
         if (data?.session?.user) {
-          // Check if user has completed education onboarding
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("degree, school")
-            .eq("user_id", data.session.user.id)
-            .single();
+          // Wait a moment for the profile creation trigger to complete
+          let profileCheckAttempts = 0;
+          const maxAttempts = 5;
+          
+          const checkProfile = async (): Promise<void> => {
+            const { data: profile, error: profileError } = await supabase
+              .from("profiles")
+              .select("degree, school, email_verified_at")
+              .eq("user_id", data.session.user.id)
+              .maybeSingle();
 
-          if (profileError && profileError.code !== "PGRST116") {
-            console.error("Profile fetch error:", profileError);
-            navigate("/onboarding/education");
-            return;
-          }
+            // If profile doesn't exist yet and we haven't exceeded max attempts, retry
+            if (!profile && profileCheckAttempts < maxAttempts) {
+              profileCheckAttempts++;
+              setTimeout(checkProfile, 1000); // Wait 1 second before retry
+              return;
+            }
 
-          if (profile?.degree && profile?.school) {
-            navigate("/app/experiences");
-          } else {
-            navigate("/onboarding/education");
-          }
+            if (profileError && profileError.code !== "PGRST116") {
+              console.error("Profile fetch error:", profileError);
+              navigate("/onboarding/education");
+              return;
+            }
+
+            // If profile exists and has education info, go to experiences
+            if (profile?.degree && profile?.school) {
+              toast({
+                title: "Welcome back!",
+                description: "Your account has been verified successfully.",
+              });
+              navigate("/app/experiences");
+            } else {
+              // Profile exists but no education info, go to onboarding
+              toast({
+                title: "Email verified!",
+                description: "Let's complete your profile setup.",
+              });
+              navigate("/onboarding/education");
+            }
+          };
+
+          await checkProfile();
         } else {
           navigate("/verify/error?reason=invalid");
         }
