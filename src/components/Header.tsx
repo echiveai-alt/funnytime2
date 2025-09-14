@@ -32,7 +32,11 @@ const Header = () => {
             <Button variant="ghost" className="hidden sm:inline-flex">
               Log In
             </Button>
-            <Button variant="hero" className="shadow-soft">
+            <Button 
+              variant="hero" 
+              className="shadow-soft"
+              onClick={() => window.location.href = '/signup'}
+            >
               Get Started
             </Button>
           </div>
