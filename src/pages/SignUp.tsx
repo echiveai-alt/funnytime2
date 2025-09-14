@@ -13,11 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const passwordSchema = z.string()
-  .min(8, "Password must be at least 8 characters")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .min(12, "Password must be at least 12 characters")
   .regex(/[0-9]/, "Password must contain at least one number")
-  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one symbol");
 
 const signUpSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -47,11 +45,9 @@ const SignUp = () => {
 
   const getPasswordStrength = (password: string) => {
     const checks = [
-      { test: password.length >= 8, label: "At least 8 characters" },
-      { test: /[A-Z]/.test(password), label: "One uppercase letter" },
-      { test: /[a-z]/.test(password), label: "One lowercase letter" },
+      { test: password.length >= 12, label: "At least 12 characters" },
       { test: /[0-9]/.test(password), label: "One number" },
-      { test: /[^A-Za-z0-9]/.test(password), label: "One special character" },
+      { test: /[^A-Za-z0-9]/.test(password), label: "One symbol" },
     ];
     return checks;
   };
@@ -90,40 +86,40 @@ const SignUp = () => {
 
   if (emailSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-subtle">
-        <Card className="w-full max-w-md p-8 shadow-soft">
-          <div className="text-center">
-            <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
-              <Brain className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Check your inbox</h1>
-            <p className="text-muted-foreground mb-6">
-              We've sent a verification link to <strong>{userEmail}</strong>
-            </p>
-            <div className="space-y-3">
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => window.open(`mailto:${userEmail}`, '_blank')}
-              >
-                Open Mail App
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full"
-                onClick={() => setEmailSent(false)}
-              >
-                Change Email
-              </Button>
-            </div>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-secondary">
+      <Card className="w-full max-w-md p-8 shadow-soft">
+        <div className="text-center">
+          <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
+            <Brain className="w-8 h-8 text-primary-foreground" />
           </div>
-        </Card>
-      </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Check your inbox</h1>
+          <p className="text-muted-foreground mb-6">
+            We've sent a verification link to <strong>{userEmail}</strong>
+          </p>
+          <div className="space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => window.open(`mailto:${userEmail}`, '_blank')}
+            >
+              Open Mail App
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="w-full"
+              onClick={() => setEmailSent(false)}
+            >
+              Change Email
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-subtle">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-secondary">
       <Card className="w-full max-w-md p-8 shadow-soft">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">

@@ -111,7 +111,7 @@ const EducationOnboarding = () => {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-subtle">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-secondary">
         <Card className="w-full max-w-2xl p-8 shadow-soft">
           <div className="text-center">
             <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
@@ -125,14 +125,14 @@ const EducationOnboarding = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-subtle">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-secondary">
       <Card className="w-full max-w-2xl p-8 shadow-soft">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
             <Brain className="w-8 h-8 text-primary-foreground" />
           </div>
           <div className="text-sm text-muted-foreground mb-2">Step 2 of 2</div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Education Details</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Education Info</h1>
           <p className="text-muted-foreground">
             Help us personalize your resume suggestions.
           </p>
