@@ -22,10 +22,7 @@ const Hero = () => {
             <span className="bg-gradient-to-r from-accent to-white bg-clip-text text-transparent block">Perfect Resume</span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-primary-foreground/90 mb-12 max-w-4xl mx-auto leading-relaxed">
-            Create targeted resume bullet points from your STAR-formatted experiences. 
-            Let AI craft compelling bullets that match any job description with precision.
-          </p>
+          <p className="text-xl md:text-2xl text-primary-foreground/90 mb-12 max-w-4xl mx-auto leading-relaxed">Create targeted resume bullet points from a library of your professional experiences. Let AI craft compelling bullets that match any job description with precision.</p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
