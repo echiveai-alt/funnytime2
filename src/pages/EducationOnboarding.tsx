@@ -18,9 +18,7 @@ import { cn } from "@/lib/utils";
 const educationSchema = z.object({
   degree: z.string().min(1, "Please enter your degree"),
   school: z.string().min(1, "Please enter your school"),
-  graduationDate: z.date({
-    required_error: "Please select your graduation date",
-  }),
+  graduationDate: z.date({ message: "Please select your graduation date" }),
 });
 
 type EducationFormData = z.infer<typeof educationSchema>;
