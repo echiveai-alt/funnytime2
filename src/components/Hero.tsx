@@ -1,16 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Brain, Target, Zap } from "lucide-react";
 import heroBackground from "@/assets/hero-background.jpg";
-
 const Hero = () => {
-  return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+  return <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background with gradient overlay */}
       <div className="absolute inset-0 bg-gradient-hero opacity-95"></div>
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: `url(${heroBackground})` }}
-      ></div>
+      <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{
+      backgroundImage: `url(${heroBackground})`
+    }}></div>
       
       {/* Content */}
       <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
@@ -22,9 +19,7 @@ const Hero = () => {
           
           <h1 className="text-6xl md:text-7xl font-bold text-primary-foreground mb-6 leading-tight">
             Transform Your Experience Into
-            <span className="bg-gradient-to-r from-accent to-white bg-clip-text text-transparent block">
-              Perfect Resume Bullets
-            </span>
+            <span className="bg-gradient-to-r from-accent to-white bg-clip-text text-transparent block">Perfect Resume</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-primary-foreground/90 mb-12 max-w-4xl mx-auto leading-relaxed">
@@ -64,8 +59,6 @@ const Hero = () => {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default Hero;
