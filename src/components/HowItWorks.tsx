@@ -4,8 +4,8 @@ const HowItWorks = () => {
   const steps = [
     {
       icon: Edit3,
-      title: "Input Your Experience",
-      description: "Add your professional experiences using the proven STAR format (Situation, Task, Action, Result). Build your experience library once.",
+      title: "Create An Experience Library",
+      description: "Add your professional experiences using the proven STAR format (Situation, Task, Action, Result).",
       color: "text-primary"
     },
     {
