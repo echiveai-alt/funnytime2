@@ -253,6 +253,32 @@ export const useExperiences = () => {
       setRoles(prev => [...prev, role]);
       setSelectedRole(role);
 
+      // Automatically create a new experience for the new role
+      try {
+        const { data: experience, error: expError } = await supabase
+          .from("experiences")
+          .insert({
+            user_id: user.id,
+            role_id: role.id,
+            title: "",
+            situation: "",
+            task: "",
+            action: "",
+            result: "",
+            keywords: [],
+          })
+          .select()
+          .single();
+
+        if (expError) throw expError;
+
+        setExperiences([experience]);
+        setSelectedExperience(experience);
+      } catch (expError) {
+        console.error("Error creating initial experience:", expError);
+        // Don't throw here - role creation was successful
+      }
+
       toast({
         title: "Role added",
         description: "Role has been added successfully.",
