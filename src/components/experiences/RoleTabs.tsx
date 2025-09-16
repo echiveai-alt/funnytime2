@@ -1,0 +1,126 @@
+import { useState } from "react";
+import { Plus, MoreVertical, User, Edit, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Role } from "@/types/experience";
+import { cn } from "@/lib/utils";
+
+interface RoleTabsProps {
+  roles: Role[];
+  selectedRole: Role | null;
+  onSelectRole: (role: Role) => void;
+  onAddRole: () => void;
+  onEditRole?: (role: Role) => void;
+  onDeleteRole?: (role: Role) => void;
+  hasUnsavedChanges?: boolean;
+  isLoading?: boolean;
+}
+
+export const RoleTabs = ({
+  roles,
+  selectedRole,
+  onSelectRole,
+  onAddRole,
+  onEditRole,
+  onDeleteRole,
+  hasUnsavedChanges = false,
+  isLoading = false,
+}: RoleTabsProps) => {
+  const sortedRoles = [...roles].sort((a, b) => {
+    if (a.is_current && !b.is_current) return -1;
+    if (!a.is_current && b.is_current) return 1;
+    if (a.end_date && b.end_date) {
+      return new Date(b.end_date).getTime() - new Date(a.end_date).getTime();
+    }
+    if (a.end_date && !b.end_date) return 1;
+    if (!a.end_date && b.end_date) return -1;
+    return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+  });
+
+  return (
+    <div className="border-b border-border/30">
+      <div className="flex items-center gap-2 py-2 pl-8">
+        <ScrollArea className="flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            {sortedRoles.map((role) => {
+              const isSelected = selectedRole?.id === role.id;
+              const showUnsavedDot = hasUnsavedChanges && isSelected;
+              
+              return (
+                <div key={role.id} className="flex items-center gap-1">
+                  <button
+                    onClick={() => onSelectRole(role)}
+                    disabled={isLoading}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative",
+                      isSelected
+                        ? "bg-primary/20 text-primary border-primary/30 shadow-sm scale-105"
+                        : "bg-background/50 hover:bg-muted/50 border-border/50 hover:border-border/70 text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <User className="w-3 h-3" />
+                    <span className="font-medium">{role.title}</span>
+                    {role.is_current && (
+                      <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
+                    )}
+                    {showUnsavedDot && (
+                      <span className="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
+                    )}
+                  </button>
+                  
+                  {(onEditRole || onDeleteRole) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-muted"
+                        >
+                          <MoreVertical className="h-2.5 w-2.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-36">
+                        {onEditRole && (
+                          <DropdownMenuItem onClick={() => onEditRole(role)}>
+                            <Edit className="h-3 w-3 mr-2" />
+                            Edit Role
+                          </DropdownMenuItem>
+                        )}
+                        {onDeleteRole && (
+                          <DropdownMenuItem 
+                            onClick={() => onDeleteRole(role)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3 mr-2" />
+                            Delete Role
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onAddRole}
+          disabled={isLoading}
+          className="flex items-center gap-1.5 whitespace-nowrap text-xs"
+        >
+          <Plus className="w-3 h-3" />
+          Add Role
+        </Button>
+      </div>
+    </div>
+  );
+};

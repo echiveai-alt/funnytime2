@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      companies: {
+        Row: {
+          created_at: string
+          end_date: string | null
+          id: string
+          is_current: boolean
+          name: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean
+          name: string
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean
+          name?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      experiences: {
+        Row: {
+          action: string | null
+          created_at: string
+          id: string
+          keywords: string[] | null
+          result: string | null
+          role_id: string
+          situation: string | null
+          task: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          id?: string
+          keywords?: string[] | null
+          result?: string | null
+          role_id: string
+          situation?: string | null
+          task?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          id?: string
+          keywords?: string[] | null
+          result?: string | null
+          role_id?: string
+          situation?: string | null
+          task?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experiences_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -46,6 +129,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      roles: {
+        Row: {
+          company_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          is_current: boolean
+          start_date: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean
+          start_date: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_current?: boolean
+          start_date?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
