@@ -243,7 +243,19 @@ export const STARInputPanel = ({
             id="keywords"
             type="text"
             value={formData.keywords.join(", ")}
-            onChange={(e) => handleKeywordsChange(e.target.value)}
+            onChange={(e) => {
+              console.log("Input onChange triggered:", e.target.value);
+              handleKeywordsChange(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              console.log("KeyDown event:", e.key, e.code, "Prevented:", e.defaultPrevented);
+            }}
+            onKeyPress={(e) => {
+              console.log("KeyPress event:", e.key, e.code, "Prevented:", e.defaultPrevented);
+            }}
+            onInput={(e) => {
+              console.log("Input event:", (e.target as HTMLInputElement).value);
+            }}
             placeholder="SQL, A/B Testing, Amplitude (comma separated)"
             autoComplete="off"
           />
