@@ -38,19 +38,19 @@ const Hero = () => {
         {/* Feature highlights */}
         <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
           <div className="bg-background/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-            <Target className="w-8 h-8 text-accent mb-4 mx-auto" />
+            <Target className="w-8 h-8 text-primary-foreground mb-4 mx-auto" />
             <h3 className="text-primary-foreground font-semibold mb-2">Targeted Matching</h3>
             <p className="text-primary-foreground/80 text-sm">AI analyzes job descriptions to create perfectly aligned bullet points</p>
           </div>
           
           <div className="bg-background/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-            <Brain className="w-8 h-8 text-accent mb-4 mx-auto" />
+            <Brain className="w-8 h-8 text-primary-foreground mb-4 mx-auto" />
             <h3 className="text-primary-foreground font-semibold mb-2">STAR Format</h3>
             <p className="text-primary-foreground/80 text-sm">Input experiences once in proven Situation-Task-Action-Result format</p>
           </div>
           
           <div className="bg-background/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-            <Zap className="w-8 h-8 text-accent mb-4 mx-auto" />
+            <Zap className="w-8 h-8 text-primary-foreground mb-4 mx-auto" />
             <h3 className="text-primary-foreground font-semibold mb-2">Instant Results</h3>
             <p className="text-primary-foreground/80 text-sm">Generate multiple versions for different roles in seconds</p>
           </div>
