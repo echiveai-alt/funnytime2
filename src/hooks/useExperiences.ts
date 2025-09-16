@@ -92,8 +92,10 @@ export const useExperiences = () => {
       if (error) throw error;
       setExperiences(data || []);
       
-      // Clear selected experience if it's not in the current role
-      if (selectedExperience && !data?.find(exp => exp.id === selectedExperience.id)) {
+      // Automatically select the newest experience if available
+      if (data && data.length > 0) {
+        setSelectedExperience(data[0]); // First item is newest due to ordering
+      } else {
         setSelectedExperience(null);
       }
     } catch (error) {
