@@ -17,6 +17,8 @@ const Experiences = () => {
   const [user, setUser] = useState(null);
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [editingCompany, setEditingCompany] = useState(null);
+  const [editingRole, setEditingRole] = useState(null);
   const navigate = useNavigate();
 
   const {
@@ -132,6 +134,10 @@ const Experiences = () => {
             selectedCompany={selectedCompany}
             onSelectCompany={setSelectedCompany}
             onAddCompany={() => setShowCompanyModal(true)}
+            onEditCompany={(company) => {
+              setEditingCompany(company);
+              setShowCompanyModal(true);
+            }}
             isLoading={experiencesLoading}
           />
           
@@ -142,6 +148,10 @@ const Experiences = () => {
               selectedRole={selectedRole}
               onSelectRole={setSelectedRole}
               onAddRole={() => setShowRoleModal(true)}
+              onEditRole={(role) => {
+                setEditingRole(role);
+                setShowRoleModal(true);
+              }}
               isLoading={experiencesLoading}
             />
           )}
@@ -196,19 +206,29 @@ const Experiences = () => {
       {/* Modals */}
       <CompanyModal
         isOpen={showCompanyModal}
-        onClose={() => setShowCompanyModal(false)}
-        onSave={async (data) => {
-          await createCompany(data);
+        onClose={() => {
+          setShowCompanyModal(false);
+          setEditingCompany(null);
         }}
+        onSave={async (data, roleTitle) => {
+          await createCompany(data, roleTitle);
+          setEditingCompany(null);
+        }}
+        company={editingCompany}
         isLoading={experiencesLoading}
       />
 
       <RoleModal
         isOpen={showRoleModal}
-        onClose={() => setShowRoleModal(false)}
+        onClose={() => {
+          setShowRoleModal(false);
+          setEditingRole(null);
+        }}
         onSave={async (data) => {
           await createRole(data);
+          setEditingRole(null);
         }}
+        role={editingRole}
         companyId={selectedCompany?.id || ""}
         isLoading={experiencesLoading}
       />
