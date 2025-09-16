@@ -111,7 +111,7 @@ export const useExperiences = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Check for duplicate company name
+      // Check for duplicate company name (excluding current editing item)
       const existingCompany = companies.find(
         company => company.name.toLowerCase().trim() === companyData.name.toLowerCase().trim()
       );
@@ -172,12 +172,63 @@ export const useExperiences = () => {
     }
   };
 
+  const updateCompany = async (companyId: string, companyData: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">) => {
+    try {
+      // Check for duplicate company name (excluding current company being edited)
+      const existingCompany = companies.find(
+        company => company.id !== companyId && company.name.toLowerCase().trim() === companyData.name.toLowerCase().trim()
+      );
+      if (existingCompany) {
+        toast({
+          title: "Duplicate company",
+          description: "A company with this name already exists.",
+          variant: "destructive",
+        });
+        throw new Error("Duplicate company name");
+      }
+
+      const { data: company, error } = await supabase
+        .from("companies")
+        .update(companyData)
+        .eq("id", companyId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update state
+      setCompanies(prev => prev.map(c => c.id === companyId ? company : c));
+      
+      // Update selected company if it's the one being edited
+      if (selectedCompany?.id === companyId) {
+        setSelectedCompany(company);
+      }
+
+      toast({
+        title: "Company updated",
+        description: "Company has been updated successfully.",
+      });
+
+      return company;
+    } catch (error) {
+      console.error("Error updating company:", error);
+      if (error.message !== "Duplicate company name") {
+        toast({
+          title: "Error updating company",
+          description: "Failed to update company. Please try again.",
+          variant: "destructive",
+        });
+      }
+      throw error;
+    }
+  };
+
   const createRole = async (roleData: Omit<Role, "id" | "user_id" | "created_at" | "updated_at">) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Check for duplicate role title within the same company
+      // Check for duplicate role title within the same company (excluding current editing item)
       const existingRole = roles.find(
         role => role.company_id === roleData.company_id && 
         role.title.toLowerCase().trim() === roleData.title.toLowerCase().trim()
@@ -214,6 +265,58 @@ export const useExperiences = () => {
         toast({
           title: "Error creating role",
           description: "Failed to create role. Please try again.",
+          variant: "destructive",
+        });
+      }
+      throw error;
+    }
+  };
+
+  const updateRole = async (roleId: string, roleData: Omit<Role, "id" | "user_id" | "created_at" | "updated_at">) => {
+    try {
+      // Check for duplicate role title within the same company (excluding current role being edited)
+      const existingRole = roles.find(
+        role => role.id !== roleId && role.company_id === roleData.company_id && 
+        role.title.toLowerCase().trim() === roleData.title.toLowerCase().trim()
+      );
+      if (existingRole) {
+        toast({
+          title: "Duplicate role",
+          description: "A role with this title already exists in this company.",
+          variant: "destructive",
+        });
+        throw new Error("Duplicate role title");
+      }
+
+      const { data: role, error } = await supabase
+        .from("roles")
+        .update(roleData)
+        .eq("id", roleId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update state
+      setRoles(prev => prev.map(r => r.id === roleId ? role : r));
+      
+      // Update selected role if it's the one being edited
+      if (selectedRole?.id === roleId) {
+        setSelectedRole(role);
+      }
+
+      toast({
+        title: "Role updated",
+        description: "Role has been updated successfully.",
+      });
+
+      return role;
+    } catch (error) {
+      console.error("Error updating role:", error);
+      if (error.message !== "Duplicate role title") {
+        toast({
+          title: "Error updating role",
+          description: "Failed to update role. Please try again.",
           variant: "destructive",
         });
       }
@@ -474,7 +577,9 @@ export const useExperiences = () => {
     setSelectedRole,
     setSelectedExperience,
     createCompany,
+    updateCompany,
     createRole,
+    updateRole,
     createExperience,
     updateExperience,
     duplicateExperience,

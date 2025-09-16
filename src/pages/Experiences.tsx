@@ -33,7 +33,9 @@ const Experiences = () => {
     setSelectedRole,
     setSelectedExperience,
     createCompany,
+    updateCompany,
     createRole,
+    updateRole,
     createExperience,
     updateExperience,
     duplicateExperience,
@@ -213,7 +215,11 @@ const Experiences = () => {
           setEditingCompany(null);
         }}
         onSave={async (data, roleTitle) => {
-          await createCompany(data, roleTitle);
+          if (editingCompany) {
+            await updateCompany(editingCompany.id, data);
+          } else {
+            await createCompany(data, roleTitle);
+          }
           setEditingCompany(null);
         }}
         onDelete={editingCompany ? deleteCompany : undefined}
@@ -228,7 +234,11 @@ const Experiences = () => {
           setEditingRole(null);
         }}
         onSave={async (data) => {
-          await createRole(data);
+          if (editingRole) {
+            await updateRole(editingRole.id, data);
+          } else {
+            await createRole(data);
+          }
           setEditingRole(null);
         }}
         onDelete={editingRole ? deleteRole : undefined}
