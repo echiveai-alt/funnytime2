@@ -38,10 +38,10 @@ export const CompanyModal = ({
 }: CompanyModalProps) => {
   const [formData, setFormData] = useState({
     name: company?.name || "",
-    start_month: company?.start_date ? new Date(company.start_date).getMonth() + 1 : new Date().getMonth() + 1,
-    start_year: company?.start_date ? new Date(company.start_date).getFullYear() : new Date().getFullYear(),
-    end_month: company?.end_date ? new Date(company.end_date).getMonth() + 1 : new Date().getMonth() + 1,
-    end_year: company?.end_date ? new Date(company.end_date).getFullYear() : new Date().getFullYear(),
+    start_month: company?.start_date ? parseInt(company.start_date.split('-')[1]) : new Date().getMonth() + 1,
+    start_year: company?.start_date ? parseInt(company.start_date.split('-')[0]) : new Date().getFullYear(),
+    end_month: company?.end_date ? parseInt(company.end_date.split('-')[1]) : new Date().getMonth() + 1,
+    end_year: company?.end_date ? parseInt(company.end_date.split('-')[0]) : new Date().getFullYear(),
     is_current: company?.is_current || false,
     role_title: "", // For creating initial role
   });
@@ -69,10 +69,10 @@ export const CompanyModal = ({
     if (company) {
       setFormData({
         name: company.name || "",
-        start_month: company.start_date ? new Date(company.start_date).getMonth() + 1 : new Date().getMonth() + 1,
-        start_year: company.start_date ? new Date(company.start_date).getFullYear() : new Date().getFullYear(),
-        end_month: company.end_date ? new Date(company.end_date).getMonth() + 1 : new Date().getMonth() + 1,
-        end_year: company.end_date ? new Date(company.end_date).getFullYear() : new Date().getFullYear(),
+        start_month: company.start_date ? parseInt(company.start_date.split('-')[1]) : new Date().getMonth() + 1,
+        start_year: company.start_date ? parseInt(company.start_date.split('-')[0]) : new Date().getFullYear(),
+        end_month: company.end_date ? parseInt(company.end_date.split('-')[1]) : new Date().getMonth() + 1,
+        end_year: company.end_date ? parseInt(company.end_date.split('-')[0]) : new Date().getFullYear(),
         is_current: company.is_current || false,
         role_title: "", // Keep empty for editing company
       });

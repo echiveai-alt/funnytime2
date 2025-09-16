@@ -40,10 +40,10 @@ export const RoleModal = ({
 }: RoleModalProps) => {
   const [formData, setFormData] = useState({
     title: role?.title || "",
-    start_month: role?.start_date ? new Date(role.start_date).getMonth() + 1 : new Date().getMonth() + 1,
-    start_year: role?.start_date ? new Date(role.start_date).getFullYear() : new Date().getFullYear(),
-    end_month: role?.end_date ? new Date(role.end_date).getMonth() + 1 : new Date().getMonth() + 1,
-    end_year: role?.end_date ? new Date(role.end_date).getFullYear() : new Date().getFullYear(),
+    start_month: role?.start_date ? parseInt(role.start_date.split('-')[1]) : new Date().getMonth() + 1,
+    start_year: role?.start_date ? parseInt(role.start_date.split('-')[0]) : new Date().getFullYear(),
+    end_month: role?.end_date ? parseInt(role.end_date.split('-')[1]) : new Date().getMonth() + 1,
+    end_year: role?.end_date ? parseInt(role.end_date.split('-')[0]) : new Date().getFullYear(),
     is_current: role?.is_current || false,
   });
 
@@ -70,10 +70,10 @@ export const RoleModal = ({
     if (role) {
       setFormData({
         title: role.title || "",
-        start_month: role.start_date ? new Date(role.start_date).getMonth() + 1 : new Date().getMonth() + 1,
-        start_year: role.start_date ? new Date(role.start_date).getFullYear() : new Date().getFullYear(),
-        end_month: role.end_date ? new Date(role.end_date).getMonth() + 1 : new Date().getMonth() + 1,
-        end_year: role.end_date ? new Date(role.end_date).getFullYear() : new Date().getFullYear(),
+        start_month: role.start_date ? parseInt(role.start_date.split('-')[1]) : new Date().getMonth() + 1,
+        start_year: role.start_date ? parseInt(role.start_date.split('-')[0]) : new Date().getFullYear(),
+        end_month: role.end_date ? parseInt(role.end_date.split('-')[1]) : new Date().getMonth() + 1,
+        end_year: role.end_date ? parseInt(role.end_date.split('-')[0]) : new Date().getFullYear(),
         is_current: role.is_current || false,
       });
     } else {
