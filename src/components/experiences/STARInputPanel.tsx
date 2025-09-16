@@ -239,22 +239,17 @@ export const STARInputPanel = ({
 
         <div className="space-y-2">
           <Label htmlFor="keywords">Keywords/Tools</Label>
-          <Input
+          <input
             id="keywords"
             type="text"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
             value={formData.keywords.join(", ")}
             onChange={(e) => {
-              console.log("Input onChange triggered:", e.target.value);
+              console.log("Raw input onChange triggered:", e.target.value);
               handleKeywordsChange(e.target.value);
             }}
             onKeyDown={(e) => {
-              console.log("KeyDown event:", e.key, e.code, "Prevented:", e.defaultPrevented);
-            }}
-            onKeyPress={(e) => {
-              console.log("KeyPress event:", e.key, e.code, "Prevented:", e.defaultPrevented);
-            }}
-            onInput={(e) => {
-              console.log("Input event:", (e.target as HTMLInputElement).value);
+              console.log("Raw KeyDown event:", e.key, e.code, "Prevented:", e.defaultPrevented);
             }}
             placeholder="SQL, A/B Testing, Amplitude (comma separated)"
             autoComplete="off"
