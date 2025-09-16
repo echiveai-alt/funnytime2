@@ -74,35 +74,15 @@ export const RoleTabs = ({
                     )}
                   </button>
                   
-                  {(onEditRole || onDeleteRole) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 hover:bg-muted"
-                        >
-                          <MoreVertical className="h-2.5 w-2.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-36">
-                        {onEditRole && (
-                          <DropdownMenuItem onClick={() => onEditRole(role)}>
-                            <Edit className="h-3 w-3 mr-2" />
-                            Edit Role
-                          </DropdownMenuItem>
-                        )}
-                        {onDeleteRole && (
-                          <DropdownMenuItem 
-                            onClick={() => onDeleteRole(role)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-3 w-3 mr-2" />
-                            Delete Role
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  {onEditRole && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEditRole(role)}
+                      className="h-6 w-6 p-0 hover:bg-muted"
+                    >
+                      <MoreVertical className="h-2.5 w-2.5" />
+                    </Button>
                   )}
                 </div>
               );

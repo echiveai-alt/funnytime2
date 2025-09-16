@@ -106,7 +106,7 @@ export const useExperiences = () => {
     }
   };
 
-  const createCompany = async (companyData: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">) => {
+  const createCompany = async (companyData: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">, roleTitle: string = "New Role") => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
@@ -125,7 +125,7 @@ export const useExperiences = () => {
         .insert({
           user_id: user.id,
           company_id: company.id,
-          title: "New Role", // This will be updated by the role modal
+          title: roleTitle,
           start_date: companyData.start_date,
           end_date: companyData.end_date,
           is_current: companyData.is_current,

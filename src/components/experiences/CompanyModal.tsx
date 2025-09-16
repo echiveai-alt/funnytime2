@@ -22,7 +22,7 @@ import { Company } from "@/types/experience";
 interface CompanyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (company: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">) => Promise<void>;
+  onSave: (company: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">, roleTitle?: string) => Promise<void>;
   company?: Company | null;
   isLoading?: boolean;
 }
@@ -74,7 +74,7 @@ export const CompanyModal = ({
         start_date: startDate,
         end_date: endDate,
         is_current: formData.is_current,
-      });
+      }, formData.role_title);
       onClose();
       // Reset form
       setFormData({

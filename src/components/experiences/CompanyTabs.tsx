@@ -69,35 +69,15 @@ export const CompanyTabs = ({
                     )}
                   </button>
                   
-                  {(onEditCompany || onDeleteCompany) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-muted"
-                        >
-                          <MoreVertical className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        {onEditCompany && (
-                          <DropdownMenuItem onClick={() => onEditCompany(company)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Company
-                          </DropdownMenuItem>
-                        )}
-                        {onDeleteCompany && (
-                          <DropdownMenuItem 
-                            onClick={() => onDeleteCompany(company)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Company
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  {onEditCompany && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEditCompany(company)}
+                      className="h-8 w-8 p-0 hover:bg-muted"
+                    >
+                      <MoreVertical className="h-3 w-3" />
+                    </Button>
                   )}
                 </div>
               );
