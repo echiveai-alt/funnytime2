@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import {
   Dialog,
@@ -64,8 +64,34 @@ export const CompanyModal = ({
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
 
+  // Update form data when company changes (for editing)
+  useEffect(() => {
+    if (company) {
+      setFormData({
+        name: company.name || "",
+        start_month: company.start_date ? new Date(company.start_date).getMonth() + 1 : new Date().getMonth() + 1,
+        start_year: company.start_date ? new Date(company.start_date).getFullYear() : new Date().getFullYear(),
+        end_month: company.end_date ? new Date(company.end_date).getMonth() + 1 : new Date().getMonth() + 1,
+        end_year: company.end_date ? new Date(company.end_date).getFullYear() : new Date().getFullYear(),
+        is_current: company.is_current || false,
+        role_title: "", // Keep empty for editing company
+      });
+    } else {
+      // Reset form for adding new company
+      setFormData({
+        name: "",
+        start_month: new Date().getMonth() + 1,
+        start_year: new Date().getFullYear(),
+        end_month: new Date().getMonth() + 1,
+        end_year: new Date().getFullYear(),
+        is_current: false,
+        role_title: "",
+      });
+    }
+  }, [company]);
+
   const handleSave = async () => {
-    if (!formData.name || !formData.role_title) return;
+    if (!formData.name || (!company && !formData.role_title)) return;
 
     const startDate = `${formData.start_year}-${String(formData.start_month).padStart(2, '0')}-01`;
     const endDate = formData.is_current ? null : `${formData.end_year}-${String(formData.end_month).padStart(2, '0')}-01`;
@@ -93,7 +119,7 @@ export const CompanyModal = ({
     }
   };
 
-  const isValid = formData.name.trim() && formData.role_title.trim();
+  const isValid = formData.name.trim() && (company || formData.role_title.trim());
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -116,15 +142,17 @@ export const CompanyModal = ({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role-title">Initial Role</Label>
-            <Input
-              id="role-title"
-              value={formData.role_title}
-              onChange={(e) => setFormData(prev => ({ ...prev, role_title: e.target.value }))}
-              placeholder="e.g., Product Manager"
-            />
-          </div>
+          {!company && (
+            <div className="space-y-2">
+              <Label htmlFor="role-title">Initial Role</Label>
+              <Input
+                id="role-title"
+                value={formData.role_title}
+                onChange={(e) => setFormData(prev => ({ ...prev, role_title: e.target.value }))}
+                placeholder="e.g., Product Manager"
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import {
   Dialog,
@@ -64,6 +64,30 @@ export const RoleModal = ({
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
+
+  // Update form data when role changes (for editing)
+  useEffect(() => {
+    if (role) {
+      setFormData({
+        title: role.title || "",
+        start_month: role.start_date ? new Date(role.start_date).getMonth() + 1 : new Date().getMonth() + 1,
+        start_year: role.start_date ? new Date(role.start_date).getFullYear() : new Date().getFullYear(),
+        end_month: role.end_date ? new Date(role.end_date).getMonth() + 1 : new Date().getMonth() + 1,
+        end_year: role.end_date ? new Date(role.end_date).getFullYear() : new Date().getFullYear(),
+        is_current: role.is_current || false,
+      });
+    } else {
+      // Reset form for adding new role
+      setFormData({
+        title: "",
+        start_month: new Date().getMonth() + 1,
+        start_year: new Date().getFullYear(),
+        end_month: new Date().getMonth() + 1,
+        end_year: new Date().getFullYear(),
+        is_current: false,
+      });
+    }
+  }, [role]);
 
   const handleSave = async () => {
     if (!formData.title) return;
