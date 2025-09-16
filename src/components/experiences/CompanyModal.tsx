@@ -60,7 +60,7 @@ export const CompanyModal = ({
   ];
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 50 }, (_, i) => currentYear - i + 10);
+  const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
 
   const handleSave = async () => {
     if (!formData.name || !formData.role_title) return;
