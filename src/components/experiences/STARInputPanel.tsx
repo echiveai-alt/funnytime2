@@ -241,9 +241,11 @@ export const STARInputPanel = ({
           <Label htmlFor="keywords">Keywords/Tools</Label>
           <Input
             id="keywords"
+            type="text"
             value={formData.keywords.join(", ")}
             onChange={(e) => handleKeywordsChange(e.target.value)}
             placeholder="SQL, A/B Testing, Amplitude (comma separated)"
+            autoComplete="off"
           />
         </div>
 
