@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Calendar, Plus } from "lucide-react";
-import { format } from "date-fns";
+import { Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,13 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Company } from "@/types/experience";
 
 interface CompanyModalProps {
@@ -37,30 +36,53 @@ export const CompanyModal = ({
 }: CompanyModalProps) => {
   const [formData, setFormData] = useState({
     name: company?.name || "",
-    start_date: company?.start_date ? new Date(company.start_date) : undefined,
-    end_date: company?.end_date ? new Date(company.end_date) : undefined,
+    start_month: company?.start_date ? new Date(company.start_date).getMonth() + 1 : new Date().getMonth() + 1,
+    start_year: company?.start_date ? new Date(company.start_date).getFullYear() : new Date().getFullYear(),
+    end_month: company?.end_date ? new Date(company.end_date).getMonth() + 1 : new Date().getMonth() + 1,
+    end_year: company?.end_date ? new Date(company.end_date).getFullYear() : new Date().getFullYear(),
     is_current: company?.is_current || false,
     role_title: "", // For creating initial role
   });
-  const [startDateOpen, setStartDateOpen] = useState(false);
-  const [endDateOpen, setEndDateOpen] = useState(false);
+
+  const months = [
+    { value: 1, label: "January" },
+    { value: 2, label: "February" },
+    { value: 3, label: "March" },
+    { value: 4, label: "April" },
+    { value: 5, label: "May" },
+    { value: 6, label: "June" },
+    { value: 7, label: "July" },
+    { value: 8, label: "August" },
+    { value: 9, label: "September" },
+    { value: 10, label: "October" },
+    { value: 11, label: "November" },
+    { value: 12, label: "December" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 50 }, (_, i) => currentYear - i + 10);
 
   const handleSave = async () => {
-    if (!formData.name || !formData.start_date) return;
+    if (!formData.name || !formData.role_title) return;
+
+    const startDate = `${formData.start_year}-${String(formData.start_month).padStart(2, '0')}-01`;
+    const endDate = formData.is_current ? null : `${formData.end_year}-${String(formData.end_month).padStart(2, '0')}-01`;
 
     try {
       await onSave({
         name: formData.name,
-        start_date: formData.start_date.toISOString().split('T')[0],
-        end_date: formData.is_current ? null : formData.end_date?.toISOString().split('T')[0] || null,
+        start_date: startDate,
+        end_date: endDate,
         is_current: formData.is_current,
       });
       onClose();
       // Reset form
       setFormData({
         name: "",
-        start_date: undefined,
-        end_date: undefined,
+        start_month: new Date().getMonth() + 1,
+        start_year: new Date().getFullYear(),
+        end_month: new Date().getMonth() + 1,
+        end_year: new Date().getFullYear(),
         is_current: false,
         role_title: "",
       });
@@ -69,7 +91,7 @@ export const CompanyModal = ({
     }
   };
 
-  const isValid = formData.name.trim() && formData.start_date && formData.role_title.trim();
+  const isValid = formData.name.trim() && formData.role_title.trim();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -105,73 +127,76 @@ export const CompanyModal = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Date</Label>
-              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.start_date && "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {formData.start_date ? (
-                      format(formData.start_date, "MMM yyyy")
-                    ) : (
-                      <span>Pick date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={formData.start_date}
-                    onSelect={(date) => {
-                      setFormData(prev => ({ ...prev, start_date: date }));
-                      setStartDateOpen(false);
-                    }}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="grid grid-cols-2 gap-2">
+                <Select
+                  value={formData.start_month.toString()}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, start_month: parseInt(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value.toString()}>
+                        {month.label.slice(0, 3)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={formData.start_year.toString()}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, start_year: parseInt(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label>End Date</Label>
-              <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    disabled={formData.is_current}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      (!formData.end_date || formData.is_current) && "text-muted-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {formData.is_current ? (
-                      <span>Current</span>
-                    ) : formData.end_date ? (
-                      format(formData.end_date, "MMM yyyy")
-                    ) : (
-                      <span>Pick date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={formData.end_date}
-                    onSelect={(date) => {
-                      setFormData(prev => ({ ...prev, end_date: date }));
-                      setEndDateOpen(false);
-                    }}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="grid grid-cols-2 gap-2">
+                <Select
+                  disabled={formData.is_current}
+                  value={formData.end_month.toString()}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, end_month: parseInt(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.is_current ? "Current" : "Month"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value.toString()}>
+                        {month.label.slice(0, 3)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  disabled={formData.is_current}
+                  value={formData.end_year.toString()}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, end_year: parseInt(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.is_current ? "Current" : "Year"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -182,8 +207,7 @@ export const CompanyModal = ({
               onCheckedChange={(checked) => 
                 setFormData(prev => ({ 
                   ...prev, 
-                  is_current: !!checked,
-                  end_date: checked ? undefined : prev.end_date
+                  is_current: !!checked
                 }))
               }
             />
