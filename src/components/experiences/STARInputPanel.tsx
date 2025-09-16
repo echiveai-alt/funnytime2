@@ -30,6 +30,7 @@ export const STARInputPanel = ({
     result: "",
     keywords: [],
   });
+  const [keywordsDisplayValue, setKeywordsDisplayValue] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -54,6 +55,7 @@ export const STARInputPanel = ({
         result: experience.result || "",
         keywords: experience.keywords || [],
       });
+      setKeywordsDisplayValue((experience.keywords || []).join(", "));
       setHasUnsavedChanges(false);
     } else {
       // Clear form when no experience selected
@@ -65,6 +67,7 @@ export const STARInputPanel = ({
         result: "",
         keywords: [],
       });
+      setKeywordsDisplayValue("");
       setHasUnsavedChanges(false);
     }
   }, [experience]);
@@ -103,8 +106,17 @@ export const STARInputPanel = ({
   };
 
   const handleKeywordsChange = (value: string) => {
+    console.log("handleKeywordsChange called with:", JSON.stringify(value));
+    setKeywordsDisplayValue(value);
     const keywords = value.split(",").map(k => k.trim()).filter(k => k.length > 0);
+    console.log("Processed keywords:", keywords);
     handleInputChange("keywords", keywords);
+  };
+
+  const handleKeywordsBlur = () => {
+    // Clean up display value on blur
+    const keywords = keywordsDisplayValue.split(",").map(k => k.trim()).filter(k => k.length > 0);
+    setKeywordsDisplayValue(keywords.join(", "));
   };
 
   const handleSave = async () => {
@@ -243,11 +255,12 @@ export const STARInputPanel = ({
             id="keywords"
             type="text"
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-            value={formData.keywords.join(", ")}
+            value={keywordsDisplayValue}
             onChange={(e) => {
               console.log("Raw input onChange triggered:", e.target.value);
               handleKeywordsChange(e.target.value);
             }}
+            onBlur={handleKeywordsBlur}
             onKeyDown={(e) => {
               console.log("Raw KeyDown event:", e.key, e.code, "Prevented:", e.defaultPrevented);
             }}
