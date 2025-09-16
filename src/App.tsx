@@ -1,39 +1,18 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "next-themes";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import SignUp from "./pages/SignUp";
-import AuthCallback from "./pages/AuthCallback";
-import VerifyError from "./pages/VerifyError";
-import EducationOnboarding from "./pages/EducationOnboarding";
-import Experiences from "./pages/Experiences";
-import NotFound from "./pages/NotFound";
+import React from "react";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/verify/error" element={<VerifyError />} />
-          <Route path="/onboarding/education" element={<EducationOnboarding />} />
-          <Route path="/app/experiences" element={<Experiences />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-        <Sonner />
-      </BrowserRouter>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-slate-800 mb-4">
+          echive.ai
+        </h1>
+        <p className="text-slate-600">
+          Loading...
+        </p>
+      </div>
+    </div>
+  );
+};
 
 export default App;
