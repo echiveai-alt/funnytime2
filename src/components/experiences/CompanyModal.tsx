@@ -23,6 +23,7 @@ interface CompanyModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (company: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">, roleTitle?: string) => Promise<void>;
+  onDelete?: (companyId: string) => Promise<void>;
   company?: Company | null;
   isLoading?: boolean;
 }
@@ -31,6 +32,7 @@ export const CompanyModal = ({
   isOpen,
   onClose,
   onSave,
+  onDelete,
   company = null,
   isLoading = false,
 }: CompanyModalProps) => {
@@ -219,6 +221,18 @@ export const CompanyModal = ({
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
+          {company && onDelete && (
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                await onDelete(company.id);
+                onClose();
+              }} 
+              disabled={isLoading}
+            >
+              Delete
+            </Button>
+          )}
           <Button onClick={handleSave} disabled={!isValid || isLoading}>
             {isLoading ? "Saving..." : "Save"}
           </Button>

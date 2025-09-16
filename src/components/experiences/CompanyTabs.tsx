@@ -51,50 +51,51 @@ export const CompanyTabs = ({
             {sortedCompanies.map((company) => {
               const isSelected = selectedCompany?.id === company.id;
               return (
-                <div key={company.id} className="flex items-center gap-1">
-                  <button
-                    onClick={() => onSelectCompany(company)}
-                    disabled={isLoading}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative",
-                      isSelected
-                        ? "bg-primary text-primary-foreground border-primary shadow-soft scale-105"
-                        : "bg-background hover:bg-muted border-border hover:border-border/80"
-                    )}
-                  >
-                    <Building2 className="w-4 h-4" />
-                    <span className="font-semibold">{company.name}</span>
-                    {company.is_current && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
-                    )}
-                  </button>
-                  
-                  {onEditCompany && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEditCompany(company)}
-                      className="h-8 w-8 p-0 hover:bg-muted"
-                    >
-                      <MoreVertical className="h-3 w-3" />
-                    </Button>
+                <button
+                  key={company.id}
+                  onClick={() => onSelectCompany(company)}
+                  disabled={isLoading}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary shadow-soft scale-105"
+                      : "bg-background hover:bg-muted border-border hover:border-border/80"
                   )}
-                </div>
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span className="font-semibold">{company.name}</span>
+                  {company.is_current && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
+                  )}
+                </button>
               );
             })}
           </div>
         </ScrollArea>
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAddCompany}
-          disabled={isLoading}
-          className="flex items-center gap-2 whitespace-nowrap"
-        >
-          <Plus className="w-4 h-4" />
-          Add Company
-        </Button>
+        <div className="flex items-center gap-2">
+          {selectedCompany && onEditCompany && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEditCompany(selectedCompany)}
+              disabled={isLoading}
+              className="h-8 w-8 p-0 hover:bg-muted"
+            >
+              <MoreVertical className="h-3 w-3" />
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddCompany}
+            disabled={isLoading}
+            className="flex items-center gap-2 whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Add Company
+          </Button>
+        </div>
       </div>
     </div>
   );

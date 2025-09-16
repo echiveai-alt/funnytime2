@@ -111,6 +111,19 @@ export const useExperiences = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // Check for duplicate company name
+      const existingCompany = companies.find(
+        company => company.name.toLowerCase().trim() === companyData.name.toLowerCase().trim()
+      );
+      if (existingCompany) {
+        toast({
+          title: "Duplicate company",
+          description: "A company with this name already exists.",
+          variant: "destructive",
+        });
+        throw new Error("Duplicate company name");
+      }
+
       const { data: company, error: companyError } = await supabase
         .from("companies")
         .insert({ ...companyData, user_id: user.id })
@@ -148,11 +161,13 @@ export const useExperiences = () => {
       return company;
     } catch (error) {
       console.error("Error creating company:", error);
-      toast({
-        title: "Error creating company",
-        description: "Failed to create company. Please try again.",
-        variant: "destructive",
-      });
+      if (error.message !== "Duplicate company name") {
+        toast({
+          title: "Error creating company",
+          description: "Failed to create company. Please try again.",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };
@@ -161,6 +176,20 @@ export const useExperiences = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
+
+      // Check for duplicate role title within the same company
+      const existingRole = roles.find(
+        role => role.company_id === roleData.company_id && 
+        role.title.toLowerCase().trim() === roleData.title.toLowerCase().trim()
+      );
+      if (existingRole) {
+        toast({
+          title: "Duplicate role",
+          description: "A role with this title already exists in this company.",
+          variant: "destructive",
+        });
+        throw new Error("Duplicate role title");
+      }
 
       const { data: role, error } = await supabase
         .from("roles")
@@ -181,11 +210,13 @@ export const useExperiences = () => {
       return role;
     } catch (error) {
       console.error("Error creating role:", error);
-      toast({
-        title: "Error creating role",
-        description: "Failed to create role. Please try again.",
-        variant: "destructive",
-      });
+      if (error.message !== "Duplicate role title") {
+        toast({
+          title: "Error creating role",
+          description: "Failed to create role. Please try again.",
+          variant: "destructive",
+        });
+      }
       throw error;
     }
   };
@@ -329,6 +360,101 @@ export const useExperiences = () => {
     }
   };
 
+  const deleteCompany = async (companyId: string) => {
+    try {
+      // First delete all experiences for roles in this company
+      const companyRoles = roles.filter(role => role.company_id === companyId);
+      for (const role of companyRoles) {
+        const { error: expError } = await supabase
+          .from("experiences")
+          .delete()
+          .eq("role_id", role.id);
+        if (expError) throw expError;
+      }
+
+      // Then delete all roles for this company
+      const { error: rolesError } = await supabase
+        .from("roles")
+        .delete()
+        .eq("company_id", companyId);
+      if (rolesError) throw rolesError;
+
+      // Finally delete the company
+      const { error: companyError } = await supabase
+        .from("companies")
+        .delete()
+        .eq("id", companyId);
+      if (companyError) throw companyError;
+
+      // Update state
+      setCompanies(prev => prev.filter(company => company.id !== companyId));
+      setRoles(prev => prev.filter(role => role.company_id !== companyId));
+      setExperiences(prev => prev.filter(exp => !companyRoles.some(role => role.id === exp.role_id)));
+      
+      // Clear selections if they belonged to the deleted company
+      if (selectedCompany?.id === companyId) {
+        setSelectedCompany(companies.find(c => c.id !== companyId) || null);
+        setSelectedRole(null);
+        setSelectedExperience(null);
+      }
+
+      toast({
+        title: "Company deleted",
+        description: "Company and all associated roles and experiences have been deleted.",
+      });
+    } catch (error) {
+      console.error("Error deleting company:", error);
+      toast({
+        title: "Error deleting company",
+        description: "Failed to delete company. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const deleteRole = async (roleId: string) => {
+    try {
+      // First delete all experiences for this role
+      const { error: expError } = await supabase
+        .from("experiences")
+        .delete()
+        .eq("role_id", roleId);
+      if (expError) throw expError;
+
+      // Then delete the role
+      const { error: roleError } = await supabase
+        .from("roles")
+        .delete()
+        .eq("id", roleId);
+      if (roleError) throw roleError;
+
+      // Update state
+      setRoles(prev => prev.filter(role => role.id !== roleId));
+      setExperiences(prev => prev.filter(exp => exp.role_id !== roleId));
+      
+      // Clear selections if they belonged to the deleted role
+      if (selectedRole?.id === roleId) {
+        const remainingRoles = roles.filter(role => role.id !== roleId && role.company_id === selectedCompany?.id);
+        setSelectedRole(remainingRoles[0] || null);
+        setSelectedExperience(null);
+      }
+
+      toast({
+        title: "Role deleted",
+        description: "Role and all associated experiences have been deleted.",
+      });
+    } catch (error) {
+      console.error("Error deleting role:", error);
+      toast({
+        title: "Error deleting role",
+        description: "Failed to delete role. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const getFilteredRoles = (companyId: string) => {
     return roles.filter(role => role.company_id === companyId);
   };
@@ -353,6 +479,8 @@ export const useExperiences = () => {
     updateExperience,
     duplicateExperience,
     deleteExperience,
+    deleteCompany,
+    deleteRole,
     getFilteredRoles,
     loadData,
   };

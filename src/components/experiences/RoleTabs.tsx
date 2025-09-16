@@ -53,53 +53,54 @@ export const RoleTabs = ({
               const showUnsavedDot = hasUnsavedChanges && isSelected;
               
               return (
-                <div key={role.id} className="flex items-center gap-1">
-                  <button
-                    onClick={() => onSelectRole(role)}
-                    disabled={isLoading}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative",
-                      isSelected
-                        ? "bg-primary/20 text-primary border-primary/30 shadow-sm scale-105"
-                        : "bg-background/50 hover:bg-muted/50 border-border/50 hover:border-border/70 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <User className="w-3 h-3" />
-                    <span className="font-medium">{role.title}</span>
-                    {role.is_current && (
-                      <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
-                    )}
-                    {showUnsavedDot && (
-                      <span className="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
-                    )}
-                  </button>
-                  
-                  {onEditRole && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onEditRole(role)}
-                      className="h-6 w-6 p-0 hover:bg-muted"
-                    >
-                      <MoreVertical className="h-2.5 w-2.5" />
-                    </Button>
+                <button
+                  key={role.id}
+                  onClick={() => onSelectRole(role)}
+                  disabled={isLoading}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative",
+                    isSelected
+                      ? "bg-primary/20 text-primary border-primary/30 shadow-sm scale-105"
+                      : "bg-background/50 hover:bg-muted/50 border-border/50 hover:border-border/70 text-muted-foreground hover:text-foreground"
                   )}
-                </div>
+                >
+                  <User className="w-3 h-3" />
+                  <span className="font-medium">{role.title}</span>
+                  {role.is_current && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
+                  )}
+                  {showUnsavedDot && (
+                    <span className="absolute -top-0.5 -left-0.5 w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
+                  )}
+                </button>
               );
             })}
           </div>
         </ScrollArea>
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onAddRole}
-          disabled={isLoading}
-          className="flex items-center gap-1.5 whitespace-nowrap text-xs"
-        >
-          <Plus className="w-3 h-3" />
-          Add Role
-        </Button>
+        <div className="flex items-center gap-2">
+          {selectedRole && onEditRole && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEditRole(selectedRole)}
+              disabled={isLoading}
+              className="h-6 w-6 p-0 hover:bg-muted"
+            >
+              <MoreVertical className="h-2.5 w-2.5" />
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddRole}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 whitespace-nowrap text-xs"
+          >
+            <Plus className="w-3 h-3" />
+            Add Role
+          </Button>
+        </div>
       </div>
     </div>
   );

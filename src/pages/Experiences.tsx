@@ -38,6 +38,8 @@ const Experiences = () => {
     updateExperience,
     duplicateExperience,
     deleteExperience,
+    deleteCompany,
+    deleteRole,
     getFilteredRoles,
   } = useExperiences();
 
@@ -214,6 +216,7 @@ const Experiences = () => {
           await createCompany(data, roleTitle);
           setEditingCompany(null);
         }}
+        onDelete={editingCompany ? deleteCompany : undefined}
         company={editingCompany}
         isLoading={experiencesLoading}
       />
@@ -228,6 +231,7 @@ const Experiences = () => {
           await createRole(data);
           setEditingRole(null);
         }}
+        onDelete={editingRole ? deleteRole : undefined}
         role={editingRole}
         companyId={selectedCompany?.id || ""}
         isLoading={experiencesLoading}

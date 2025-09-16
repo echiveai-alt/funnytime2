@@ -23,6 +23,7 @@ interface RoleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (role: Omit<Role, "id" | "user_id" | "created_at" | "updated_at">) => Promise<void>;
+  onDelete?: (roleId: string) => Promise<void>;
   role?: Role | null;
   companyId: string;
   isLoading?: boolean;
@@ -32,6 +33,7 @@ export const RoleModal = ({
   isOpen,
   onClose,
   onSave,
+  onDelete,
   role = null,
   companyId,
   isLoading = false,
@@ -210,6 +212,18 @@ export const RoleModal = ({
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
+          {role && onDelete && (
+            <Button 
+              variant="destructive" 
+              onClick={async () => {
+                await onDelete(role.id);
+                onClose();
+              }} 
+              disabled={isLoading}
+            >
+              Delete
+            </Button>
+          )}
           <Button onClick={handleSave} disabled={!isValid || isLoading}>
             {isLoading ? "Saving..." : "Save"}
           </Button>
