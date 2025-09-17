@@ -156,7 +156,7 @@ const JobDescription = () => {
               {/* Job Description Text Area */}
               <div className="space-y-3">
                 <Label htmlFor="jobDescription" className="text-base font-semibold text-foreground">
-                  Job Description Text *
+                  Job Description Text
                 </Label>
                 <Textarea
                   id="jobDescription"
@@ -185,7 +185,7 @@ const JobDescription = () => {
               {/* Keyword Matching Dropdown */}
               <div className="space-y-3">
                 <Label htmlFor="keywordMatchType" className="text-base font-semibold text-foreground">
-                  Keyword Matching Type *
+                  Keyword Matching Type
                 </Label>
                 <p className="text-sm text-muted-foreground mb-2">
                   Choose how closely keywords should match between your experience and the job description
