@@ -8,7 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 
 const JobDescription = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [jobDescription, setJobDescription] = useState("");
+  const [jobDescription, setJobDescription] = useState(() => {
+    // Initialize from localStorage to prevent flash
+    return localStorage.getItem('jobDescription') || "";
+  });
   const [keywordMatchType, setKeywordMatchType] = useState("exact");
   const [errors, setErrors] = useState<{ jobDescription?: string; keywordMatchType?: string }>({});
   const { toast } = useToast();

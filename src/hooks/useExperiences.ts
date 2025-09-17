@@ -8,6 +8,8 @@ export const useExperiences = () => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Initialize with localStorage data immediately to prevent flash
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(() => {
     const saved = localStorage.getItem('selectedCompany');
     return saved ? JSON.parse(saved) : null;

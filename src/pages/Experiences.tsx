@@ -101,7 +101,17 @@ const Experiences = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-6">
-        {selectedRole ? (
+        {/* Show loading state only when initially loading and no saved role */}
+        {experiencesLoading && !selectedRole ? (
+          <div className="flex items-center justify-center h-[60vh]">
+            <Card className="p-12 shadow-soft text-center max-w-md">
+              <div className="flex items-center justify-center w-16 h-16 bg-muted rounded-xl shadow-soft mx-auto mb-6">
+                <Brain className="w-8 h-8 text-muted-foreground animate-pulse" />
+              </div>
+              <p className="text-muted-foreground">Loading...</p>
+            </Card>
+          </div>
+        ) : selectedRole ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-20rem)]">
             {/* Experiences List - 35% width on desktop */}
             <div className="lg:col-span-4 xl:col-span-4">
