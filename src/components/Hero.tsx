@@ -28,6 +28,7 @@ const Hero = () => {
         <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
           <Button variant="accent" size="lg" className="text-lg px-8 py-6 h-auto">
             Start Creating Bullet Points
+            onClick={() => window.location.href = '/signup'}
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
           <Button variant="outline_primary" size="lg" className="text-lg px-8 py-6 h-auto border-white/30 text-primary-foreground hover:bg-white/10">
