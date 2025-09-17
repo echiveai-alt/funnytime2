@@ -8,8 +8,14 @@ export const useExperiences = () => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(() => {
+    const saved = localStorage.getItem('selectedCompany');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [selectedRole, setSelectedRole] = useState<Role | null>(() => {
+    const saved = localStorage.getItem('selectedRole');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
   const { toast } = useToast();
 
@@ -24,10 +30,21 @@ export const useExperiences = () => {
       const companyRoles = roles.filter(role => role.company_id === selectedCompany.id);
       const currentRole = companyRoles.find(role => role.is_current) || companyRoles[0];
       setSelectedRole(currentRole || null);
+      localStorage.setItem('selectedCompany', JSON.stringify(selectedCompany));
     } else {
       setSelectedRole(null);
+      localStorage.removeItem('selectedCompany');
     }
   }, [selectedCompany, roles]);
+
+  // Persist selected role to localStorage
+  useEffect(() => {
+    if (selectedRole) {
+      localStorage.setItem('selectedRole', JSON.stringify(selectedRole));
+    } else {
+      localStorage.removeItem('selectedRole');
+    }
+  }, [selectedRole]);
 
   // Update experiences when role changes
   useEffect(() => {
@@ -63,10 +80,41 @@ export const useExperiences = () => {
       if (rolesError) throw rolesError;
       setRoles(rolesData || []);
 
-      // Set initial selections
+      // Restore saved role if available
+      const savedRoleData = localStorage.getItem('selectedRole');
+      if (savedRoleData && rolesData) {
+        const parsedRole = JSON.parse(savedRoleData);
+        const targetRole = rolesData.find(r => r.id === parsedRole.id);
+        if (targetRole) {
+          setSelectedRole(targetRole);
+        }
+      }
+
+      // Restore saved role if available
+      const savedRole = localStorage.getItem('selectedRole');
+      if (savedRole && rolesData) {
+        const parsedRole = JSON.parse(savedRole);
+        const targetRole = rolesData.find(r => r.id === parsedRole.id);
+        if (targetRole) {
+          setSelectedRole(targetRole);
+        }
+      }
+
+      // Set initial selections - check localStorage first
       if (companiesData && companiesData.length > 0) {
-        const currentCompany = companiesData.find(c => c.is_current) || companiesData[0];
-        setSelectedCompany(currentCompany);
+        const savedCompany = localStorage.getItem('selectedCompany');
+        let targetCompany: Company | null = null;
+        
+        if (savedCompany) {
+          const parsedCompany = JSON.parse(savedCompany);
+          targetCompany = companiesData.find(c => c.id === parsedCompany.id) || null;
+        }
+        
+        if (!targetCompany) {
+          targetCompany = companiesData.find(c => c.is_current) || companiesData[0];
+        }
+        
+        setSelectedCompany(targetCompany);
       }
 
     } catch (error) {
