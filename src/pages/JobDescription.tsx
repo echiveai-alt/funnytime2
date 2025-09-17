@@ -164,6 +164,8 @@ const JobDescription = () => {
                   value={jobDescription}
                   onChange={(e) => {
                     setJobDescription(e.target.value);
+                    // Save to localStorage for cross-page checking
+                    localStorage.setItem('jobDescription', e.target.value);
                     if (errors.jobDescription) {
                       setErrors(prev => ({ ...prev, jobDescription: undefined }));
                     }
@@ -236,14 +238,6 @@ const JobDescription = () => {
               </div>
             </form>
 
-            {/* Progress Indicator */}
-            <div className="mt-8 pt-6 border-t border-border/50">
-              <div className="flex justify-center items-center gap-4">
-                <span className="text-sm font-medium text-muted-foreground">Step 2 of 3</span>
-                <Progress value={66} className="w-32" />
-                <span className="text-sm text-muted-foreground">66%</span>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </main>
