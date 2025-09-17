@@ -10,6 +10,8 @@ import { RoleModal } from "@/components/experiences/RoleModal";
 import { useExperiences } from "@/hooks/useExperiences";
 
 const Experiences = () => {
+  // Fixed isLoading reference issue - debugging
+  console.log("Experiences component loading...");
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
