@@ -165,29 +165,43 @@ const Experiences = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-6">
         {selectedRole ? (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-16rem)]">
-            {/* Experiences List - 35% width on desktop */}
-            <div className="lg:col-span-4 xl:col-span-4">
-              <ExperiencesList
-                experiences={experiences}
-                selectedExperience={selectedExperience}
-                onSelectExperience={setSelectedExperience}
-                onAddExperience={handleAddExperience}
-                onEditExperience={setSelectedExperience}
-                onDuplicateExperience={duplicateExperience}
-                onDeleteExperience={(exp) => deleteExperience(exp.id)}
-                isLoading={experiencesLoading}
-              />
-            </div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-20rem)]">
+              {/* Experiences List - 35% width on desktop */}
+              <div className="lg:col-span-4 xl:col-span-4">
+                <ExperiencesList
+                  experiences={experiences}
+                  selectedExperience={selectedExperience}
+                  onSelectExperience={setSelectedExperience}
+                  onAddExperience={handleAddExperience}
+                  onEditExperience={setSelectedExperience}
+                  onDuplicateExperience={duplicateExperience}
+                  onDeleteExperience={(exp) => deleteExperience(exp.id)}
+                  isLoading={experiencesLoading}
+                />
+              </div>
 
-            {/* STAR Input Panel - 65% width on desktop */}
-            <div className="lg:col-span-8 xl:col-span-8">
-              <STARInputPanel
-                experience={selectedExperience}
-                onSave={handleSaveExperience}
-                onDelete={selectedExperience ? handleDeleteSelectedExperience : undefined}
-                isLoading={experiencesLoading}
-              />
+              {/* STAR Input Panel - 65% width on desktop */}
+              <div className="lg:col-span-8 xl:col-span-8">
+                <STARInputPanel
+                  experience={selectedExperience}
+                  onSave={handleSaveExperience}
+                  onDelete={selectedExperience ? handleDeleteSelectedExperience : undefined}
+                  isLoading={experiencesLoading}
+                />
+              </div>
+            </div>
+            
+            {/* Job Description CTA */}
+            <div className="flex justify-center pt-6 border-t border-border/50">
+              <Button 
+                variant="default" 
+                size="lg" 
+                onClick={() => navigate('/app/job-description')}
+                className="px-8 py-3"
+              >
+                Job Description
+              </Button>
             </div>
           </div>
         ) : (

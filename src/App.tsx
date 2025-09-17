@@ -10,6 +10,7 @@ import AuthCallback from "./pages/AuthCallback";
 import VerifyError from "./pages/VerifyError";
 import EducationOnboarding from "./pages/EducationOnboarding";
 import Experiences from "./pages/Experiences";
+import JobDescription from "./pages/JobDescription";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => {
             <Route path="/verify/error" element={<VerifyError />} />
             <Route path="/onboarding/education" element={<EducationOnboarding />} />
             <Route path="/app/experiences" element={<Experiences />} />
+            <Route path="/app/job-description" element={<JobDescription />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
