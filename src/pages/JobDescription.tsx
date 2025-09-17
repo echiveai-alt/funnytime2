@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Brain, ArrowLeft } from "lucide-react";
+import { Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { MainTabs } from "@/components/experiences/MainTabs";
 
 const JobDescription = () => {
   const [user, setUser] = useState(null);
@@ -135,6 +136,9 @@ const JobDescription = () => {
         </div>
       </header>
 
+      {/* Main Navigation Tabs */}
+      <MainTabs />
+
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
         <Card className="shadow-soft border border-border/50">
@@ -220,22 +224,12 @@ const JobDescription = () => {
                 )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/app/experiences')}
-                  className="flex items-center gap-2 w-full sm:w-auto"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Edit Experience
-                </Button>
-                
+              {/* Action Button */}
+              <div className="flex justify-center pt-6">
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full sm:w-auto px-8"
+                  className="px-8"
                 >
                   {isSubmitting ? "Processing..." : "Create"}
                 </Button>

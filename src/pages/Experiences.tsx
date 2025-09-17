@@ -4,6 +4,7 @@ import { Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { MainTabs } from "@/components/experiences/MainTabs";
 import { CompanyTabs } from "@/components/experiences/CompanyTabs";
 import { RoleTabs } from "@/components/experiences/RoleTabs";
 import { ExperiencesList } from "@/components/experiences/ExperiencesList";
@@ -129,6 +130,9 @@ const Experiences = () => {
         </div>
       </header>
 
+      {/* Main Navigation Tabs */}
+      <MainTabs />
+
       {/* Sticky Navigation Tabs */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50">
         <div className="max-w-7xl mx-auto px-6">
@@ -165,43 +169,29 @@ const Experiences = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-6">
         {selectedRole ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-20rem)]">
-              {/* Experiences List - 35% width on desktop */}
-              <div className="lg:col-span-4 xl:col-span-4">
-                <ExperiencesList
-                  experiences={experiences}
-                  selectedExperience={selectedExperience}
-                  onSelectExperience={setSelectedExperience}
-                  onAddExperience={handleAddExperience}
-                  onEditExperience={setSelectedExperience}
-                  onDuplicateExperience={duplicateExperience}
-                  onDeleteExperience={(exp) => deleteExperience(exp.id)}
-                  isLoading={experiencesLoading}
-                />
-              </div>
-
-              {/* STAR Input Panel - 65% width on desktop */}
-              <div className="lg:col-span-8 xl:col-span-8">
-                <STARInputPanel
-                  experience={selectedExperience}
-                  onSave={handleSaveExperience}
-                  onDelete={selectedExperience ? handleDeleteSelectedExperience : undefined}
-                  isLoading={experiencesLoading}
-                />
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-20rem)]">
+            {/* Experiences List - 35% width on desktop */}
+            <div className="lg:col-span-4 xl:col-span-4">
+              <ExperiencesList
+                experiences={experiences}
+                selectedExperience={selectedExperience}
+                onSelectExperience={setSelectedExperience}
+                onAddExperience={handleAddExperience}
+                onEditExperience={setSelectedExperience}
+                onDuplicateExperience={duplicateExperience}
+                onDeleteExperience={(exp) => deleteExperience(exp.id)}
+                isLoading={experiencesLoading}
+              />
             </div>
-            
-            {/* Job Description CTA */}
-            <div className="flex justify-center pt-6 border-t border-border/50">
-              <Button 
-                variant="default" 
-                size="lg" 
-                onClick={() => navigate('/app/job-description')}
-                className="px-8 py-3"
-              >
-                Job Description
-              </Button>
+
+            {/* STAR Input Panel - 65% width on desktop */}
+            <div className="lg:col-span-8 xl:col-span-8">
+              <STARInputPanel
+                experience={selectedExperience}
+                onSave={handleSaveExperience}
+                onDelete={selectedExperience ? handleDeleteSelectedExperience : undefined}
+                isLoading={experiencesLoading}
+              />
             </div>
           </div>
         ) : (
