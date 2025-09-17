@@ -12,6 +12,7 @@ import EducationOnboarding from "./pages/EducationOnboarding";
 import Experiences from "./pages/Experiences";
 import JobDescription from "./pages/JobDescription";
 import NotFound from "./pages/NotFound";
+import { AppLayout } from "@/components/AppLayout";
 
 const queryClient = new QueryClient();
 
@@ -27,8 +28,8 @@ const App = () => {
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/verify/error" element={<VerifyError />} />
             <Route path="/onboarding/education" element={<EducationOnboarding />} />
-            <Route path="/app/experiences" element={<Experiences />} />
-            <Route path="/app/job-description" element={<JobDescription />} />
+            <Route path="/app/experiences" element={<AppLayout><Experiences /></AppLayout>} />
+            <Route path="/app/job-description" element={<AppLayout><JobDescription /></AppLayout>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
