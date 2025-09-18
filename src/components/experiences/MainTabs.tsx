@@ -56,7 +56,7 @@ const MainTabs = () => {
           ))}
           <Button
             variant="ghost"
-            onClick={() => canCreate && console.log("Create clicked")}
+            onClick={() => canCreate && navigate("/app/resume-bullets")}
             disabled={!canCreate}
             className={cn(
               "px-6 py-2 h-auto text-base font-medium transition-colors rounded-lg",
