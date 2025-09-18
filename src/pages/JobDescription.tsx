@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const JobDescription = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,6 +19,7 @@ const JobDescription = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
 
   const validateForm = () => {
@@ -61,8 +63,8 @@ const JobDescription = () => {
         description: "Job description submitted successfully",
       });
       
-      // Navigate to next step (placeholder for now)
-      console.log("Form submitted:", { jobDescription, keywordMatchType });
+      // Navigate to resume bullet points page
+      navigate('/app/resume-bullets');
       
     } catch (error) {
       console.error("Submission error:", error);

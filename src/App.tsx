@@ -11,6 +11,7 @@ import VerifyError from "./pages/VerifyError";
 import EducationOnboarding from "./pages/EducationOnboarding";
 import Experiences from "./pages/Experiences";
 import JobDescription from "./pages/JobDescription";
+import ResumeBulletPoints from "./pages/ResumeBulletPoints";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "@/components/AppLayout";
 
@@ -30,6 +31,7 @@ const App = () => {
             <Route path="/onboarding/education" element={<EducationOnboarding />} />
             <Route path="/app/experiences" element={<AppLayout><Experiences /></AppLayout>} />
             <Route path="/app/job-description" element={<AppLayout><JobDescription /></AppLayout>} />
+            <Route path="/app/resume-bullets" element={<AppLayout><ResumeBulletPoints /></AppLayout>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
