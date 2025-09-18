@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const JobDescription = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -14,6 +15,8 @@ const JobDescription = () => {
   });
   const [keywordMatchType, setKeywordMatchType] = useState("exact");
   const [errors, setErrors] = useState<{ jobDescription?: string; keywordMatchType?: string }>({});
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<any>(null);
   const { toast } = useToast();
 
 
@@ -70,6 +73,46 @@ const JobDescription = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const analyzeJobFit = async () => {
+    if (!jobDescription.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a job description first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysis(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
+        body: { jobDescription: jobDescription.trim() }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setAnalysis(data);
+      toast({
+        title: "Analysis Complete",
+        description: "Your job fit analysis is ready!",
+      });
+
+    } catch (error: any) {
+      console.error('Analysis error:', error);
+      toast({
+        title: "Analysis Failed",
+        description: error.message || "Failed to analyze job fit. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -162,20 +205,126 @@ const JobDescription = () => {
                 )}
               </div>
 
-              {/* Action Button */}
-              <div className="flex justify-center pt-6">
+              {/* Action Buttons */}
+              <div className="flex gap-4 pt-6">
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-8"
+                  className="flex-1"
                 >
-                  {isSubmitting ? "Processing..." : "Create"}
+                  {isSubmitting ? "Processing..." : "Submit Job Description"}
+                </Button>
+                
+                <Button 
+                  type="button"
+                  onClick={analyzeJobFit}
+                  disabled={isAnalyzing || !jobDescription.trim()}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  {isAnalyzing ? "Analyzing..." : "Analyze Job Fit"}
                 </Button>
               </div>
             </form>
 
           </CardContent>
         </Card>
+
+        {analysis && (
+          <Card className="shadow-soft border border-border/50 mt-8">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-foreground">Job Fit Analysis</CardTitle>
+            </CardHeader>
+            <CardContent className="px-8 pb-8">
+              <div className="space-y-6">
+                {/* Overall Score */}
+                <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
+                  <div>
+                    <h3 className="text-lg font-semibold">Overall Fit Score</h3>
+                    <p className="text-sm text-muted-foreground">{analysis.fitLevel} Match</p>
+                  </div>
+                  <div className="text-3xl font-bold text-primary">
+                    {analysis.overallScore}/100
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Summary</h3>
+                  <p className="text-muted-foreground">{analysis.summary}</p>
+                </div>
+
+                {/* Strengths */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-green-600">Strengths</h3>
+                  <ul className="space-y-2">
+                    {analysis.strengths?.map((strength: string, index: number) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-green-500 mt-1">✓</span>
+                        <span>{strength}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Gaps */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-orange-600">Areas for Improvement</h3>
+                  <ul className="space-y-2">
+                    {analysis.gaps?.map((gap: string, index: number) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-orange-500 mt-1">△</span>
+                        <span>{gap}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Recommendations */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-blue-600">Recommendations</h3>
+                  <ul className="space-y-2">
+                    {analysis.recommendations?.map((rec: string, index: number) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-blue-500 mt-1">💡</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Keyword Match */}
+                {analysis.keywordMatch && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Keyword Analysis</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium text-green-600 mb-2">Matched Keywords</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {analysis.keywordMatch.matchedKeywords?.map((keyword: string, index: number) => (
+                            <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                              {keyword}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-orange-600 mb-2">Missing Keywords</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {analysis.keywordMatch.missingKeywords?.map((keyword: string, index: number) => (
+                            <span key={index} className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                              {keyword}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </>
   );
