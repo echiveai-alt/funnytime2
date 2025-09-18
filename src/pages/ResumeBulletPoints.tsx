@@ -130,7 +130,7 @@ const mockLowScoreData: LowScoreData = {
 };
 
 const ResumeBulletPoints = () => {
-  const [isHighScore] = useState(true); // Toggle this for testing different states
+  const [isHighScore] = useState(false); // Toggle this for testing different states
   const { toast } = useToast();
   const navigate = useNavigate();
   
