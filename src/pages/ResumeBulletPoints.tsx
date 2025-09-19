@@ -197,7 +197,7 @@ const ResumeBulletPoints = () => {
           Job Alignment Analysis and Fitted Experiences
         </h1>
         <p className="text-lg text-muted-foreground">
-          Based on your STAR experiences and target job description
+          Based on your professional experiences and target job description
         </p>
       </div>
 
