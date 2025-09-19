@@ -65,7 +65,7 @@ const MainTabs = () => {
                 : "text-muted-foreground/50 cursor-not-allowed"
             )}
           >
-            3. Create
+            3. Analyze & Create
           </Button>
         </div>
       </div>
