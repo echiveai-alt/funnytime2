@@ -74,12 +74,12 @@ serve(async (req) => {
       task: exp.task,
       action: exp.action,
       result: exp.result,
-      keywords: exp.keywords || []
+      tags: exp.keywords || []
     }));
 
-    // Create structured prompt for comprehensive job fit analysis
+// Create structured prompt for comprehensive job fit analysis
     const prompt = `
-Analyze the provided professional experience against the job description using the following structured approach. Maintain objectivity and provide specific evidence for all assessments.
+Analyze the provided professional experience against the job description using the following structured approach. Extract key phrases comprehensively from both the job description and experiences.
 
 JOB DESCRIPTION:
 ${jobDescription}
@@ -87,113 +87,72 @@ ${jobDescription}
 CANDIDATE EXPERIENCES:
 ${JSON.stringify(formattedExperiences, null, 2)}
 
-Step 1: Extract and Categorize Job Requirements
-From the job description, identify and list:
-A. Hard Skills/Technical Requirements
-Programming languages, software, tools
-Technical methodologies, frameworks
-Industry-specific knowledge
-Certifications or licenses required
+ANALYSIS REQUIREMENTS:
 
-B. Soft Skills/Competencies
-Leadership abilities
-Communication skills
-Problem-solving approaches
-Collaboration/teamwork
-Project management capabilities
+Step 1: Key Phrase Extraction
+From the job description, extract and categorize ALL relevant phrases including:
+A. Technical Skills: Programming languages, frameworks, tools, software, methodologies
+B. Soft Skills: Leadership, communication, analytical thinking, problem-solving
+C. Industry Terms: Domain-specific terminology, business concepts, processes  
+D. Qualifications: Education, certifications, experience levels, specializations
+E. Job Functions: Specific responsibilities, job duties, operational tasks
 
-C. Experience Requirements
-Years of experience (total and in specific areas)
-Industry experience
-Company size/type experience
-Role level/seniority
+For EACH category, extract both individual keywords AND multi-word phrases that are meaningful.
 
-D. Education/Credentials
-Degree requirements
-Specific educational background
-Professional certifications
-Continuing education
+Step 2: Comprehensive Experience Matching
+For each extracted phrase, search through ALL parts of the candidate's experiences:
+- Job titles and company names
+- Situation descriptions
+- Task definitions  
+- Action details
+- Result statements
+- User-provided tags
 
-Step 2: Evidence-Based Matching
-For each requirement identified in Step 1, search the professional experience for:
-Direct evidence: Explicit mentions with context
-Indirect evidence: Related experiences that demonstrate the skill
-Quantifiable proof: Metrics, outcomes, duration, scope
+Include synonyms and related terms (e.g., "JavaScript" matches "JS", "machine learning" matches "ML", "led team" matches "managed team").
 
-Use this format for each requirement:
-Requirement: [Specific requirement from job description]
-Evidence Found: [Specific examples from experience with context]
-Evidence Quality: Strong/Moderate/Weak/None
-Supporting Details: [Metrics, duration, scope, outcomes]
+Step 3: Evidence-Based Scoring
+For each requirement, provide:
+- Direct matches: Exact phrase found in experience
+- Synonym matches: Related/equivalent terms found
+- Context matches: Phrases that demonstrate the skill indirectly
+- Evidence quality: Strong/Moderate/Weak/None with specific citations
 
-Step 3: Scored Assessment
-Rate each requirement using this 5-point scale:
-4 - Exceeds Requirements: Extensive evidence with measurable outcomes, experience goes beyond what's required, multiple examples demonstrating mastery
-3 - Fully Meets Requirements: Clear, direct evidence matching the requirement, sufficient depth and breadth of experience, demonstrable competency with results
-2 - Partially Meets Requirements: Some relevant experience but gaps in depth/breadth, related but not directly matching experience, limited evidence or unclear outcomes
-1 - Minimal Evidence: Very limited or tangential evidence, experience exists but lacks depth or relevance, no clear outcomes demonstrated
-0 - No Evidence: No relevant experience found, requirement not addressed in any capacity
+Step 4: Comprehensive Analysis Output
+Provide detailed analysis including matched and unmatched phrases with context.
 
-Step 4: Summary Analysis
-Overall Match Assessment
-Strong Matches (Score 3-4): [List with brief explanations]
-Partial Matches (Score 2): [List with brief explanations]
-Significant Gaps (Score 0-1): [List with brief explanations]
-
-Quantitative Summary
-Total requirements assessed: [Number]
-Requirements fully/strongly met (3-4): [Number and percentage]
-Requirements partially met (2): [Number and percentage]
-Requirements not met (0-1): [Number and percentage]
-Overall Match Percentage: [Calculate weighted average]
-
-Gap Analysis
-Critical Missing Elements: [Requirements scored 0-1 that appear essential]
-Development Areas: [Requirements scored 2 that could be strengthened]
-Competitive Advantages: [Requirements scored 4 where candidate exceeds expectations]
-
-Step 5: Recommendations
-Skills/experiences to emphasize in application
-Areas for professional development
-How to better present existing experience
-
-IMPORTANT: After completing the full analysis above, provide a summary in the following JSON format:
+IMPORTANT: Return the analysis in this JSON format:
 {
-  "overallScore": [number from 0-100 based on weighted average],
-  "fitLevel": "[Excellent|Good|Fair|Poor]",
-  "strengths": ["list of 3-5 key strengths that align with the job"],
-  "gaps": ["list of 3-5 areas where experience may be lacking"],
-  "recommendations": ["list of 3-5 specific recommendations for the candidate"],
-  "keywordMatch": {
-    "matchedKeywords": ["keywords from job description found in experiences"],
-    "missingKeywords": ["important keywords from job description not found in experiences"]
-  },
-  "summary": "A 2-3 sentence summary of the overall assessment",
-  "detailedAnalysis": {
-    "hardSkills": {
-      "requirements": ["list of technical requirements found"],
-      "matches": ["requirements that were fully/strongly met"],
-      "gaps": ["requirements that were not met or only partially met"]
-    },
-    "softSkills": {
-      "requirements": ["list of soft skill requirements found"],
-      "matches": ["requirements that were fully/strongly met"],
-      "gaps": ["requirements that were not met or only partially met"]
-    },
-    "experienceLevel": {
-      "required": "description of experience level required",
-      "candidate": "assessment of candidate's experience level",
-      "match": "Strong/Moderate/Weak"
+  "extractedJobPhrases": [
+    {
+      "phrase": "specific phrase from job description",
+      "category": "technical|soft_skill|industry|qualification|function",
+      "importance": "high|medium|low"
     }
-  }
-}
-
-Analysis Standards:
-- Be specific and cite exact text when providing evidence
-- Avoid assumptions or inferences not supported by the text
-- Consider context and scope, not just keyword matches
-- Maintain consistency in scoring criteria across all requirements
-- Focus on demonstrable experience rather than stated skills without context`;
+  ],
+  "matchedPhrases": [
+    {
+      "jobPhrase": "phrase from job description",
+      "experienceMatch": "matching text found in experience",
+      "experienceContext": "situation|task|action|result|title|tag",
+      "matchType": "exact|synonym|related",
+      "evidenceStrength": "strong|moderate|weak"
+    }
+  ],
+  "unmatchedPhrases": [
+    {
+      "phrase": "unmatched phrase from job description", 
+      "category": "technical|soft_skill|industry|qualification|function",
+      "importance": "high|medium|low",
+      "reason": "why this wasn't found in experience"
+    }
+  ],
+  "overallScore": [number from 0-100],
+  "fitLevel": "[Excellent|Good|Fair|Poor]",
+  "strengths": ["list of key strengths that align with the job"],
+  "gaps": ["list of areas where experience may be lacking"],
+  "recommendations": ["list of specific recommendations"],
+  "summary": "A 2-3 sentence summary of the overall assessment"
+}`;
 
     // Call Gemini API
     const geminiResponse = await fetch(
@@ -230,10 +189,14 @@ Analysis Standards:
     // Extract JSON from the response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     let analysis;
-    
     if (jsonMatch) {
       try {
         analysis = JSON.parse(jsonMatch[0]);
+        
+        // Log extracted key phrases for debugging
+        if (analysis.extractedJobPhrases) {
+          console.log('Extracted key phrases:', analysis.extractedJobPhrases);
+        }
       } catch (parseError) {
         console.error('Failed to parse JSON from Gemini response:', parseError);
         throw new Error('Failed to parse analysis results');

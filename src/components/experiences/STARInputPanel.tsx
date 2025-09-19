@@ -28,9 +28,9 @@ export const STARInputPanel = ({
     task: "",
     action: "",
     result: "",
-    keywords: [],
+    tags: [],
   });
-  const [keywordsDisplayValue, setKeywordsDisplayValue] = useState("");
+  const [tagsDisplayValue, setTagsDisplayValue] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -53,9 +53,9 @@ export const STARInputPanel = ({
         task: experience.task || "",
         action: experience.action || "",
         result: experience.result || "",
-        keywords: experience.keywords || [],
+        tags: experience.tags || [],
       });
-      setKeywordsDisplayValue((experience.keywords || []).join(", "));
+      setTagsDisplayValue((experience.tags || []).join(", "));
       setHasUnsavedChanges(false);
     } else {
       // Clear form when no experience selected
@@ -65,9 +65,9 @@ export const STARInputPanel = ({
         task: "",
         action: "",
         result: "",
-        keywords: [],
+        tags: [],
       });
-      setKeywordsDisplayValue("");
+      setTagsDisplayValue("");
       setHasUnsavedChanges(false);
     }
   }, [experience]);
@@ -105,18 +105,18 @@ export const STARInputPanel = ({
     setHasUnsavedChanges(true);
   };
 
-  const handleKeywordsChange = (value: string) => {
-    console.log("handleKeywordsChange called with:", JSON.stringify(value));
-    setKeywordsDisplayValue(value);
-    const keywords = value.split(",").map(k => k.trim()).filter(k => k.length > 0);
-    console.log("Processed keywords:", keywords);
-    handleInputChange("keywords", keywords);
+  const handleTagsChange = (value: string) => {
+    console.log("handleTagsChange called with:", JSON.stringify(value));
+    setTagsDisplayValue(value);
+    const tags = value.split(",").map(k => k.trim()).filter(k => k.length > 0);
+    console.log("Processed tags:", tags);
+    handleInputChange("tags", tags);
   };
 
-  const handleKeywordsBlur = () => {
+  const handleTagsBlur = () => {
     // Clean up display value on blur
-    const keywords = keywordsDisplayValue.split(",").map(k => k.trim()).filter(k => k.length > 0);
-    setKeywordsDisplayValue(keywords.join(", "));
+    const tags = tagsDisplayValue.split(",").map(k => k.trim()).filter(k => k.length > 0);
+    setTagsDisplayValue(tags.join(", "));
   };
 
   const handleSave = async () => {
@@ -250,17 +250,17 @@ export const STARInputPanel = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="keywords">Keywords/Tools</Label>
+          <Label htmlFor="tags">Tags</Label>
           <input
-            id="keywords"
+            id="tags"
             type="text"
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-            value={keywordsDisplayValue}
+            value={tagsDisplayValue}
             onChange={(e) => {
               console.log("Raw input onChange triggered:", e.target.value);
-              handleKeywordsChange(e.target.value);
+              handleTagsChange(e.target.value);
             }}
-            onBlur={handleKeywordsBlur}
+            onBlur={handleTagsBlur}
             onKeyDown={(e) => {
               console.log("Raw KeyDown event:", e.key, e.code, "Prevented:", e.defaultPrevented);
             }}

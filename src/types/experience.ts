@@ -30,7 +30,7 @@ export interface Experience {
   task: string | null;
   action: string | null;
   result: string | null;
-  keywords: string[] | null;
+  tags: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,5 +41,5 @@ export interface STARFormData {
   task: string;
   action: string;
   result: string;
-  keywords: string[];
+  tags: string[];
 }

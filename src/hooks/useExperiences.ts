@@ -139,12 +139,16 @@ export const useExperiences = () => {
         .eq("role_id", roleId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setExperiences(data || []);
+      // Map database keywords to tags property
+      const mappedExperiences = (data || []).map(exp => ({
+        ...exp,
+        tags: exp.keywords || []
+      }));
+      setExperiences(mappedExperiences);
       
       // Automatically select the newest experience if available
-      if (data && data.length > 0) {
-        setSelectedExperience(data[0]); // First item is newest due to ordering
+      if (mappedExperiences && mappedExperiences.length > 0) {
+        setSelectedExperience(mappedExperiences[0]); // First item is newest due to ordering
       } else {
         setSelectedExperience(null);
       }
@@ -218,15 +222,17 @@ export const useExperiences = () => {
             task: "",
             action: "",
             result: "",
-            keywords: [],
+            tags: [],
           })
           .select()
           .single();
 
         if (expError) throw expError;
 
-        setExperiences([experience]);
-        setSelectedExperience(experience);
+        // Map database keywords to tags property
+        const mappedExperience = { ...experience, tags: experience.keywords || [] };
+        setExperiences([mappedExperience]);
+        setSelectedExperience(mappedExperience);
       } catch (expError) {
         console.error("Error creating initial experience:", expError);
         // Don't throw here - company and role creation was successful
@@ -344,15 +350,17 @@ export const useExperiences = () => {
             task: "",
             action: "",
             result: "",
-            keywords: [],
+            tags: [],
           })
           .select()
           .single();
 
         if (expError) throw expError;
 
-        setExperiences([experience]);
-        setSelectedExperience(experience);
+        // Map database keywords to tags property
+        const mappedExperience = { ...experience, tags: experience.keywords || [] };
+        setExperiences([mappedExperience]);
+        setSelectedExperience(mappedExperience);
       } catch (expError) {
         console.error("Error creating initial experience:", expError);
         // Don't throw here - role creation was successful
@@ -446,17 +454,19 @@ export const useExperiences = () => {
           task: "",
           action: "",
           result: "",
-          keywords: [],
+          tags: [],
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setExperiences(prev => [experience, ...prev]);
-      setSelectedExperience(experience);
+      // Map database keywords to tags property
+      const mappedExperience = { ...experience, tags: experience.keywords || [] };
+      setExperiences(prev => [mappedExperience, ...prev]);
+      setSelectedExperience(mappedExperience);
 
-      return experience;
+      return mappedExperience;
     } catch (error) {
       console.error("Error creating experience:", error);
       toast({
@@ -479,15 +489,17 @@ export const useExperiences = () => {
 
       if (error) throw error;
 
+      // Map database keywords to tags property
+      const mappedExperience = { ...experience, tags: experience.keywords || [] };
       setExperiences(prev => 
-        prev.map(exp => exp.id === experienceId ? experience : exp)
+        prev.map(exp => exp.id === experienceId ? mappedExperience : exp)
       );
       
       if (selectedExperience?.id === experienceId) {
-        setSelectedExperience(experience);
+        setSelectedExperience(mappedExperience);
       }
 
-      return experience;
+      return mappedExperience;
     } catch (error) {
       console.error("Error updating experience:", error);
       throw error;
@@ -511,22 +523,24 @@ export const useExperiences = () => {
           task: experience.task,
           action: experience.action,
           result: experience.result,
-          keywords: experience.keywords,
+          keywords: experience.tags,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setExperiences(prev => [newExperience, ...prev]);
-      setSelectedExperience(newExperience);
+      // Map database keywords to tags property
+      const mappedExperience = { ...newExperience, tags: newExperience.keywords || [] };
+      setExperiences(prev => [mappedExperience, ...prev]);
+      setSelectedExperience(mappedExperience);
 
       toast({
         title: "Experience duplicated",
         description: "Experience has been duplicated successfully.",
       });
 
-      return newExperience;
+      return mappedExperience;
     } catch (error) {
       console.error("Error duplicating experience:", error);
       toast({

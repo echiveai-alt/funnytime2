@@ -42,15 +42,15 @@ export const ExperienceCard = ({
             {experience.title || "Untitled Experience"}
           </h3>
           
-          {experience.keywords && experience.keywords.length > 0 && (
+          {experience.tags && experience.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {experience.keywords.map((keyword, index) => (
+              {experience.tags.map((tag, index) => (
                 <Badge 
                   key={index} 
                   variant="secondary" 
                   className="text-xs px-2 py-1"
                 >
-                  {keyword}
+                  {tag}
                 </Badge>
               ))}
             </div>
