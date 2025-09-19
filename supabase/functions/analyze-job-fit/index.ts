@@ -77,9 +77,9 @@ serve(async (req) => {
       keywords: exp.keywords || []
     }));
 
-    // Create prompt for Gemini
+    // Create structured prompt for comprehensive job fit analysis
     const prompt = `
-You are an expert career counselor and recruiter. Analyze the following job description against the candidate's work experiences and provide a comprehensive assessment.
+Analyze the provided professional experience against the job description using the following structured approach. Maintain objectivity and provide specific evidence for all assessments.
 
 JOB DESCRIPTION:
 ${jobDescription}
@@ -87,9 +87,79 @@ ${jobDescription}
 CANDIDATE EXPERIENCES:
 ${JSON.stringify(formattedExperiences, null, 2)}
 
-Please provide a detailed analysis in the following JSON format:
+Step 1: Extract and Categorize Job Requirements
+From the job description, identify and list:
+A. Hard Skills/Technical Requirements
+Programming languages, software, tools
+Technical methodologies, frameworks
+Industry-specific knowledge
+Certifications or licenses required
+
+B. Soft Skills/Competencies
+Leadership abilities
+Communication skills
+Problem-solving approaches
+Collaboration/teamwork
+Project management capabilities
+
+C. Experience Requirements
+Years of experience (total and in specific areas)
+Industry experience
+Company size/type experience
+Role level/seniority
+
+D. Education/Credentials
+Degree requirements
+Specific educational background
+Professional certifications
+Continuing education
+
+Step 2: Evidence-Based Matching
+For each requirement identified in Step 1, search the professional experience for:
+Direct evidence: Explicit mentions with context
+Indirect evidence: Related experiences that demonstrate the skill
+Quantifiable proof: Metrics, outcomes, duration, scope
+
+Use this format for each requirement:
+Requirement: [Specific requirement from job description]
+Evidence Found: [Specific examples from experience with context]
+Evidence Quality: Strong/Moderate/Weak/None
+Supporting Details: [Metrics, duration, scope, outcomes]
+
+Step 3: Scored Assessment
+Rate each requirement using this 5-point scale:
+4 - Exceeds Requirements: Extensive evidence with measurable outcomes, experience goes beyond what's required, multiple examples demonstrating mastery
+3 - Fully Meets Requirements: Clear, direct evidence matching the requirement, sufficient depth and breadth of experience, demonstrable competency with results
+2 - Partially Meets Requirements: Some relevant experience but gaps in depth/breadth, related but not directly matching experience, limited evidence or unclear outcomes
+1 - Minimal Evidence: Very limited or tangential evidence, experience exists but lacks depth or relevance, no clear outcomes demonstrated
+0 - No Evidence: No relevant experience found, requirement not addressed in any capacity
+
+Step 4: Summary Analysis
+Overall Match Assessment
+Strong Matches (Score 3-4): [List with brief explanations]
+Partial Matches (Score 2): [List with brief explanations]
+Significant Gaps (Score 0-1): [List with brief explanations]
+
+Quantitative Summary
+Total requirements assessed: [Number]
+Requirements fully/strongly met (3-4): [Number and percentage]
+Requirements partially met (2): [Number and percentage]
+Requirements not met (0-1): [Number and percentage]
+Overall Match Percentage: [Calculate weighted average]
+
+Gap Analysis
+Critical Missing Elements: [Requirements scored 0-1 that appear essential]
+Development Areas: [Requirements scored 2 that could be strengthened]
+Competitive Advantages: [Requirements scored 4 where candidate exceeds expectations]
+
+Step 5: Recommendations
+Skills/experiences to emphasize in application
+Areas for professional development
+How to better present existing experience
+
+IMPORTANT: After completing the full analysis above, provide a summary in the following JSON format:
 {
-  "overallScore": [number from 0-100],
+  "overallScore": [number from 0-100 based on weighted average],
   "fitLevel": "[Excellent|Good|Fair|Poor]",
   "strengths": ["list of 3-5 key strengths that align with the job"],
   "gaps": ["list of 3-5 areas where experience may be lacking"],
@@ -98,17 +168,32 @@ Please provide a detailed analysis in the following JSON format:
     "matchedKeywords": ["keywords from job description found in experiences"],
     "missingKeywords": ["important keywords from job description not found in experiences"]
   },
-  "summary": "A 2-3 sentence summary of the overall assessment"
+  "summary": "A 2-3 sentence summary of the overall assessment",
+  "detailedAnalysis": {
+    "hardSkills": {
+      "requirements": ["list of technical requirements found"],
+      "matches": ["requirements that were fully/strongly met"],
+      "gaps": ["requirements that were not met or only partially met"]
+    },
+    "softSkills": {
+      "requirements": ["list of soft skill requirements found"],
+      "matches": ["requirements that were fully/strongly met"],
+      "gaps": ["requirements that were not met or only partially met"]
+    },
+    "experienceLevel": {
+      "required": "description of experience level required",
+      "candidate": "assessment of candidate's experience level",
+      "match": "Strong/Moderate/Weak"
+    }
+  }
 }
 
-Focus on:
-1. Technical skills alignment
-2. Experience level match
-3. Industry/domain relevance
-4. Leadership and soft skills
-5. Career progression compatibility
-
-Be honest but constructive in your assessment.`;
+Analysis Standards:
+- Be specific and cite exact text when providing evidence
+- Avoid assumptions or inferences not supported by the text
+- Consider context and scope, not just keyword matches
+- Maintain consistency in scoring criteria across all requirements
+- Focus on demonstrable experience rather than stated skills without context`;
 
     // Call Gemini API
     const geminiResponse = await fetch(
