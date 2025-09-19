@@ -194,7 +194,7 @@ const ResumeBulletPoints = () => {
     <main className="max-w-[1080px] mx-auto px-6 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">
-          Job Alignment Score & Resume Points
+          Job Alignment Analysis and Fitted Experiences
         </h1>
         <p className="text-lg text-muted-foreground">
           Based on your STAR experiences and target job description
