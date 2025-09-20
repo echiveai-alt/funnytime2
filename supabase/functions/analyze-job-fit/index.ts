@@ -119,7 +119,7 @@ For each requirement, provide:
 - Evidence quality: Strong/Moderate/Weak/None with specific citations
 
 Step 4: Most Relevant Experiences Selection
-For each role, identify the top 6 most relevant experiences based on:
+For each role, identify up to 6 of the most relevant experiences (return fewer if the role has less than 6 experiences) based on:
 - Direct alignment with job requirements
 - Quality and impact of results achieved
 - Transferable skills demonstrated
