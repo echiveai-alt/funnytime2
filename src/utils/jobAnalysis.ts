@@ -6,6 +6,20 @@ export interface KeyPhrase {
   importance: 'high' | 'medium' | 'low';
 }
 
+export interface RelevantExperience {
+  id: string;
+  roleTitle: string;
+  companyName: string;
+  title: string;
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+  tags: string[];
+  relevanceScore: number;
+  matchingPhrases: string[];
+}
+
 export interface JobAnalysisResult {
   extractedKeyPhrases: KeyPhrase[];
   matchedPhrases: {
@@ -61,5 +75,34 @@ export const getStoredJobDescription = (): string => {
   } catch (error) {
     console.error('Failed to retrieve job description:', error);
     return '';
+  }
+};
+
+// Store most relevant experiences per role
+export const storeRelevantExperiences = (experiences: RelevantExperience[]) => {
+  try {
+    localStorage.setItem('relevantExperiences', JSON.stringify(experiences));
+  } catch (error) {
+    console.error('Failed to store relevant experiences:', error);
+  }
+};
+
+// Retrieve stored relevant experiences
+export const getStoredRelevantExperiences = (): RelevantExperience[] => {
+  try {
+    const stored = localStorage.getItem('relevantExperiences');
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Failed to retrieve relevant experiences:', error);
+    return [];
+  }
+};
+
+// Clear stored relevant experiences
+export const clearStoredRelevantExperiences = () => {
+  try {
+    localStorage.removeItem('relevantExperiences');
+  } catch (error) {
+    console.error('Failed to clear relevant experiences:', error);
   }
 };

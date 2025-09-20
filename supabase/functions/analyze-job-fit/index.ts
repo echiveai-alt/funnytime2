@@ -67,6 +67,7 @@ serve(async (req) => {
 
     // Format experiences for AI analysis
     const formattedExperiences = experiences.map(exp => ({
+      id: exp.id,
       company: exp.roles.companies.name,
       role: exp.roles.title,
       title: exp.title,
@@ -117,7 +118,14 @@ For each requirement, provide:
 - Context matches: Phrases that demonstrate the skill indirectly
 - Evidence quality: Strong/Moderate/Weak/None with specific citations
 
-Step 4: Comprehensive Analysis Output
+Step 4: Most Relevant Experiences Selection
+For each role, identify the top 6 most relevant experiences based on:
+- Direct alignment with job requirements
+- Quality and impact of results achieved
+- Transferable skills demonstrated
+- Evidence strength for key job phrases
+
+Step 5: Comprehensive Analysis Output
 Provide detailed analysis including matched and unmatched phrases with context.
 
 IMPORTANT: Return the analysis in this JSON format:
@@ -144,6 +152,21 @@ IMPORTANT: Return the analysis in this JSON format:
       "category": "technical|soft_skill|industry|qualification|function",
       "importance": "high|medium|low",
       "reason": "why this wasn't found in experience"
+    }
+  ],
+  "relevantExperiences": [
+    {
+      "id": "experience ID",
+      "roleTitle": "role title",
+      "companyName": "company name", 
+      "title": "experience title",
+      "situation": "situation text",
+      "task": "task text",
+      "action": "action text",
+      "result": "result text",
+      "tags": ["array", "of", "tags"],
+      "relevanceScore": 85,
+      "matchingPhrases": ["phrases from job description that this experience addresses"]
     }
   ],
   "overallScore": [number from 0-100],

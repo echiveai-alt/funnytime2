@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { storeJobKeyPhrases, storeJobDescription } from '@/utils/jobAnalysis';
+import { storeJobKeyPhrases, storeJobDescription, storeRelevantExperiences } from '@/utils/jobAnalysis';
 
 interface AnalysisResult {
   extractedJobPhrases?: Array<{
@@ -59,9 +59,9 @@ export const useJobAnalysis = () => {
         throw error;
       }
 
-      // Store key phrases locally if they exist
-      if (data.extractedJobPhrases) {
-        storeJobKeyPhrases(data.extractedJobPhrases);
+      // Store relevant experiences if they exist
+      if (data.relevantExperiences) {
+        storeRelevantExperiences(data.relevantExperiences);
       }
 
       // Store the complete analysis result
