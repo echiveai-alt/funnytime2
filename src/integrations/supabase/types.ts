@@ -52,10 +52,10 @@ export type Database = {
           action: string | null
           created_at: string
           id: string
-          keywords: string[] | null
           result: string | null
           role_id: string
           situation: string | null
+          tags: string[] | null
           task: string | null
           title: string
           updated_at: string
@@ -65,10 +65,10 @@ export type Database = {
           action?: string | null
           created_at?: string
           id?: string
-          keywords?: string[] | null
           result?: string | null
           role_id: string
           situation?: string | null
+          tags?: string[] | null
           task?: string | null
           title: string
           updated_at?: string
@@ -78,10 +78,10 @@ export type Database = {
           action?: string | null
           created_at?: string
           id?: string
-          keywords?: string[] | null
           result?: string | null
           role_id?: string
           situation?: string | null
+          tags?: string[] | null
           task?: string | null
           title?: string
           updated_at?: string

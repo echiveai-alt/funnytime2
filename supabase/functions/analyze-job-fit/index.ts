@@ -75,7 +75,7 @@ serve(async (req) => {
       task: exp.task,
       action: exp.action,
       result: exp.result,
-      tags: exp.keywords || []
+      tags: exp.tags || []
     }));
 
 // Create structured prompt for comprehensive job fit analysis
