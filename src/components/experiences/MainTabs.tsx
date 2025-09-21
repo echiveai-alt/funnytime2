@@ -42,24 +42,24 @@ const MainTabs = () => {
   const handleAnalyzeAndCreate = async () => {
     const jobDescriptionText = getJobDescriptionText().trim();
     
-    // Validation similar to JobDescription page
+    // Check if job description exists first
     if (!jobDescriptionText) {
+      navigate("/app/job-description");
       toast({
-        title: "Missing Job Description",
-        description: "Please add a job description before analyzing",
+        title: "Validation Error",
+        description: "Job description is required",
         variant: "destructive",
       });
-      navigate("/app/job-description");
       return;
     }
     
     if (jobDescriptionText.length < 100) {
+      navigate("/app/job-description");
       toast({
-        title: "Job Description Too Short",
+        title: "Validation Error",
         description: "Job description must be at least 100 characters",
         variant: "destructive",
       });
-      navigate("/app/job-description");
       return;
     }
 
@@ -104,12 +104,12 @@ const MainTabs = () => {
           <Button
             variant="ghost"
             onClick={handleAnalyzeAndCreate}
-            disabled={!canCreate || isAnalyzing}
+            disabled={isAnalyzing}
             className={cn(
               "px-6 py-2 h-auto text-base font-medium transition-colors rounded-lg",
-              canCreate && !isAnalyzing
-                ? "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                : "text-muted-foreground/50 cursor-not-allowed"
+              isAnalyzing
+                ? "text-muted-foreground/50 cursor-not-allowed"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             )}
           >
             {isAnalyzing ? "Analyzing..." : "3. Analyze & Create"}
