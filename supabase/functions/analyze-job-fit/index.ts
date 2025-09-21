@@ -151,7 +151,6 @@ IMPORTANT: Return the analysis in this JSON format:
       "phrase": "unmatched phrase from job description", 
       "category": "technical|soft_skill|industry|qualification|function",
       "importance": "high|medium|low",
-      "reason": "why this wasn't found in experience"
     }
   ],
   "relevantExperiences": [
@@ -169,7 +168,7 @@ IMPORTANT: Return the analysis in this JSON format:
       "matchingPhrases": ["phrases from job description that this experience addresses"]
     }
   ],
-  "overallScore": [number from 0-100],
+  "overallScore": [number from 0-99],
   "fitLevel": "[Excellent|Good|Fair|Poor]",
   "strengths": ["list of key strengths that align with the job"],
   "gaps": ["list of areas where experience may be lacking"],
