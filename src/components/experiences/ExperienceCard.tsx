@@ -44,7 +44,7 @@ export const ExperienceCard = ({
           
           {experience.tags && experience.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {experience.tags.map((tag, index) => (
+              {(isSelected ? experience.tags : experience.tags.slice(0, 4)).map((tag, index) => (
                 <Badge 
                   key={index} 
                   variant="secondary" 
@@ -53,6 +53,11 @@ export const ExperienceCard = ({
                   {tag}
                 </Badge>
               ))}
+              {!isSelected && experience.tags.length > 4 && (
+                <span className="text-xs text-muted-foreground px-2 py-1">
+                  ...
+                </span>
+              )}
             </div>
           )}
         </div>
