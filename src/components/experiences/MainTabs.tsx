@@ -44,6 +44,8 @@ const MainTabs = () => {
     
     // Check if job description exists first
     if (!jobDescriptionText) {
+      // Set flag for JobDescription page to show inline error
+      localStorage.setItem('showJobDescriptionError', 'required');
       navigate("/app/job-description");
       toast({
         title: "Validation Error",

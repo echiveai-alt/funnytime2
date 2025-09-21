@@ -14,7 +14,15 @@ const JobDescription = () => {
     return localStorage.getItem('jobDescription') || "";
   });
   const [keywordMatchType, setKeywordMatchType] = useState("exact");
-  const [errors, setErrors] = useState<{ jobDescription?: string; keywordMatchType?: string }>({});
+  const [errors, setErrors] = useState<{ jobDescription?: string; keywordMatchType?: string }>(() => {
+    // Check if we should show an error from MainTabs navigation
+    const showError = localStorage.getItem('showJobDescriptionError');
+    if (showError === 'required') {
+      localStorage.removeItem('showJobDescriptionError'); // Clear the flag
+      return { jobDescription: "Job description is required" };
+    }
+    return {};
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
 
