@@ -91,7 +91,18 @@ export const ExperiencesList = ({
             </div>
           ) : (
             <>
-              <div className="space-y-3 overflow-y-auto flex-1 pr-2">
+              <div className="pb-4 border-b">
+                <Button 
+                  onClick={onAddExperience} 
+                  className="w-full" 
+                  disabled={isLoading}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Experience
+                </Button>
+              </div>
+              
+              <div className="space-y-3 overflow-y-auto flex-1 pr-2 pt-4">
                 {sortedExperiences.map((experience) => (
                   <ExperienceCard
                     key={experience.id}
@@ -103,17 +114,6 @@ export const ExperiencesList = ({
                     onDelete={() => onDeleteExperience(experience)}
                   />
                 ))}
-              </div>
-              
-              <div className="pt-4 border-t">
-                <Button 
-                  onClick={onAddExperience} 
-                  className="w-full" 
-                  disabled={isLoading}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Experience
-                </Button>
               </div>
             </>
           )}
