@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, MoreVertical, Building2, Edit, Trash2, Upload } from "lucide-react";
+import { Plus, MoreVertical, Building2, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -16,7 +16,6 @@ interface CompanyTabsProps {
   selectedCompany: Company | null;
   onSelectCompany: (company: Company) => void;
   onAddCompany: () => void;
-  onImportResume: () => void;
   onEditCompany?: (company: Company) => void;
   onDeleteCompany?: (company: Company) => void;
   isLoading?: boolean;
@@ -27,7 +26,6 @@ export const CompanyTabs = ({
   selectedCompany,
   onSelectCompany,
   onAddCompany,
-  onImportResume,
   onEditCompany,
   onDeleteCompany,
   isLoading = false,
@@ -87,16 +85,6 @@ export const CompanyTabs = ({
               <MoreVertical className="h-3 w-3" />
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onImportResume}
-            disabled={isLoading}
-            className="flex items-center gap-2 whitespace-nowrap"
-          >
-            <Upload className="w-4 h-4" />
-            Import Resume
-          </Button>
           <Button
             variant="outline"
             size="sm"
