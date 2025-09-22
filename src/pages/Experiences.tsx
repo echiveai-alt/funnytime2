@@ -18,6 +18,7 @@ const Experiences = () => {
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showOnboardingResumeModal, setShowOnboardingResumeModal] = useState(false);
+  const [hasShownOnboardingModal, setHasShownOnboardingModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
 
@@ -50,6 +51,7 @@ const Experiences = () => {
     const showResumeImport = searchParams.get('showResumeImport');
     if (showResumeImport === 'true' && !experiencesLoading && companies.length === 0) {
       setShowOnboardingResumeModal(true);
+      setHasShownOnboardingModal(true);
       // Remove the parameter from URL
       searchParams.delete('showResumeImport');
       setSearchParams(searchParams, { replace: true });
@@ -58,14 +60,15 @@ const Experiences = () => {
 
   // Show onboarding resume modal if no companies exist (default behavior for new users)
   useEffect(() => {
-    if (!experiencesLoading && companies.length === 0 && !showOnboardingResumeModal) {
+    if (!experiencesLoading && companies.length === 0 && !showOnboardingResumeModal && !hasShownOnboardingModal) {
       const showResumeImport = searchParams.get('showResumeImport');
       // Only show if not coming from education (which is handled above)
       if (showResumeImport !== 'true') {
         setShowOnboardingResumeModal(true);
+        setHasShownOnboardingModal(true);
       }
     }
-  }, [experiencesLoading, companies.length, showOnboardingResumeModal, searchParams]);
+  }, [experiencesLoading, companies.length, showOnboardingResumeModal, hasShownOnboardingModal, searchParams]);
 
   const handleAddExperience = async () => {
     try {
