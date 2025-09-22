@@ -11,7 +11,7 @@ const Hero = () => {
       
       {/* Content */}
       <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
-        <div className="mb-8">
+        <div className="mb-8 pt-20">
           <div className="inline-flex items-center gap-2 bg-background/10 backdrop-blur-sm rounded-full px-6 py-3 mb-8 border border-white/20">
             <Brain className="w-5 h-5 text-accent-foreground" />
             <span className="text-primary-foreground font-medium">AI-Powered Resume Enhancement</span>
