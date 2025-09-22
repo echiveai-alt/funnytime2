@@ -65,6 +65,17 @@ serve(async (req) => {
       throw new Error('No experiences found. Please add at least one experience before analyzing job fit.');
     }
 
+    // Fetch user's educational information
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('school, degree, graduation_date')
+      .eq('user_id', user.id)
+      .single();
+
+    if (profileError) {
+      console.log('No profile found or error fetching profile:', profileError.message);
+    }
+
     // Format experiences for AI analysis
     const formattedExperiences = experiences.map(exp => ({
       id: exp.id,
@@ -78,15 +89,25 @@ serve(async (req) => {
       tags: exp.tags || []
     }));
 
+    // Format education for AI analysis
+    const formattedEducation = profile ? {
+      school: profile.school,
+      degree: profile.degree,
+      graduationDate: profile.graduation_date
+    } : null;
+
 // Create structured prompt for comprehensive job fit analysis
     const prompt = `
-Analyze the provided professional experience against the job description using the following structured approach. Extract key phrases comprehensively from both the job description and experiences.
+Analyze the provided professional experience and educational background against the job description using the following structured approach. Extract key phrases comprehensively from both the job description and candidate information.
 
 JOB DESCRIPTION:
 ${jobDescription}
 
 CANDIDATE EXPERIENCES:
 ${JSON.stringify(formattedExperiences, null, 2)}
+
+CANDIDATE EDUCATION:
+${formattedEducation ? JSON.stringify(formattedEducation, null, 2) : 'No educational information provided'}
 
 ANALYSIS REQUIREMENTS:
 
@@ -100,23 +121,21 @@ E. Job Functions: Specific responsibilities, job duties, operational tasks
 
 For EACH category, extract both individual keywords AND multi-word phrases that are meaningful.
 
-Step 2: Comprehensive Experience Matching
-For each extracted phrase, search through ALL parts of the candidate's experiences:
-- Job titles and company names
-- Situation descriptions
-- Task definitions  
-- Action details
-- Result statements
-- User-provided tags
+Step 2: Comprehensive Experience and Education Matching
+For each extracted phrase, search through ALL parts of the candidate's information:
+- Professional experiences (job titles, company names, situation, task, action, result, tags)
+- Educational background (school, degree, graduation date)
 
-Include synonyms and related terms (e.g., "JavaScript" matches "JS", "machine learning" matches "ML", "led team" matches "managed team").
+Include synonyms and related terms (e.g., "JavaScript" matches "JS", "machine learning" matches "ML", "led team" matches "managed team", "Bachelor's" matches "BA/BS").
 
 Step 3: Evidence-Based Scoring
 For each requirement, provide:
-- Direct matches: Exact phrase found in experience
+- Direct matches: Exact phrase found in experience or education
 - Synonym matches: Related/equivalent terms found
 - Context matches: Phrases that demonstrate the skill indirectly
 - Evidence quality: Strong/Moderate/Weak/None with specific citations
+
+Consider both experience-based evidence AND educational qualifications when scoring.
 
 Step 4: Most Relevant Experiences Selection
 For each role, identify up to 6 of the most relevant experiences (return fewer if the role has less than 6 experiences) based on:
@@ -140,8 +159,8 @@ IMPORTANT: Return the analysis in this JSON format:
   "matchedPhrases": [
     {
       "jobPhrase": "phrase from job description",
-      "experienceMatch": "matching text found in experience",
-      "experienceContext": "situation|task|action|result|title|tag",
+      "experienceMatch": "matching text found in experience or education",
+      "experienceContext": "situation|task|action|result|title|tag|education",
       "matchType": "exact|synonym|related",
       "evidenceStrength": "strong|moderate|weak"
     }
