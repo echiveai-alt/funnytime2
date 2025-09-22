@@ -45,7 +45,7 @@ export const RoleTabs = ({
 
   return (
     <div className="border-b border-border/30">
-      <div className="flex items-center gap-2 py-2 pl-8">
+      <div className="flex items-center gap-2 py-1.5 pl-8">
         <ScrollArea className="flex-1">
           <div className="flex items-center gap-2 min-w-0">
             {sortedRoles.map((role) => {
@@ -57,8 +57,8 @@ export const RoleTabs = ({
                   key={role.id}
                   onClick={() => onSelectRole(role)}
                   disabled={isLoading}
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative",
+                   className={cn(
+                     "flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative",
                     isSelected
                       ? "bg-primary/20 text-primary border-primary/30 shadow-sm scale-105"
                       : "bg-background/50 hover:bg-muted/50 border-border/50 hover:border-border/70 text-muted-foreground hover:text-foreground"

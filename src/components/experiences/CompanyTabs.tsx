@@ -45,7 +45,7 @@ export const CompanyTabs = ({
 
   return (
     <div className="border-b border-border/50">
-      <div className="flex items-center gap-2 py-3">
+      <div className="flex items-center gap-2 py-2">
         <ScrollArea className="flex-1">
           <div className="flex items-center gap-2 min-w-0">
             {sortedCompanies.map((company) => {
@@ -56,7 +56,7 @@ export const CompanyTabs = ({
                   onClick={() => onSelectCompany(company)}
                   disabled={isLoading}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative",
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative",
                     isSelected
                       ? "bg-primary text-primary-foreground border-primary shadow-soft scale-105"
                       : "bg-background hover:bg-muted border-border hover:border-border/80"
@@ -80,7 +80,7 @@ export const CompanyTabs = ({
               size="sm"
               onClick={() => onEditCompany(selectedCompany)}
               disabled={isLoading}
-              className="h-8 w-8 p-0 hover:bg-muted"
+              className="h-7 w-7 p-0 hover:bg-muted"
             >
               <MoreVertical className="h-3 w-3" />
             </Button>
@@ -90,7 +90,7 @@ export const CompanyTabs = ({
             size="sm"
             onClick={onAddCompany}
             disabled={isLoading}
-            className="flex items-center gap-2 whitespace-nowrap"
+            className="flex items-center gap-2 whitespace-nowrap h-7 text-xs"
           >
             <Plus className="w-4 h-4" />
             Add Company
