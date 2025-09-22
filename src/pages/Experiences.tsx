@@ -56,12 +56,16 @@ const Experiences = () => {
     }
   }, [searchParams, setSearchParams, experiencesLoading, companies.length]);
 
-  // Show company modal if no companies exist and not in onboarding flow
+  // Show onboarding resume modal if no companies exist (default behavior for new users)
   useEffect(() => {
     if (!experiencesLoading && companies.length === 0 && !showOnboardingResumeModal) {
-      setShowCompanyModal(true);
+      const showResumeImport = searchParams.get('showResumeImport');
+      // Only show if not coming from education (which is handled above)
+      if (showResumeImport !== 'true') {
+        setShowOnboardingResumeModal(true);
+      }
     }
-  }, [experiencesLoading, companies.length, showOnboardingResumeModal]);
+  }, [experiencesLoading, companies.length, showOnboardingResumeModal, searchParams]);
 
   const handleAddExperience = async () => {
     try {
