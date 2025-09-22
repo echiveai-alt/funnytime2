@@ -45,9 +45,9 @@ export const RoleTabs = ({
 
   return (
     <div className="border-b border-border/30">
-      <div className="flex items-center gap-2 py-1.5 pl-8 min-h-[2rem]">
+      <div className="flex items-center gap-2 py-1.5 pl-8">
         <ScrollArea className="flex-1">
-          <div className="flex items-center gap-2 min-w-0 h-6">
+          <div className="flex items-center gap-2 min-w-0">
             {sortedRoles.map((role) => {
               const isSelected = selectedRole?.id === role.id;
               const showUnsavedDot = hasUnsavedChanges && isSelected;
@@ -58,9 +58,9 @@ export const RoleTabs = ({
                   onClick={() => onSelectRole(role)}
                   disabled={isLoading}
                    className={cn(
-                     "flex items-center gap-2 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative",
+                     "flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative h-6",
                     isSelected
-                      ? "bg-primary/20 text-primary border-primary/30 shadow-sm scale-105"
+                      ? "bg-primary/20 text-primary border-primary/30 shadow-sm"
                       : "bg-background/50 hover:bg-muted/50 border-border/50 hover:border-border/70 text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -78,7 +78,7 @@ export const RoleTabs = ({
           </div>
         </ScrollArea>
         
-        <div className="flex items-center gap-2 h-6">
+        <div className="flex items-center gap-2">
           {selectedRole && onEditRole && (
             <Button
               variant="outline"

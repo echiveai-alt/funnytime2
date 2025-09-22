@@ -45,9 +45,9 @@ export const CompanyTabs = ({
 
   return (
     <div className="border-b border-border/50">
-      <div className="flex items-center gap-2 py-2 min-h-[2.5rem]">
+      <div className="flex items-center gap-2 py-2">
         <ScrollArea className="flex-1">
-          <div className="flex items-center gap-2 min-w-0 h-7">
+          <div className="flex items-center gap-2 min-w-0">
             {sortedCompanies.map((company) => {
               const isSelected = selectedCompany?.id === company.id;
               return (
@@ -56,9 +56,9 @@ export const CompanyTabs = ({
                   onClick={() => onSelectCompany(company)}
                   disabled={isLoading}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative",
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative h-7",
                     isSelected
-                      ? "bg-primary text-primary-foreground border-primary shadow-soft scale-105"
+                      ? "bg-primary text-primary-foreground border-primary shadow-soft"
                       : "bg-background hover:bg-muted border-border hover:border-border/80"
                   )}
                 >
@@ -73,7 +73,7 @@ export const CompanyTabs = ({
           </div>
         </ScrollArea>
         
-        <div className="flex items-center gap-2 h-7">
+        <div className="flex items-center gap-2">
           {selectedCompany && onEditCompany && (
             <Button
               variant="outline"
