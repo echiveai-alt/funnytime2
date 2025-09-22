@@ -7,15 +7,19 @@ import { ExperiencesList } from "@/components/experiences/ExperiencesList";
 import { STARInputPanel } from "@/components/experiences/STARInputPanel";
 import { CompanyModal } from "@/components/experiences/CompanyModal";
 import { RoleModal } from "@/components/experiences/RoleModal";
+import { ResumeImportModal } from "@/components/experiences/ResumeImportModal";
 import { useExperiences } from "@/hooks/useExperiences";
+import { useToast } from "@/components/ui/use-toast";
 
 const Experiences = () => {
   // Fixed isLoading reference issue - debugging
   console.log("Experiences component loading...");
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showResumeImportModal, setShowResumeImportModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
+  const { toast } = useToast();
 
   const {
     companies,
@@ -66,23 +70,105 @@ const Experiences = () => {
     await deleteExperience(selectedExperience.id);
   };
 
+  const handleResumeImport = async (parsedData: any[]) => {
+    try {
+      for (const experience of parsedData) {
+        // Create or find company
+        const existingCompany = companies.find(c => 
+          c.name.toLowerCase() === experience.company.toLowerCase()
+        );
+        
+        let companyId = existingCompany?.id;
+        
+        if (!existingCompany) {
+          const companyData = {
+            name: experience.company,
+            start_date: experience.startDate || new Date().toISOString().split('T')[0],
+            end_date: experience.endDate,
+            is_current: !experience.endDate
+          };
+          const newCompany = await createCompany(companyData, experience.role);
+          companyId = newCompany?.id;
+        }
+        
+        if (!companyId) continue;
+        
+        // Create or find role
+        const existingRole = roles.find(r => 
+          r.company_id === companyId && 
+          r.title.toLowerCase() === experience.role.toLowerCase()
+        );
+        
+        let roleId = existingRole?.id;
+        
+        if (!existingRole) {
+          const roleData = {
+            company_id: companyId,
+            title: experience.role,
+            start_date: experience.startDate || new Date().toISOString().split('T')[0],
+            end_date: experience.endDate,
+            is_current: !experience.endDate
+          };
+          const newRole = await createRole(roleData);
+          roleId = newRole?.id;
+        }
+        
+        if (!roleId) continue;
+        
+        // Set the role as selected to create experiences for it
+        const targetRole = roles.find(r => r.id === roleId) || 
+                          (existingRole || { id: roleId, company_id: companyId, title: experience.role, start_date: experience.startDate, end_date: experience.endDate, is_current: !experience.endDate, user_id: '', created_at: '', updated_at: '' });
+        setSelectedRole(targetRole);
+        
+        // Create experiences for each bullet
+        for (const bullet of experience.bullets) {
+          const newExperience = await createExperience();
+          if (newExperience) {
+            await updateExperience(newExperience.id, {
+              title: bullet.title,
+              situation: bullet.situation || '',
+              task: bullet.task || '',
+              action: bullet.action || '',
+              result: bullet.result || '',
+              tags: []
+            });
+          }
+        }
+      }
+      
+      toast({
+        title: "Resume Imported Successfully",
+        description: `Created ${parsedData.length} work experience${parsedData.length > 1 ? 's' : ''} with ${parsedData.reduce((sum, exp) => sum + exp.bullets.length, 0)} STAR stories`,
+      });
+      
+    } catch (error) {
+      console.error("Failed to import resume:", error);
+      toast({
+        title: "Import Failed",
+        description: "There was an error importing your resume. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <>
       {/* Sticky Navigation Tabs */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50">
         <div className="max-w-7xl mx-auto px-6">
           {/* Company Tabs */}
-          <CompanyTabs
-            companies={companies}
-            selectedCompany={selectedCompany}
-            onSelectCompany={setSelectedCompany}
-            onAddCompany={() => setShowCompanyModal(true)}
-            onEditCompany={(company) => {
-              setEditingCompany(company);
-              setShowCompanyModal(true);
-            }}
-            isLoading={experiencesLoading}
-          />
+            <CompanyTabs
+              companies={companies}
+              selectedCompany={selectedCompany}
+              onSelectCompany={setSelectedCompany}
+              onAddCompany={() => setShowCompanyModal(true)}
+              onImportResume={() => setShowResumeImportModal(true)}
+              onEditCompany={(company) => {
+                setEditingCompany(company);
+                setShowCompanyModal(true);
+              }}
+              isLoading={experiencesLoading}
+            />
           
           {/* Role Tabs */}
           {selectedCompany && (
@@ -194,6 +280,12 @@ const Experiences = () => {
         role={editingRole}
         companyId={selectedCompany?.id || ""}
         isLoading={experiencesLoading}
+      />
+
+      <ResumeImportModal
+        isOpen={showResumeImportModal}
+        onClose={() => setShowResumeImportModal(false)}
+        onImportComplete={handleResumeImport}
       />
     </>
   );
