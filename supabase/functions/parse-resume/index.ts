@@ -44,37 +44,25 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting edge function execution');
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    console.log('Environment variables loaded:', { 
-      hasGeminiKey: !!geminiApiKey, 
-      hasSupabaseUrl: !!supabaseUrl, 
-      hasServiceKey: !!supabaseServiceKey 
-    });
-    
     if (!geminiApiKey) {
-      console.error('Missing Gemini API key');
       throw new Error('Gemini API key not configured');
     }
 
-    console.log('Creating Supabase client');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Get the authenticated user
-    console.log('Checking authentication header');
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header found');
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('Validating user token');
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
@@ -334,9 +322,6 @@ Guidelines:
 
   } catch (error) {
     console.error('Error in parse-resume function:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    console.error('Error type:', typeof error);
-    console.error('Error name:', error instanceof Error ? error.name : 'Unknown');
     
     // Return appropriate error status and message
     const errorMessage = error instanceof Error ? error.message : 'Failed to parse resume';
@@ -347,12 +332,7 @@ Guidelines:
     
     return new Response(JSON.stringify({ 
       error: errorMessage,
-      success: false,
-      debug: {
-        stack: error instanceof Error ? error.stack : 'No stack trace',
-        type: typeof error,
-        name: error instanceof Error ? error.name : 'Unknown'
-      }
+      success: false
     }), {
       status: statusCode,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
