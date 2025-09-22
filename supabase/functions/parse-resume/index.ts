@@ -63,13 +63,18 @@ serve(async (req) => {
       });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      console.error('Authentication error:', authError);
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: authError?.message }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    console.log('Authenticated user:', user.id);
 
     const formData = await req.formData();
     const file = formData.get('file') as File;
@@ -222,8 +227,11 @@ Guidelines:
       experiences: []
     };
 
+    console.log('Starting database operations for user:', user.id);
+
     // Create companies
     for (const company of parsedData.companies) {
+      console.log('Creating company:', company.name);
       const { data: companyData, error: companyError } = await supabase
         .from('companies')
         .insert({
@@ -240,6 +248,7 @@ Guidelines:
         console.error('Error creating company:', companyError);
         continue;
       }
+      console.log('Successfully created company:', companyData);
       results.companies.push(companyData);
     }
 

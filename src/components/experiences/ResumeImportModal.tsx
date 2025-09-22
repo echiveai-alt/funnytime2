@@ -130,6 +130,8 @@ export const ResumeImportModal = ({
         throw new Error(responseError || 'Failed to parse resume');
       }
 
+      console.log('Resume parsing successful:', { success, message, data });
+
       toast({
         title: "Resume Parsed Successfully!",
         description: message,
@@ -137,7 +139,7 @@ export const ResumeImportModal = ({
 
       // Call the callback with the parsed data if provided
       if (onImportComplete && data) {
-        onImportComplete(data);
+        await onImportComplete(data);
       }
 
       handleClose();

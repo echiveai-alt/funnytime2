@@ -11,14 +11,26 @@ import { ResumeImportModal } from "@/components/experiences/ResumeImportModal";
 const MainTabs = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { experiences, companies, roles, createCompany, createRole, createExperience, updateExperience, setSelectedRole } = useExperiences();
+  const { experiences, companies, roles, createCompany, createRole, createExperience, updateExperience, setSelectedRole, loadData } = useExperiences();
   const { analyzeJobFit, isAnalyzing } = useJobAnalysis();
   const { toast } = useToast();
   const [showResumeImportModal, setShowResumeImportModal] = useState(false);
 
   const handleResumeImport = async (parsedData: any) => {
-    // Refresh the experiences data to show newly imported items
-    window.location.reload(); // Simple refresh to show new data
+    // Refresh the experiences data by calling loadData directly
+    try {
+      // Re-fetch all data to show newly imported items
+      await loadData();
+      
+      toast({
+        title: "Data Refreshed",
+        description: "Resume data has been imported and the view has been updated.",
+      });
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      // Fallback to page reload if loadData fails
+      window.location.reload();
+    }
   };
   
   const tabs = [
