@@ -126,7 +126,7 @@ export const ResumeImportModal = ({
 
       const { success, message, data, error: responseError } = response.data;
       
-      if (!success || responseError) {
+      if (!success) {
         throw new Error(responseError || 'Failed to parse resume');
       }
 

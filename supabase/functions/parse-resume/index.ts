@@ -82,9 +82,32 @@ serve(async (req) => {
       if (file.type === 'text/plain') {
         extractedText = await file.text();
       } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        // For PDF, we'll need to use a PDF parsing approach
-        // For now, we'll ask the user to paste text or use DOCX
-        throw new Error('PDF parsing not yet supported. Please convert to text or upload as DOCX.');
+        // Parse PDF using a simple text extraction approach
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          
+          // Simple PDF text extraction - look for text between stream objects
+          const pdfText = new TextDecoder().decode(uint8Array);
+          const textMatches = pdfText.match(/stream\s*\n(.*?)\nendstream/gs);
+          
+          if (textMatches && textMatches.length > 0) {
+            // Extract and clean text from PDF streams
+            extractedText = textMatches
+              .map(match => match.replace(/stream\s*\n|\nendstream/g, ''))
+              .join(' ')
+              .replace(/[^\w\s\.\,\-\(\)\/\:]/g, ' ') // Clean non-printable chars
+              .replace(/\s+/g, ' ') // Normalize whitespace
+              .trim();
+          }
+          
+          if (!extractedText || extractedText.length < 50) {
+            throw new Error('Could not extract readable text from PDF. Please try converting to text format or paste the content manually.');
+          }
+        } catch (pdfError) {
+          console.error('PDF parsing error:', pdfError);
+          throw new Error('Failed to parse PDF. Please convert to text format or paste the resume content manually.');
+        }
       } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.toLowerCase().endsWith('.docx')) {
         // For DOCX, we'll need a DOCX parsing library
         throw new Error('DOCX parsing not yet supported. Please convert to text format.');
@@ -290,10 +313,19 @@ Guidelines:
 
   } catch (error) {
     console.error('Error in parse-resume function:', error);
+    
+    // Return appropriate error status and message
+    const errorMessage = error instanceof Error ? error.message : 'Failed to parse resume';
+    const statusCode = errorMessage.includes('not yet supported') || 
+                      errorMessage.includes('Unsupported file format') || 
+                      errorMessage.includes('Could not extract') ||
+                      errorMessage.includes('Failed to parse') ? 400 : 500;
+    
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to parse resume'
+      error: errorMessage,
+      success: false
     }), {
-      status: 500,
+      status: statusCode,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
