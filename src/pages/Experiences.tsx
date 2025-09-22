@@ -45,14 +45,7 @@ const Experiences = () => {
     getFilteredRoles,
   } = useExperiences();
 
-  // Show company modal if no companies exist
-  useEffect(() => {
-    if (!experiencesLoading && companies.length === 0) {
-      setShowCompanyModal(true);
-    }
-  }, [experiencesLoading, companies.length]);
-
-  // Show onboarding resume modal if coming from education
+  // Show onboarding resume modal if coming from education, otherwise show company modal if no companies exist
   useEffect(() => {
     const showResumeImport = searchParams.get('showResumeImport');
     if (showResumeImport === 'true') {
@@ -60,8 +53,10 @@ const Experiences = () => {
       // Remove the parameter from URL
       searchParams.delete('showResumeImport');
       setSearchParams(searchParams, { replace: true });
+    } else if (!experiencesLoading && companies.length === 0) {
+      setShowCompanyModal(true);
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, experiencesLoading, companies.length]);
 
   const handleAddExperience = async () => {
     try {
@@ -213,11 +208,19 @@ const Experiences = () => {
 
       <OnboardingResumeModal
         isOpen={showOnboardingResumeModal}
-        onClose={() => setShowOnboardingResumeModal(false)}
+        onClose={() => {
+          setShowOnboardingResumeModal(false);
+          // If user cancels resume import and has no companies, show company modal
+          if (companies.length === 0) {
+            setShowCompanyModal(true);
+          }
+        }}
         onImportComplete={async (data) => {
           console.log('Resume import completed:', data);
+          setShowOnboardingResumeModal(false);
           // TODO: Process the imported resume data
           // Create companies, roles, and experiences based on the parsed data
+          // Skip company modal since resume was imported successfully
         }}
       />
     </>
