@@ -45,9 +45,9 @@ export const CompanyTabs = ({
 
   return (
     <div className="border-b border-border/50">
-      <div className="flex items-center gap-2 py-2">
+      <div className="flex items-center gap-2 py-2 min-h-[2.5rem]">
         <ScrollArea className="flex-1">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 h-7">
             {sortedCompanies.map((company) => {
               const isSelected = selectedCompany?.id === company.id;
               return (
@@ -73,14 +73,14 @@ export const CompanyTabs = ({
           </div>
         </ScrollArea>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 h-7">
           {selectedCompany && onEditCompany && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => onEditCompany(selectedCompany)}
               disabled={isLoading}
-              className="h-7 w-7 p-0 hover:bg-muted"
+              className="h-7 w-7 p-0 hover:bg-muted flex-shrink-0"
             >
               <MoreVertical className="h-3 w-3" />
             </Button>
@@ -90,7 +90,7 @@ export const CompanyTabs = ({
             size="sm"
             onClick={onAddCompany}
             disabled={isLoading}
-            className="flex items-center gap-2 whitespace-nowrap h-7 text-xs"
+            className="flex items-center gap-2 whitespace-nowrap h-7 text-xs flex-shrink-0"
           >
             <Plus className="w-4 h-4" />
             Add Company

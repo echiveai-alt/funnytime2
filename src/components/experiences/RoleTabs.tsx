@@ -45,9 +45,9 @@ export const RoleTabs = ({
 
   return (
     <div className="border-b border-border/30">
-      <div className="flex items-center gap-2 py-1.5 pl-8">
+      <div className="flex items-center gap-2 py-1.5 pl-8 min-h-[2rem]">
         <ScrollArea className="flex-1">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 h-6">
             {sortedRoles.map((role) => {
               const isSelected = selectedRole?.id === role.id;
               const showUnsavedDot = hasUnsavedChanges && isSelected;
@@ -78,14 +78,14 @@ export const RoleTabs = ({
           </div>
         </ScrollArea>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 h-6">
           {selectedRole && onEditRole && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => onEditRole(selectedRole)}
               disabled={isLoading}
-              className="h-6 w-6 p-0 hover:bg-muted"
+              className="h-6 w-6 p-0 hover:bg-muted flex-shrink-0"
             >
               <MoreVertical className="h-2.5 w-2.5" />
             </Button>
@@ -95,7 +95,7 @@ export const RoleTabs = ({
             size="sm"
             onClick={onAddRole}
             disabled={isLoading}
-            className="flex items-center gap-1.5 whitespace-nowrap text-xs"
+            className="flex items-center gap-1.5 whitespace-nowrap text-xs h-6 flex-shrink-0"
           >
             <Plus className="w-3 h-3" />
             Add Role
