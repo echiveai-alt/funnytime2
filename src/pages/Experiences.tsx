@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Brain } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CompanyTabs } from "@/components/experiences/CompanyTabs";
@@ -7,13 +8,16 @@ import { ExperiencesList } from "@/components/experiences/ExperiencesList";
 import { STARInputPanel } from "@/components/experiences/STARInputPanel";
 import { CompanyModal } from "@/components/experiences/CompanyModal";
 import { RoleModal } from "@/components/experiences/RoleModal";
+import { OnboardingResumeModal } from "@/components/experiences/OnboardingResumeModal";
 import { useExperiences } from "@/hooks/useExperiences";
 
 const Experiences = () => {
   // Fixed isLoading reference issue - debugging
   console.log("Experiences component loading...");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showOnboardingResumeModal, setShowOnboardingResumeModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
 
@@ -47,6 +51,17 @@ const Experiences = () => {
       setShowCompanyModal(true);
     }
   }, [experiencesLoading, companies.length]);
+
+  // Show onboarding resume modal if coming from education
+  useEffect(() => {
+    const showResumeImport = searchParams.get('showResumeImport');
+    if (showResumeImport === 'true') {
+      setShowOnboardingResumeModal(true);
+      // Remove the parameter from URL
+      searchParams.delete('showResumeImport');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleAddExperience = async () => {
     try {
@@ -194,6 +209,16 @@ const Experiences = () => {
         role={editingRole}
         companyId={selectedCompany?.id || ""}
         isLoading={experiencesLoading}
+      />
+
+      <OnboardingResumeModal
+        isOpen={showOnboardingResumeModal}
+        onClose={() => setShowOnboardingResumeModal(false)}
+        onImportComplete={async (data) => {
+          console.log('Resume import completed:', data);
+          // TODO: Process the imported resume data
+          // Create companies, roles, and experiences based on the parsed data
+        }}
       />
     </>
   );

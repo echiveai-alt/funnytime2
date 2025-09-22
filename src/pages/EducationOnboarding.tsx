@@ -14,19 +14,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-const educationSchema = z.object({
+const educationEntrySchema = z.object({
   degree: z.string().optional(),
   school: z.string().optional(),
   graduationMonth: z.string().optional(),
   graduationYear: z.string().optional(),
   isExpectedDate: z.boolean(),
+});
+
+const educationSchema = z.object({
+  education: z.array(educationEntrySchema).min(1),
   isNotApplicable: z.boolean(),
 }).refine((data) => {
   if (data.isNotApplicable) return true;
-  return data.degree && data.school;
+  return data.education.some(entry => entry.degree && entry.school);
 }, {
-  message: "Please enter degree and school, or check 'Not applicable'",
-  path: ["degree"]
+  message: "Please enter at least one degree and school, or check 'Not applicable'",
+  path: ["education"]
 });
 
 type EducationFormData = z.infer<typeof educationSchema>;
@@ -43,6 +47,7 @@ const degreeExamples = [
 const EducationOnboarding = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [educationEntries, setEducationEntries] = useState(1);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -55,13 +60,19 @@ const EducationOnboarding = () => {
   } = useForm<EducationFormData>({
     resolver: zodResolver(educationSchema),
     defaultValues: {
-      isExpectedDate: false,
+      education: [{ 
+        degree: "",
+        school: "",
+        graduationMonth: "",
+        graduationYear: "",
+        isExpectedDate: false
+      }],
       isNotApplicable: false,
     }
   });
 
   const isNotApplicable = watch("isNotApplicable");
-  const isExpectedDate = watch("isExpectedDate");
+  const education = watch("education");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -91,23 +102,43 @@ const EducationOnboarding = () => {
         throw new Error("No authenticated user");
       }
 
-      // Create graduation date from year and month if available
-      let graduationDate = null;
-      if (data.graduationYear && data.graduationMonth && !data.isNotApplicable) {
-        graduationDate = `${data.graduationYear}-${data.graduationMonth.padStart(2, '0')}-01`;
-      }
+      if (!data.isNotApplicable && data.education) {
+        // Save the primary education (first entry)
+        const primaryEducation = data.education[0];
+        let graduationDate = null;
+        if (primaryEducation.graduationYear && primaryEducation.graduationMonth) {
+          graduationDate = `${primaryEducation.graduationYear}-${primaryEducation.graduationMonth.padStart(2, '0')}-01`;
+        }
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          degree: data.isNotApplicable ? null : data.degree,
-          school: data.isNotApplicable ? null : data.school,
-          graduation_date: graduationDate,
-        })
-        .eq("user_id", session.user.id);
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            degree: primaryEducation.degree,
+            school: primaryEducation.school,
+            graduation_date: graduationDate,
+          })
+          .eq("user_id", session.user.id);
 
-      if (error) {
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        // TODO: Save additional education entries to a separate table if needed
+        // For now, we'll just save the primary education to the profiles table
+      } else {
+        // Clear education if not applicable
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            degree: null,
+            school: null,
+            graduation_date: null,
+          })
+          .eq("user_id", session.user.id);
+
+        if (error) {
+          throw error;
+        }
       }
 
       toast({
@@ -115,7 +146,7 @@ const EducationOnboarding = () => {
         description: "Welcome to echive.ai",
       });
 
-      navigate("/app/experiences");
+      navigate("/app/experiences?showResumeImport=true");
     } catch (error: any) {
       console.error("Profile update error:", error);
       toast({
@@ -163,8 +194,7 @@ const EducationOnboarding = () => {
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-foreground">How we use your education</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Your education credentials help our AI match you with relevant opportunities and tailor resume suggestions. 
-                Providing your latest or highest degree improves matching accuracy by 40% compared to profiles without education details.
+                Your education credentials help our AI to accurately analyze your alignment with the provided job description.
               </p>
             </div>
           </div>
@@ -186,96 +216,152 @@ const EducationOnboarding = () => {
 
           {!isNotApplicable && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="degree">Degree</Label>
-                <Input
-                  id="degree"
-                  placeholder="e.g., B.Sc. in Computer Science"
-                  {...register("degree")}
-                  className={errors.degree ? "border-destructive" : ""}
-                />
-                <div className="text-xs text-muted-foreground">
-                  Examples: {degreeExamples.slice(0, 3).join(", ")}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  You can edit this later.
-                </div>
-                {errors.degree && (
-                  <p className="text-sm text-destructive">{errors.degree.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="school">School</Label>
-                <Input
-                  id="school"
-                  placeholder="e.g., University of California, Berkeley"
-                  {...register("school")}
-                  className={errors.school ? "border-destructive" : ""}
-                />
-                {errors.school && (
-                  <p className="text-sm text-destructive">{errors.school.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                <Label>Graduation Date</Label>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="graduation-month" className="text-sm">Month</Label>
-                    <Select onValueChange={(value) => setValue("graduationMonth", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">January</SelectItem>
-                        <SelectItem value="2">February</SelectItem>
-                        <SelectItem value="3">March</SelectItem>
-                        <SelectItem value="4">April</SelectItem>
-                        <SelectItem value="5">May</SelectItem>
-                        <SelectItem value="6">June</SelectItem>
-                        <SelectItem value="7">July</SelectItem>
-                        <SelectItem value="8">August</SelectItem>
-                        <SelectItem value="9">September</SelectItem>
-                        <SelectItem value="10">October</SelectItem>
-                        <SelectItem value="11">November</SelectItem>
-                        <SelectItem value="12">December</SelectItem>
-                      </SelectContent>
-                    </Select>
+              {Array.from({ length: educationEntries }, (_, index) => (
+                <div key={index} className="space-y-4 p-4 border rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">
+                      {index === 0 ? "Primary Education" : `Additional Education #${index}`}
+                    </h3>
+                    {index > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEducationEntries(prev => prev - 1);
+                          const currentEducation = education || [];
+                          setValue("education", currentEducation.slice(0, -1));
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="graduation-year" className="text-sm">Year</Label>
+                    <Label htmlFor={`degree-${index}`}>Degree</Label>
                     <Input
-                      id="graduation-year"
-                      placeholder="2024"
-                      type="number"
-                      min="1950"
-                      max="2035"
-                      {...register("graduationYear")}
+                      id={`degree-${index}`}
+                      placeholder="e.g., B.Sc. in Computer Science"
+                      {...register(`education.${index}.degree` as const)}
+                      className={errors.education?.[index]?.degree ? "border-destructive" : ""}
                     />
+                    {index === 0 && (
+                      <>
+                        <div className="text-xs text-muted-foreground">
+                          Examples: {degreeExamples.slice(0, 3).join(", ")}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          You can edit this later.
+                        </div>
+                      </>
+                    )}
+                    {errors.education?.[index]?.degree && (
+                      <p className="text-sm text-destructive">{errors.education[index]?.degree?.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`school-${index}`}>School</Label>
+                    <Input
+                      id={`school-${index}`}
+                      placeholder="e.g., University of California, Berkeley"
+                      {...register(`education.${index}.school` as const)}
+                      className={errors.education?.[index]?.school ? "border-destructive" : ""}
+                    />
+                    {errors.education?.[index]?.school && (
+                      <p className="text-sm text-destructive">{errors.education[index]?.school?.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label>Graduation Date</Label>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`graduation-month-${index}`} className="text-sm">Month</Label>
+                        <Select onValueChange={(value) => setValue(`education.${index}.graduationMonth` as const, value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">January</SelectItem>
+                            <SelectItem value="2">February</SelectItem>
+                            <SelectItem value="3">March</SelectItem>
+                            <SelectItem value="4">April</SelectItem>
+                            <SelectItem value="5">May</SelectItem>
+                            <SelectItem value="6">June</SelectItem>
+                            <SelectItem value="7">July</SelectItem>
+                            <SelectItem value="8">August</SelectItem>
+                            <SelectItem value="9">September</SelectItem>
+                            <SelectItem value="10">October</SelectItem>
+                            <SelectItem value="11">November</SelectItem>
+                            <SelectItem value="12">December</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`graduation-year-${index}`} className="text-sm">Year</Label>
+                        <Input
+                          id={`graduation-year-${index}`}
+                          placeholder="2024"
+                          type="number"
+                          min="1950"
+                          max="2035"
+                          {...register(`education.${index}.graduationYear` as const)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`expected-date-${index}`}
+                        {...register(`education.${index}.isExpectedDate` as const)}
+                        onCheckedChange={(checked) => setValue(`education.${index}.isExpectedDate` as const, !!checked)}
+                      />
+                      <Label htmlFor={`expected-date-${index}`} className="text-sm font-normal">
+                        This is an expected graduation date
+                      </Label>
+                    </div>
+
+                    {index === 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {education?.[0]?.isExpectedDate 
+                          ? "We'll help you find opportunities that welcome soon-to-graduate candidates." 
+                          : "Select your actual or expected graduation date."
+                        }
+                      </div>
+                    )}
                   </div>
                 </div>
+              ))}
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="expected-date"
-                    {...register("isExpectedDate")}
-                    onCheckedChange={(checked) => setValue("isExpectedDate", !!checked)}
-                  />
-                  <Label htmlFor="expected-date" className="text-sm font-normal">
-                    This is an expected graduation date
-                  </Label>
+              {educationEntries < 3 && (
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setEducationEntries(prev => prev + 1);
+                      const currentEducation = education || [];
+                      setValue("education", [
+                        ...currentEducation,
+                        { 
+                          degree: "",
+                          school: "",
+                          graduationMonth: "",
+                          graduationYear: "",
+                          isExpectedDate: false
+                        }
+                      ]);
+                    }}
+                    className="w-full"
+                  >
+                    Add More Education
+                  </Button>
                 </div>
-
-                <div className="text-xs text-muted-foreground">
-                  {isExpectedDate 
-                    ? "We'll help you find opportunities that welcome soon-to-graduate candidates." 
-                    : "Select your actual or expected graduation date."
-                  }
-                </div>
-              </div>
+              )}
             </>
           )}
 
