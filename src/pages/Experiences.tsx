@@ -45,16 +45,16 @@ const Experiences = () => {
     getFilteredRoles,
   } = useExperiences();
 
-  // Show onboarding resume modal if coming from education
+  // Show onboarding resume modal if coming from education and user has no companies
   useEffect(() => {
     const showResumeImport = searchParams.get('showResumeImport');
-    if (showResumeImport === 'true') {
+    if (showResumeImport === 'true' && !experiencesLoading && companies.length === 0) {
       setShowOnboardingResumeModal(true);
       // Remove the parameter from URL
       searchParams.delete('showResumeImport');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, experiencesLoading, companies.length]);
 
   // Show company modal if no companies exist and not in onboarding flow
   useEffect(() => {
