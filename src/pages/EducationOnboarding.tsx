@@ -82,6 +82,18 @@ const EducationOnboarding = () => {
           navigate("/signup");
           return;
         }
+
+        // Check if user has already completed education onboarding
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("education_onboarding_completed")
+          .eq("user_id", session.user.id)
+          .single();
+
+        if (profile?.education_onboarding_completed) {
+          navigate("/app/experiences");
+          return;
+        }
       } catch (error) {
         console.error("Auth check error:", error);
         navigate("/signup");
@@ -116,6 +128,7 @@ const EducationOnboarding = () => {
             degree: primaryEducation.degree,
             school: primaryEducation.school,
             graduation_date: graduationDate,
+            education_onboarding_completed: true,
           })
           .eq("user_id", session.user.id);
 
@@ -126,13 +139,14 @@ const EducationOnboarding = () => {
         // TODO: Save additional education entries to a separate table if needed
         // For now, we'll just save the primary education to the profiles table
       } else {
-        // Clear education if not applicable
+        // Clear education if not applicable and mark as completed
         const { error } = await supabase
           .from("profiles")
           .update({
             degree: null,
             school: null,
             graduation_date: null,
+            education_onboarding_completed: true,
           })
           .eq("user_id", session.user.id);
 

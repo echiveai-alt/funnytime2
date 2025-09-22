@@ -51,10 +51,10 @@ const Login = () => {
         // Check if user has completed onboarding
         const { data: profile } = await supabase
           .from("profiles")
-          .select("degree, school")
+          .select("education_onboarding_completed")
           .single();
         
-        if (profile?.degree && profile?.school) {
+        if (profile?.education_onboarding_completed) {
           navigate("/app/experiences");
         } else {
           navigate("/onboarding/education");

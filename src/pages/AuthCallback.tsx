@@ -31,7 +31,7 @@ const AuthCallback = () => {
           const checkProfile = async (): Promise<void> => {
             const { data: profile, error: profileError } = await supabase
               .from("profiles")
-              .select("degree, school, email_verified_at")
+              .select("education_onboarding_completed, email_verified_at")
               .eq("user_id", data.session.user.id)
               .maybeSingle();
 
@@ -48,15 +48,15 @@ const AuthCallback = () => {
               return;
             }
 
-            // If profile exists and has education info, go to experiences
-            if (profile?.degree && profile?.school) {
+            // If profile exists and education onboarding is completed, go to experiences
+            if (profile?.education_onboarding_completed) {
               toast({
                 title: "Welcome back!",
                 description: "Your account has been verified successfully.",
               });
               navigate("/app/experiences");
             } else {
-              // Profile exists but no education info, go to onboarding
+              // Profile exists but education onboarding not completed, go to onboarding
               toast({
                 title: "Email verified!",
                 description: "Let's complete your profile setup.",
