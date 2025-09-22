@@ -96,55 +96,12 @@ export const ResumeImportModal = ({
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    toast({
+      title: "Feature Coming Soon",
+      description: "Resume parsing functionality will be available soon.",
+    });
 
-    try {
-      let response;
-      
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        
-        response = await supabase.functions.invoke('parse-resume', {
-          body: formData
-        });
-      } else {
-        response = await supabase.functions.invoke('parse-resume', {
-          body: { text: resumeText }
-        });
-      }
-
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to parse resume');
-      }
-
-      const result = response.data;
-      
-      if (!result.success) {
-        setError(result.error || 'Failed to parse resume');
-        return;
-      }
-
-      if (!result.data || result.data.length === 0) {
-        setError("No work experience found in resume");
-        return;
-      }
-
-      toast({
-        title: "Resume Parsed Successfully",
-        description: `Found ${result.data.length} work experience${result.data.length > 1 ? 's' : ''}`,
-      });
-
-      onImportComplete?.(result.data);
-      handleClose();
-
-    } catch (error) {
-      console.error('Resume parse error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to parse resume');
-    } finally {
-      setIsLoading(false);
-    }
+    handleClose();
   };
 
   const handleClose = () => {
