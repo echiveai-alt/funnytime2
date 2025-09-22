@@ -16,8 +16,9 @@ const MainTabs = () => {
   const { toast } = useToast();
   const [showResumeImportModal, setShowResumeImportModal] = useState(false);
 
-  const handleResumeImport = async (parsedData: any[]) => {
-    // Parsing functionality removed - placeholder for future implementation
+  const handleResumeImport = async (parsedData: any) => {
+    // Refresh the experiences data to show newly imported items
+    window.location.reload(); // Simple refresh to show new data
   };
   
   const tabs = [

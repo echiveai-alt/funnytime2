@@ -44,3 +44,6 @@ allowed_paths = ["https://*", "http://*"]
 
 [functions.analyze-job-fit]
 verify_jwt = true
+
+[functions.parse-resume]
+verify_jwt = true

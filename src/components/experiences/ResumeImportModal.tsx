@@ -96,12 +96,62 @@ export const ResumeImportModal = ({
       return;
     }
 
-    toast({
-      title: "Feature Coming Soon",
-      description: "Resume parsing functionality will be available soon.",
-    });
+    setIsLoading(true);
+    setError(null);
 
-    handleClose();
+    try {
+      const formData = new FormData();
+      
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      } else {
+        formData.append('resumeText', resumeText);
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Please log in to parse your resume");
+      }
+
+      const response = await supabase.functions.invoke('parse-resume', {
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to parse resume');
+      }
+
+      const { success, message, data, error: responseError } = response.data;
+      
+      if (!success || responseError) {
+        throw new Error(responseError || 'Failed to parse resume');
+      }
+
+      toast({
+        title: "Resume Parsed Successfully!",
+        description: message,
+      });
+
+      // Call the callback with the parsed data if provided
+      if (onImportComplete && data) {
+        onImportComplete(data);
+      }
+
+      handleClose();
+    } catch (error) {
+      console.error('Parse error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to parse resume. Please try again.');
+      toast({
+        title: "Parse Failed",
+        description: error instanceof Error ? error.message : 'Failed to parse resume. Please try again.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClose = () => {
