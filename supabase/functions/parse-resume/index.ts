@@ -1,5 +1,3 @@
-// Smart optimization: Keep quality, reduce costs strategically
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -284,11 +282,25 @@ serve(async (req) => {
       results.companies = await batchInsert(supabase, 'companies', companyInserts);
     }
 
-    // Insert roles
+    // Insert roles with fuzzy matching for robustness
     if (parsedData.roles.length > 0) {
       const roleInserts = parsedData.roles.map(role => {
-        const company = results.companies.find(c => c.name === role.company_name);
-        if (!company) throw new Error(`Company not found: ${role.company_name}`);
+        // Try exact match first, then fuzzy match
+        let company = results.companies.find(c => c.name.trim().toLowerCase() === role.company_name.trim().toLowerCase());
+        
+        if (!company) {
+          // Fuzzy match - find company name that contains or is contained in role's company name
+          company = results.companies.find(c => 
+            c.name.toLowerCase().includes(role.company_name.toLowerCase()) ||
+            role.company_name.toLowerCase().includes(c.name.toLowerCase())
+          );
+        }
+        
+        if (!company) {
+          console.error(`Company matching failed for role "${role.title}" at company "${role.company_name}"`);
+          console.error(`Available companies:`, results.companies.map(c => c.name));
+          throw new Error(`Company not found: "${role.company_name}". Available: ${results.companies.map(c => c.name).join(', ')}`);
+        }
         
         return {
           user_id: user.id,
@@ -303,11 +315,27 @@ serve(async (req) => {
       results.roles = await batchInsert(supabase, 'roles', roleInserts);
     }
 
-    // Insert experiences
+    // Insert experiences with fuzzy matching for robustness
     if (parsedData.experiences.length > 0) {
       const experienceInserts = parsedData.experiences.map(experience => {
-        const role = results.roles.find(r => r.title === experience.role_title);
-        if (!role) throw new Error(`Role not found: ${experience.role_title}`);
+        // Try exact match first, then fuzzy match
+        let role = results.roles.find(r => 
+          r.title.trim().toLowerCase() === experience.role_title.trim().toLowerCase()
+        );
+        
+        if (!role) {
+          // Fuzzy match - find role that contains or is contained in experience's role title
+          role = results.roles.find(r => 
+            r.title.toLowerCase().includes(experience.role_title.toLowerCase()) ||
+            experience.role_title.toLowerCase().includes(r.title.toLowerCase())
+          );
+        }
+        
+        if (!role) {
+          console.error(`Role matching failed for experience "${experience.title}" with role "${experience.role_title}"`);
+          console.error(`Available roles:`, results.roles.map(r => r.title));
+          throw new Error(`Role not found: "${experience.role_title}". Available: ${results.roles.map(r => r.title).join(', ')}`);
+        }
         
         return {
           user_id: user.id,
