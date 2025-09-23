@@ -1,151 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Edit3, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { ResumeBulletsResult } from "@/hooks/useResumeBullets";
 
 // Types for the component
-interface HighScoreData {
-  score: number;
-  fitLevel: string;
-  message: string;
-  missingKeywords: string[];
-  companies: Company[];
+interface JobAnalysisResult {
+  overallScore?: number;
+  fitLevel?: string;
+  strengths?: string[];
+  gaps?: string[];
+  recommendations?: string[];
+  matchedPhrases?: Array<{
+    jobPhrase: string;
+    experienceMatch: string;
+    experienceContext: string;
+    matchType: string;
+    evidenceStrength: string;
+  }>;
+  unmatchedPhrases?: Array<{
+    phrase: string;
+    category: string;
+    importance: string;
+    reason: string;
+  }>;
 }
 
-interface LowScoreData {
-  score: number;
-  fitLevel: string;
-  message: string;
-  subMessage: string;
-  analysis: {
-    strengths: string[];
-    gaps: string[];
-    recommendations: string[];
-    keywordMatch: {
-      matchedKeywords: string[];
-      missingKeywords: string[];
-    };
-  };
-}
-
-interface Company {
-  id: string;
-  name: string;
-  dateRange: string;
-  roles: Role[];
-}
-
-interface Role {
-  id: string;
-  title: string;
-  dateRange: string;
-  bulletPoints: string[];
-}
-
-// Mock data for demonstration
-const mockHighScoreData: HighScoreData = {
-  score: 92,
-  fitLevel: "Excellent",
-  message: "Your experiences align well with the job requirements",
-  missingKeywords: ["machine learning", "kubernetes", "devops"],
-  companies: [
-    {
-      id: "1",
-      name: "TechCorp Inc.",
-      dateRange: "2022 - Present",
-      roles: [
-        {
-          id: "1",
-          title: "Senior Software Engineer",
-          dateRange: "2023 - Present",
-          bulletPoints: [
-            "• Developed and maintained scalable web applications serving 100K+ daily users using React and Node.js",
-            "• Led cross-functional team of 5 engineers to deliver critical features on time, resulting in 25% improvement in user engagement",
-            "• Architected microservices infrastructure that reduced system downtime by 40% and improved response times by 60%",
-            "• Mentored junior developers through code reviews and technical discussions, improving team productivity by 30%"
-          ]
-        },
-        {
-          id: "2", 
-          title: "Software Engineer",
-          dateRange: "2022 - 2023",
-          bulletPoints: [
-            "• Implemented automated testing suite that increased code coverage from 60% to 95% and reduced bug reports by 50%",
-            "• Collaborated with product managers to define technical requirements for new features, ensuring alignment with business goals",
-            "• Optimized database queries and caching strategies, improving application performance by 45%"
-          ]
-        }
-      ]
-    },
-    {
-      id: "2",
-      name: "StartupXYZ",
-      dateRange: "2020 - 2022",
-      roles: [
-        {
-          id: "3",
-          title: "Full Stack Developer",
-          dateRange: "2020 - 2022", 
-          bulletPoints: [
-            "• Built end-to-end web application from scratch using React, Express.js, and PostgreSQL, handling 10K+ concurrent users",
-            "• Designed and implemented REST API with comprehensive documentation, reducing integration time for partners by 70%",
-            "• Established CI/CD pipeline using GitHub Actions, reducing deployment time from 2 hours to 15 minutes"
-          ]
-        }
-      ]
-    }
-  ]
-};
-
-const mockLowScoreData: LowScoreData = {
-  score: 45,
-  fitLevel: "Insufficient",
-  message: "Unfortunately, the input experiences are not well aligned to the job description",
-  subMessage: "Bullet points will not be created.",
-  analysis: {
-    strengths: [
-      "Strong technical background in software development",
-      "Good team collaboration experience"
-    ],
-    gaps: [
-      "Missing required Python programming experience",
-      "Lack of machine learning project experience",
-      "No cloud infrastructure (AWS/Azure) experience",
-      "Missing data analysis and visualization skills"
-    ],
-    recommendations: [
-      "Add experiences showcasing Python development projects",
-      "Include any machine learning or AI-related work",
-      "Highlight cloud platform experience if available",
-      "Consider taking courses in missing technical areas"
-    ],
-    keywordMatch: {
-      matchedKeywords: ["javascript", "react", "database", "api"],
-      missingKeywords: ["python", "machine learning", "aws", "tensorflow", "pandas"]
-    }
-  }
-};
 
 const ResumeBulletPoints = () => {
-  const [isHighScore] = useState(false); // Toggle this for testing different states
+  const [analysisResult, setAnalysisResult] = useState<JobAnalysisResult | null>(null);
+  const [resumeBullets, setResumeBullets] = useState<ResumeBulletsResult | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  const data = isHighScore ? mockHighScoreData : mockLowScoreData;
+
+  useEffect(() => {
+    // Load analysis results and resume bullets from localStorage
+    const analysisData = localStorage.getItem('jobAnalysisResult');
+    const bulletsData = localStorage.getItem('resumeBullets');
+
+    if (analysisData) {
+      setAnalysisResult(JSON.parse(analysisData));
+    }
+
+    if (bulletsData) {
+      setResumeBullets(JSON.parse(bulletsData));
+    }
+  }, []);
+
+  const isHighScore = (analysisResult?.overallScore || 0) > 85;
 
   const copyToClipboard = async () => {
-    if (!isHighScore || !('companies' in data)) return;
+    if (!isHighScore || !resumeBullets?.companies) return;
     
     let clipboardText = "";
-    data.companies.forEach(company => {
-      clipboardText += `${company.name} (${company.dateRange})\n\n`;
+    resumeBullets.companies.forEach(company => {
+      clipboardText += `${company.name}\n\n`;
       company.roles.forEach(role => {
-        clipboardText += `${role.title} (${role.dateRange})\n`;
+        clipboardText += `${role.title}\n`;
         role.bulletPoints.forEach(bullet => {
-          clipboardText += `${bullet}\n`;
+          clipboardText += `• ${bullet}\n`;
         });
         clipboardText += "\n";
       });
@@ -190,6 +106,20 @@ const ResumeBulletPoints = () => {
     </div>
   );
 
+  if (!analysisResult) {
+    return (
+      <main className="max-w-[1080px] mx-auto px-6 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">No Analysis Results Found</h1>
+          <p className="text-muted-foreground mb-6">Please complete a job analysis first.</p>
+          <Button onClick={() => navigate('/app/job-description')}>
+            Analyze New Job Description
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="max-w-[1080px] mx-auto px-6 py-8">
       <div className="mb-8">
@@ -203,14 +133,18 @@ const ResumeBulletPoints = () => {
 
       <Card className="shadow-soft border border-border/50 mb-8">
         <CardContent className="p-8">
-          <ScoreIndicator score={data.score} fitLevel={data.fitLevel} isSuccess={isHighScore} />
+          <ScoreIndicator 
+            score={analysisResult.overallScore || 0} 
+            fitLevel={analysisResult.fitLevel || 'Unknown'} 
+            isSuccess={isHighScore} 
+          />
         </CardContent>
       </Card>
 
-      {isHighScore ? (
+      {isHighScore && resumeBullets ? (
         <>
           {/* Missing Keywords Section */}
-          {'missingKeywords' in data && data.missingKeywords && data.missingKeywords.length > 0 && (
+          {resumeBullets.missingKeywords && resumeBullets.missingKeywords.length > 0 && (
             <Card className="shadow-soft border border-border/50 mb-8">
               <CardHeader>
                 <CardTitle className="text-xl font-semibold text-foreground">
@@ -219,7 +153,7 @@ const ResumeBulletPoints = () => {
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 <div className="flex flex-wrap gap-2">
-                  {data.missingKeywords.map((keyword, index) => (
+                  {resumeBullets.missingKeywords.map((keyword, index) => (
                     <Badge key={index} variant="outline" className="px-3 py-1">
                       {keyword}
                     </Badge>
@@ -238,29 +172,27 @@ const ResumeBulletPoints = () => {
             </CardHeader>
             <CardContent className="px-8 pb-8">
               <div className="space-y-8">
-                {'companies' in data && data.companies.map((company) => (
-                  <div key={company.id} className="bg-secondary/30 rounded-lg p-6">
+                {resumeBullets.companies.map((company, companyIndex) => (
+                  <div key={companyIndex} className="bg-secondary/30 rounded-lg p-6">
                     <div className="mb-6">
                       <h2 className="text-xl font-semibold text-foreground">
                         {company.name}
                       </h2>
-                      <p className="text-muted-foreground">{company.dateRange}</p>
                     </div>
                     
                     <div className="space-y-6">
-                      {company.roles.map((role) => (
-                        <div key={role.id} className="bg-background rounded-md p-5 shadow-sm">
+                      {company.roles.map((role, roleIndex) => (
+                        <div key={roleIndex} className="bg-background rounded-md p-5 shadow-sm">
                           <div className="mb-4">
                             <h3 className="text-lg font-medium text-foreground">
                               {role.title}
                             </h3>
-                            <p className="text-sm text-muted-foreground">{role.dateRange}</p>
                           </div>
                           
                           <div className="space-y-3">
                             {role.bulletPoints.map((bullet, index) => (
                               <p key={index} className="text-foreground leading-relaxed">
-                                {bullet}
+                                • {bullet}
                               </p>
                             ))}
                           </div>
@@ -310,7 +242,7 @@ const ResumeBulletPoints = () => {
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-green-600">Strengths</h3>
                   <ul className="space-y-2">
-                    {'analysis' in data && data.analysis.strengths?.map((strength: string, index: number) => (
+                    {analysisResult.strengths?.map((strength: string, index: number) => (
                       <li key={index} className="flex items-start gap-2">
                         <span className="text-green-500 mt-1">✓</span>
                         <span>{strength}</span>
@@ -323,7 +255,7 @@ const ResumeBulletPoints = () => {
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-orange-600">Areas for Improvement</h3>
                   <ul className="space-y-2">
-                    {'analysis' in data && data.analysis.gaps?.map((gap: string, index: number) => (
+                    {analysisResult.gaps?.map((gap: string, index: number) => (
                       <li key={index} className="flex items-start gap-2">
                         <span className="text-orange-500 mt-1">△</span>
                         <span>{gap}</span>
@@ -336,7 +268,7 @@ const ResumeBulletPoints = () => {
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-blue-600">Recommendations</h3>
                   <ul className="space-y-2">
-                    {'analysis' in data && data.analysis.recommendations?.map((rec: string, index: number) => (
+                    {analysisResult.recommendations?.map((rec: string, index: number) => (
                       <li key={index} className="flex items-start gap-2">
                         <span className="text-blue-500 mt-1">💡</span>
                         <span>{rec}</span>
@@ -345,31 +277,35 @@ const ResumeBulletPoints = () => {
                   </ul>
                 </div>
 
-                {/* Keyword Match */}
-                {'analysis' in data && data.analysis.keywordMatch && (
+                {/* Matched/Unmatched Phrases */}
+                {(analysisResult.matchedPhrases || analysisResult.unmatchedPhrases) && (
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">Keyword Analysis</h3>
+                    <h3 className="text-lg font-semibold mb-3">Phrase Analysis</h3>
                     <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-medium text-green-600 mb-2">Matched Keywords</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {'analysis' in data && data.analysis.keywordMatch.matchedKeywords?.map((keyword: string, index: number) => (
-                            <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                              {keyword}
-                            </span>
-                          ))}
+                      {analysisResult.matchedPhrases && (
+                        <div>
+                          <h4 className="font-medium text-green-600 mb-2">Matched Phrases</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {analysisResult.matchedPhrases.map((phrase, index) => (
+                              <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                                {phrase.jobPhrase}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-orange-600 mb-2">Missing Keywords</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {'analysis' in data && data.analysis.keywordMatch.missingKeywords?.map((keyword: string, index: number) => (
-                            <span key={index} className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
-                              {keyword}
-                            </span>
-                          ))}
+                      )}
+                      {analysisResult.unmatchedPhrases && (
+                        <div>
+                          <h4 className="font-medium text-orange-600 mb-2">Unmatched Phrases</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {analysisResult.unmatchedPhrases.map((phrase, index) => (
+                              <span key={index} className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                                {phrase.phrase}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )}

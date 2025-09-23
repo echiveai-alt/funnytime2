@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { storeJobKeyPhrases, storeJobDescription, storeRelevantExperiences } from '@/utils/jobAnalysis';
+import { useResumeBullets } from '@/hooks/useResumeBullets';
 
 interface AnalysisResult {
   extractedJobPhrases?: Array<{
@@ -33,6 +34,7 @@ interface AnalysisResult {
 export const useJobAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
+  const { generateResumeBullets } = useResumeBullets();
 
   const analyzeJobFit = async (jobDescription: string): Promise<AnalysisResult | null> => {
     try {
@@ -66,6 +68,16 @@ export const useJobAnalysis = () => {
 
       // Store the complete analysis result
       localStorage.setItem('jobAnalysisResult', JSON.stringify(data));
+
+      // If score is higher than 85, generate resume bullets
+      if (data.overallScore && data.overallScore > 85 && data.relevantExperiences) {
+        console.log('Score above 85, generating resume bullets...');
+        
+        // Get selected keywords from localStorage (from job description page)
+        const selectedKeywords = JSON.parse(localStorage.getItem('selectedKeywords') || '[]');
+        
+        await generateResumeBullets(jobDescription, data.relevantExperiences, selectedKeywords);
+      }
 
       toast({
         title: 'Analysis Complete',
