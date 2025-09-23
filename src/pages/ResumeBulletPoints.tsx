@@ -61,7 +61,11 @@ const ResumeBulletPoints = () => {
       company.roles.forEach(role => {
         clipboardText += `${role.title}\n`;
         role.bulletPoints.forEach(bullet => {
-          clipboardText += `• ${bullet}\n`;
+          if (bullet.exceedsWidth) {
+            clipboardText += `• Could not fit within requested width\n${bullet.text}\n`;
+          } else {
+            clipboardText += `• ${bullet.text}\n`;
+          }
         });
         clipboardText += "\n";
       });
@@ -191,9 +195,16 @@ const ResumeBulletPoints = () => {
                           
                           <div className="space-y-3">
                             {role.bulletPoints.map((bullet, index) => (
-                              <p key={index} className="text-foreground leading-relaxed">
-                                • {bullet}
-                              </p>
+                              <div key={index}>
+                                {bullet.exceedsWidth && (
+                                  <p className="text-orange-600 text-sm font-medium mb-1">
+                                    • Could not fit within requested width
+                                  </p>
+                                )}
+                                <p className={`leading-relaxed ${bullet.exceedsWidth ? 'text-orange-700 ml-2' : 'text-foreground'}`}>
+                                  • {bullet.text}
+                                </p>
+                              </div>
                             ))}
                           </div>
                         </div>

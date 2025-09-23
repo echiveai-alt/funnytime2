@@ -2,9 +2,15 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface BulletPoint {
+  text: string;
+  visualWidth: number;
+  exceedsWidth: boolean;
+}
+
 interface BulletRole {
   title: string;
-  bulletPoints: string[];
+  bulletPoints: BulletPoint[];
 }
 
 interface BulletCompany {

@@ -187,8 +187,12 @@ Remember:
           bulletPoints: role.bulletPoints?.map((bullet: string) => {
             const visualWidth = calculateVisualWidth(bullet);
             console.log(`Bullet: "${bullet}" - Visual Width: ${visualWidth}`);
-            return bullet;
-          }).filter((bullet: string) => calculateVisualWidth(bullet) <= 179) || []
+            return {
+              text: bullet,
+              visualWidth,
+              exceedsWidth: visualWidth > 179
+            };
+          }) || []
         })) || []
       })) || [],
       missingKeywords: bulletData.missingKeywords || []
