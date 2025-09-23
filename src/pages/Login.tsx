@@ -49,9 +49,11 @@ const Login = () => {
         });
       } else {
         // Check if user has completed onboarding
+        const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase
           .from("profiles")
           .select("education_onboarding_completed")
+          .eq("user_id", user?.id)
           .single();
         
         if (profile?.education_onboarding_completed) {
