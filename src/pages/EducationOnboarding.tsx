@@ -115,44 +115,55 @@ const EducationOnboarding = () => {
       }
 
       if (!data.isNotApplicable && data.education) {
-        // Save the primary education (first entry)
-        const primaryEducation = data.education[0];
-        let graduationDate = null;
-        if (primaryEducation.graduationYear && primaryEducation.graduationMonth) {
-          graduationDate = `${primaryEducation.graduationYear}-${primaryEducation.graduationMonth.padStart(2, '0')}-01`;
-        }
-
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            degree: primaryEducation.degree,
-            school: primaryEducation.school,
-            graduation_date: graduationDate,
-            education_onboarding_completed: true,
-          })
+        // Clear any existing education entries first
+        const { error: deleteError } = await supabase
+          .from("education")
+          .delete()
           .eq("user_id", session.user.id);
 
-        if (error) {
-          throw error;
+        if (deleteError) {
+          throw deleteError;
         }
 
-        // TODO: Save additional education entries to a separate table if needed
-        // For now, we'll just save the primary education to the profiles table
-      } else {
-        // Clear education if not applicable and mark as completed
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            degree: null,
-            school: null,
-            graduation_date: null,
-            education_onboarding_completed: true,
-          })
-          .eq("user_id", session.user.id);
+        // Save all education entries to the new education table
+        const educationEntries = data.education
+          .filter(entry => entry.degree && entry.school)
+          .map(entry => {
+            let graduationDate = null;
+            if (entry.graduationYear && entry.graduationMonth) {
+              graduationDate = `${entry.graduationYear}-${entry.graduationMonth.padStart(2, '0')}-01`;
+            }
 
-        if (error) {
-          throw error;
+            return {
+              user_id: session.user.id,
+              degree: entry.degree,
+              school: entry.school,
+              graduation_date: graduationDate,
+              is_expected_graduation: entry.isExpectedDate
+            };
+          });
+
+        if (educationEntries.length > 0) {
+          const { error: insertError } = await supabase
+            .from("education")
+            .insert(educationEntries);
+
+          if (insertError) {
+            throw insertError;
+          }
         }
+      }
+
+      // Mark education onboarding as completed
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          education_onboarding_completed: true,
+        })
+        .eq("user_id", session.user.id);
+
+      if (profileError) {
+        throw profileError;
       }
 
       toast({

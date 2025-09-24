@@ -47,6 +47,39 @@ export type Database = {
         }
         Relationships: []
       }
+      education: {
+        Row: {
+          created_at: string
+          degree: string
+          graduation_date: string | null
+          id: string
+          is_expected_graduation: boolean
+          school: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          degree: string
+          graduation_date?: string | null
+          id?: string
+          is_expected_graduation?: boolean
+          school: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          degree?: string
+          graduation_date?: string | null
+          id?: string
+          is_expected_graduation?: boolean
+          school?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       experiences: {
         Row: {
           action: string | null
@@ -100,34 +133,25 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
-          degree: string | null
           education_onboarding_completed: boolean
           email_verified_at: string | null
-          graduation_date: string | null
           id: string
-          school: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          degree?: string | null
           education_onboarding_completed?: boolean
           email_verified_at?: string | null
-          graduation_date?: string | null
           id?: string
-          school?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          degree?: string | null
           education_onboarding_completed?: boolean
           email_verified_at?: string | null
-          graduation_date?: string | null
           id?: string
-          school?: string | null
           updated_at?: string
           user_id?: string
         }

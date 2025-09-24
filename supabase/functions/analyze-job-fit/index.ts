@@ -73,7 +73,7 @@ function calculateWeightedScore(matches: any[], jobPhrases: any[]): number {
 }
 
 // Optimized prompt for cost efficiency while maintaining semantic matching
-function createAnalysisPrompt(jobDescription: string, experiences: any[], education: any) {
+function createAnalysisPrompt(jobDescription: string, experiences: any[], education: any[]): string {
   return `
 Analyze job fit between candidate experience and job requirements. Focus on FUNCTIONAL matches, not just keywords.
 
@@ -83,7 +83,14 @@ ${jobDescription}
 CANDIDATE EXPERIENCES:
 ${JSON.stringify(experiences, null, 2)}
 
-EDUCATION: ${education ? JSON.stringify(education, null, 2) : 'None provided'}
+EDUCATION: 
+${education && education.length > 0 ? education.map((edu: any, index: number) => `
+Education ${index + 1}:
+- School: ${edu.school || 'Not specified'}
+- Degree: ${edu.degree || 'Not specified'}  
+- Graduation: ${edu.graduationDate || 'Not specified'}
+- Expected: ${edu.isExpectedGraduation ? 'Yes' : 'No'}
+`).join('') : 'No education information provided'}
 
 ANALYSIS RULES:
 1. Extract job phrases in categories: technical, soft_skill, industry, qualification, function
@@ -166,7 +173,7 @@ serve(async (req) => {
     }
 
     // Fetch data with better error handling
-    const [experiencesResult, profileResult] = await Promise.allSettled([
+    const [experiencesResult, educationResult] = await Promise.allSettled([
       supabase
         .from('experiences')
         .select(`
@@ -178,10 +185,10 @@ serve(async (req) => {
         `)
         .eq('user_id', user.id),
       supabase
-        .from('profiles')
-        .select('school, degree, graduation_date')
+        .from('education')
+        .select('*')
         .eq('user_id', user.id)
-        .single()
+        .order('created_at', { ascending: false })
     ]);
 
     if (experiencesResult.status === 'rejected') {
@@ -196,9 +203,9 @@ serve(async (req) => {
       throw new Error('No experiences found. Please add at least one experience before analyzing job fit.');
     }
 
-    const profile = profileResult.status === 'fulfilled' && !profileResult.value.error 
-      ? profileResult.value.data 
-      : null;
+    const education = educationResult.status === 'fulfilled' && !educationResult.value.error 
+      ? educationResult.value.data || []
+      : [];
 
     // Format data
     const formattedExperiences = experiences.map(exp => ({
@@ -213,11 +220,12 @@ serve(async (req) => {
       tags: exp.tags || []
     }));
 
-    const formattedEducation = profile ? {
-      school: profile.school,
-      degree: profile.degree,
-      graduationDate: profile.graduation_date
-    } : null;
+    const formattedEducation = education.map((edu: any) => ({
+      school: edu.school,
+      degree: edu.degree,
+      graduationDate: edu.graduation_date,
+      isExpectedGraduation: edu.is_expected_graduation
+    }));
 
     // Create enhanced prompt
     const prompt = createAnalysisPrompt(jobDescription, formattedExperiences, formattedEducation);
