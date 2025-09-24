@@ -18,7 +18,7 @@ const Hero = () => {
           </div>
           
           <h1 className="text-6xl md:text-7xl font-bold text-primary-foreground mb-6 leading-tight">
-            Transform Your Experience Into
+            Connect Your Journey Through
             <span className="bg-gradient-to-r from-accent to-white bg-clip-text text-transparent block">Key Steps</span>
           </h1>
           
