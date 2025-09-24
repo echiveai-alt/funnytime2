@@ -39,15 +39,33 @@ serve(async (req) => {
     }
 
     // Get analysis results from job fit analysis function
+    const requestBody = await req.json();
     const { 
       experienceIdsByRole, 
       bulletKeywords, 
       jobRequirements,
       jobDescription 
-    } = await req.json();
+    } = requestBody;
 
-    if (!experienceIdsByRole || !bulletKeywords) {
-      throw new Error('Missing required data from job fit analysis. Please run job fit analysis first with score >= 85%.');
+    console.log('Request body keys:', Object.keys(requestBody));
+    console.log('experienceIdsByRole type:', typeof experienceIdsByRole);
+    console.log('bulletKeywords type:', typeof bulletKeywords);
+
+    // Enhanced validation with detailed error messages
+    if (!experienceIdsByRole) {
+      throw new Error('Missing experienceIdsByRole from job fit analysis. Ensure job fit score >= 85% before generating bullets.');
+    }
+    
+    if (!bulletKeywords) {
+      throw new Error('Missing bulletKeywords from job fit analysis. Please run job fit analysis first.');
+    }
+    
+    if (typeof experienceIdsByRole !== 'object' || Object.keys(experienceIdsByRole).length === 0) {
+      throw new Error('experienceIdsByRole must be a non-empty object with role keys.');
+    }
+    
+    if (typeof bulletKeywords !== 'object') {
+      throw new Error('bulletKeywords must be an object with keyword categories.');
     }
 
     console.log('Generating resume bullets for user:', user.id);
@@ -56,7 +74,18 @@ serve(async (req) => {
 
     // Fetch the actual experience data using the IDs from job fit analysis
     const allExperienceIds = Object.values(experienceIdsByRole)
-      .flatMap((roleData: any) => roleData.experienceIds);
+      .flatMap((roleData: any) => {
+        if (!roleData?.experienceIds || !Array.isArray(roleData.experienceIds)) {
+          console.warn('Invalid roleData structure:', roleData);
+          return [];
+        }
+        return roleData.experienceIds;
+      })
+      .filter(id => id); // Remove any undefined/null IDs
+    
+    if (allExperienceIds.length === 0) {
+      throw new Error('No valid experience IDs found in experienceIdsByRole.');
+    }
 
     const { data: experiences, error: expError } = await supabase
       .from('experiences')
@@ -82,23 +111,45 @@ serve(async (req) => {
     const formattedExperiencesByRole = {};
     
     Object.entries(experienceIdsByRole).forEach(([roleKey, roleData]: [string, any]) => {
+      if (!roleData?.experienceIds || !Array.isArray(roleData.experienceIds)) {
+        console.warn(`Skipping invalid roleData for ${roleKey}:`, roleData);
+        return;
+      }
+      
       const roleExperiences = experiences
-        .filter(exp => roleData.experienceIds.includes(exp.id))
-        .map(exp => ({
-          id: exp.id,
-          company: exp.roles.companies.name,
-          role: exp.roles.title,
-          title: exp.title,
-          situation: exp.situation,
-          task: exp.task,
-          action: exp.action,
-          result: exp.result,
-          tags: exp.tags || []
-        }));
+        .filter(exp => {
+          if (!exp?.id) {
+            console.warn('Experience missing ID:', exp);
+            return false;
+          }
+          return roleData.experienceIds.includes(exp.id);
+        })
+        .map(exp => {
+          // Validate experience structure
+          if (!exp.roles?.companies?.name || !exp.roles?.title) {
+            console.warn('Experience missing role/company data:', exp);
+          }
+          
+          return {
+            id: exp.id,
+            company: exp.roles?.companies?.name || 'Unknown Company',
+            role: exp.roles?.title || 'Unknown Role',
+            title: exp.title || 'Untitled Experience',
+            situation: exp.situation || '',
+            task: exp.task || '',
+            action: exp.action || '',
+            result: exp.result || '',
+            tags: exp.tags || []
+          };
+        });
+
+      if (roleExperiences.length === 0) {
+        console.warn(`No experiences found for role ${roleKey} with IDs:`, roleData.experienceIds);
+      }
 
       formattedExperiencesByRole[roleKey] = {
-        companyName: roleData.company,
-        roleTitle: roleData.roleTitle,
+        companyName: roleData.company || 'Unknown Company',
+        roleTitle: roleData.roleTitle || 'Unknown Role',
         experiences: roleExperiences
       };
     });
@@ -133,6 +184,10 @@ Responsibilities: ${bulletKeywords.responsibilities?.join(', ') || 'None'}
 
 KEY REQUIREMENTS (from job):
 ${jobRequirements?.technical?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
+${jobRequirements?.soft_skill?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
+${jobRequirements?.industry?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
+${jobRequirements?.qualification?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
+${jobRequirements?.function?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
 
 CRITICAL RULES:
 1. Use ONLY information from user's experiences - never invent details
@@ -219,18 +274,38 @@ Return ONLY JSON:
     const generatedText = data.candidates[0].content.parts[0].text;
     console.log('Generated text preview:', generatedText.substring(0, 200) + '...');
 
-    // Parse JSON response
+    // Enhanced JSON parsing with better error handling
     let bulletData;
     try {
+      // Try to find JSON block in response
       const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error('No JSON found in AI response');
+        console.error('No JSON found in Gemini response. Full text:', generatedText);
+        throw new Error('No JSON found in AI response. Response may be truncated or malformed.');
       }
-      bulletData = JSON.parse(jsonMatch[0]);
+      
+      const jsonString = jsonMatch[0];
+      console.log('Extracted JSON string preview:', jsonString.substring(0, 200) + '...');
+      
+      bulletData = JSON.parse(jsonString);
+      
+      // Validate required structure
+      if (!bulletData.companies || !Array.isArray(bulletData.companies)) {
+        throw new Error('AI response missing required "companies" array');
+      }
+      
+      if (bulletData.companies.length === 0) {
+        console.warn('AI generated no companies/bullets');
+      }
+      
     } catch (parseError) {
-      console.error('Error parsing JSON:', parseError);
-      console.error('Raw text:', generatedText);
-      throw new Error('Failed to parse bullet points from AI response');
+      console.error('JSON parsing failed:', parseError);
+      console.error('Full Gemini response:', generatedText);
+      
+      if (parseError instanceof SyntaxError) {
+        throw new Error(`Invalid JSON in AI response: ${parseError.message}. This may indicate the response was truncated or contains syntax errors.`);
+      }
+      throw new Error(`Failed to parse bullet points: ${parseError.message}`);
     }
 
     // Validate and calculate visual width for each bullet point

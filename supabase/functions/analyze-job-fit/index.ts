@@ -36,13 +36,13 @@ const SCORING_CONFIG = {
 
 
 // Helper function to calculate weighted scores
-function calculateWeightedScore(matches, jobPhrases) {
+function calculateWeightedScore(matches: any[], jobPhrases: any[]): number {
   let totalPossibleScore = 0;
   let achievedScore = 0;
 
   // Group phrases by category and importance
-  const phrasesByCategory = {};
-  jobPhrases.forEach(phrase => {
+  const phrasesByCategory: any = {};
+  jobPhrases.forEach((phrase: any) => {
     if (!phrasesByCategory[phrase.category]) {
       phrasesByCategory[phrase.category] = [];
     }
@@ -54,7 +54,7 @@ function calculateWeightedScore(matches, jobPhrases) {
     const phrases = phrasesByCategory[category];
     const categoryWeight = SCORING_CONFIG.WEIGHTS[category] || 0.1;
     
-    phrases.forEach(phrase => {
+    phrases.forEach((phrase: any) => {
       const importanceMultiplier = SCORING_CONFIG.IMPORTANCE_MULTIPLIERS[phrase.importance];
       const maxPhraseScore = categoryWeight * importanceMultiplier * 100;
       totalPossibleScore += maxPhraseScore;
@@ -73,7 +73,7 @@ function calculateWeightedScore(matches, jobPhrases) {
 }
 
 // Optimized prompt for cost efficiency while maintaining semantic matching
-function createAnalysisPrompt(jobDescription, experiences, education) {
+function createAnalysisPrompt(jobDescription: string, experiences: any[], education: any) {
   return `
 Analyze job fit between candidate experience and job requirements. Focus on FUNCTIONAL matches, not just keywords.
 
@@ -276,7 +276,7 @@ serve(async (req) => {
     const responseText = geminiData.candidates[0].content.parts[0].text;
     
     // Enhanced JSON parsing
-    let analysis;
+    let analysis: any;
     try {
       // Try to find JSON block
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -318,37 +318,52 @@ serve(async (req) => {
 
       // Group experiences by role and get top 6 per role
       if (analysis.relevantExperiences) {
-        // Group by role (company + role title combination)
-        const experiencesByRole = {};
+        // Group by role (company + role title combination) 
+        const experienceIdsByRole = {};
         
         analysis.relevantExperiences.forEach(exp => {
           const roleKey = `${exp.companyName}-${exp.roleTitle}`;
           
-          if (!experiencesByRole[roleKey]) {
-            experiencesByRole[roleKey] = {
+          if (!experienceIdsByRole[roleKey]) {
+            experienceIdsByRole[roleKey] = {
               company: exp.companyName,
               roleTitle: exp.roleTitle,
-              experiences: []
+              experienceIds: []
             };
           }
           
-          experiencesByRole[roleKey].experiences.push(exp);
+          experienceIdsByRole[roleKey].experienceIds.push(exp.id);
         });
         
-        // Sort and limit to top 6 experiences per role
-        Object.keys(experiencesByRole).forEach(roleKey => {
-          experiencesByRole[roleKey].experiences.sort(
-            (a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0)
-          );
-          experiencesByRole[roleKey].experiences = experiencesByRole[roleKey].experiences.slice(0, 6);
+        // Sort and limit to top 6 experience IDs per role
+        Object.keys(experienceIdsByRole).forEach(roleKey => {
+          const roleExperiences = analysis.relevantExperiences
+            .filter(exp => {
+              const expRoleKey = `${exp.companyName}-${exp.roleTitle}`;
+              return expRoleKey === roleKey;
+            })
+            .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+            .slice(0, 6);
+          
+          experienceIdsByRole[roleKey].experienceIds = roleExperiences.map(exp => exp.id);
         });
         
-        // Flatten back to single array for backward compatibility
-        analysis.relevantExperiences = Object.values(experiencesByRole)
-          .flatMap(role => role.experiences);
+        // CRITICAL: Add experienceIdsByRole for generate-resume-bullets
+        analysis.experienceIdsByRole = experienceIdsByRole;
         
-        // Add role-based structure for bullet generation
-        analysis.experiencesByRole = experiencesByRole;
+        // Keep experiencesByRole for analytics/debugging (ANALYTICS ONLY)
+        const experiencesByRole = {};
+        Object.entries(experienceIdsByRole).forEach(([roleKey, roleData]: [string, any]) => {
+          const roleExperiences = analysis.relevantExperiences
+            .filter(exp => roleData.experienceIds.includes(exp.id));
+          
+          experiencesByRole[roleKey] = {
+            company: roleData.company,
+            roleTitle: roleData.roleTitle,
+            experiences: roleExperiences
+          };
+        });
+        analysis.experiencesByRole = experiencesByRole; // ANALYTICS ONLY
       }
 
       // Enhanced recommendations based on score
