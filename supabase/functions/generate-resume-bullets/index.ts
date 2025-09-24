@@ -43,8 +43,7 @@ serve(async (req) => {
     const { 
       experienceIdsByRole, 
       bulletKeywords, 
-      jobRequirements,
-      jobDescription 
+      jobRequirements 
     } = requestBody;
 
     console.log('Request body keys:', Object.keys(requestBody));
