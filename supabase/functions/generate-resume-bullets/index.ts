@@ -15,29 +15,93 @@ serve(async (req) => {
 
   try {
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is not set');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!geminiApiKey || !supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing required environment variables');
     }
 
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get user from JWT token
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header required');
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
     
     if (userError || !user) {
       throw new Error('Authentication failed');
     }
 
-    const { jobDescription, relevantExperiences, selectedKeywords } = await req.json();
+    // Get analysis results from job fit analysis function
+    const { 
+      experienceIdsByRole, 
+      bulletKeywords, 
+      jobRequirements,
+      jobDescription 
+    } = await req.json();
+
+    if (!experienceIdsByRole || !bulletKeywords) {
+      throw new Error('Missing required data from job fit analysis. Please run job fit analysis first with score >= 85%.');
+    }
 
     console.log('Generating resume bullets for user:', user.id);
-    console.log('Selected keywords:', selectedKeywords);
-    console.log('Relevant experiences count:', relevantExperiences?.length || 0);
+    console.log('Experience IDs by role:', Object.keys(experienceIdsByRole));
+    console.log('Bullet keywords:', bulletKeywords);
+
+    // Fetch the actual experience data using the IDs from job fit analysis
+    const allExperienceIds = Object.values(experienceIdsByRole)
+      .flatMap((roleData: any) => roleData.experienceIds);
+
+    const { data: experiences, error: expError } = await supabase
+      .from('experiences')
+      .select(`
+        *,
+        roles!inner(
+          title,
+          companies!inner(name)
+        )
+      `)
+      .in('id', allExperienceIds)
+      .eq('user_id', user.id);
+
+    if (expError) {
+      throw new Error('Failed to fetch experiences: ' + expError.message);
+    }
+
+    if (!experiences || experiences.length === 0) {
+      throw new Error('No experiences found for provided IDs');
+    }
+
+    // Format experiences and group by role according to job fit analysis results
+    const formattedExperiencesByRole = {};
+    
+    Object.entries(experienceIdsByRole).forEach(([roleKey, roleData]: [string, any]) => {
+      const roleExperiences = experiences
+        .filter(exp => roleData.experienceIds.includes(exp.id))
+        .map(exp => ({
+          id: exp.id,
+          company: exp.roles.companies.name,
+          role: exp.roles.title,
+          title: exp.title,
+          situation: exp.situation,
+          task: exp.task,
+          action: exp.action,
+          result: exp.result,
+          tags: exp.tags || []
+        }));
+
+      formattedExperiencesByRole[roleKey] = {
+        companyName: roleData.company,
+        roleTitle: roleData.roleTitle,
+        experiences: roleExperiences
+      };
+    });
 
     // Calculate visual width score
     const calculateVisualWidth = (text: string): number => {
@@ -56,43 +120,36 @@ serve(async (req) => {
       return score;
     };
 
-    // Group experiences by company and role
-    const experiencesByRole = relevantExperiences?.reduce((acc: any, exp: any) => {
-      const key = `${exp.companyName}-${exp.roleTitle}`;
-      if (!acc[key]) {
-        acc[key] = {
-          companyName: exp.companyName,
-          roleTitle: exp.roleTitle,
-          experiences: []
-        };
-      }
-      acc[key].experiences.push(exp);
-      return acc;
-    }, {}) || {};
+    // Create optimized prompt using extracted keywords instead of full job description
+    const createBulletPrompt = () => {
+      return `You are a professional resume writer. Create up to 6 impactful resume bullet points for each role using ONLY the user's provided experiences.
 
-    // Create comprehensive prompt for Gemini
-    const prompt = `You are a professional resume writer specializing in creating impactful bullet points. Create up to 6 resume bullet points for each role based on the user's STAR format experiences and job description alignment.
+KEYWORDS TO INTEGRATE (from job analysis):
+Technical: ${bulletKeywords.technical?.join(', ') || 'None'}
+Action Verbs: ${bulletKeywords.actionVerbs?.join(', ') || 'None'}
+Industry Terms: ${bulletKeywords.industry?.join(', ') || 'None'}
+Metrics: ${bulletKeywords.metrics?.join(', ') || 'None'}
+Responsibilities: ${bulletKeywords.responsibilities?.join(', ') || 'None'}
 
-CRITICAL REQUIREMENTS:
-1. ACCURACY: Only use information explicitly provided in the user's experiences - never invent or exaggerate
-2. KEYWORDS: Naturally integrate these selected keywords where they fit: ${selectedKeywords?.join(', ') || ''}
-3. STRUCTURE: Use "Result, Action, Context" OR "Action, Context, Result" OR "Action, Result"
-4. NO abbreviations unless they appear in the job description
-5. NO em-dashes, colons, or semicolons
-6. Each bullet point MUST be under 179 visual width score
-7. Prioritize experiences with quantified results
-8. Maximum 6 bullets per role
+KEY REQUIREMENTS (from job):
+${jobRequirements?.technical?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
 
-JOB DESCRIPTION:
-${jobDescription}
+CRITICAL RULES:
+1. Use ONLY information from user's experiences - never invent details
+2. Integrate keywords naturally where they fit the actual experience
+3. Structure: "Action, Context, Result" or "Result from Action"
+4. No abbreviations, em-dashes, colons, semicolons
+5. Each bullet MUST be under 179 visual width score
+6. Prioritize quantified results
+7. Maximum 6 bullets per role
 
 USER EXPERIENCES BY ROLE:
-${Object.values(experiencesByRole).map((role: any) => `
-Company: ${role.companyName}
-Role: ${role.roleTitle}
+${Object.entries(formattedExperiencesByRole).map(([roleKey, roleData]: [string, any]) => `
+Company: ${roleData.companyName}
+Role: ${roleData.roleTitle}
 
 Experiences:
-${role.experiences.map((exp: any, idx: number) => `
+${roleData.experiences.map((exp: any, idx: number) => `
 ${idx + 1}. Title: ${exp.title}
    Situation: ${exp.situation}
    Task: ${exp.task}
@@ -102,7 +159,7 @@ ${idx + 1}. Title: ${exp.title}
 `).join('')}
 `).join('\n')}
 
-Return ONLY a JSON object with this exact structure:
+Return ONLY JSON:
 {
   "companies": [
     {
@@ -110,44 +167,41 @@ Return ONLY a JSON object with this exact structure:
       "roles": [
         {
           "title": "Role Title",
-          "bulletPoints": [
-            "bullet point 1",
-            "bullet point 2"
-          ]
+          "bulletPoints": ["bullet 1", "bullet 2"]
         }
       ]
     }
   ],
-  "missingKeywords": ["keyword1", "keyword2"]
-}
+  "keywordsUsed": ["keywords successfully integrated"],
+  "keywordsNotUsed": ["keywords that didn't fit naturally"]
+}`;
+    };
 
-Remember:
-- Use ONLY the information provided in the user's experiences
-- Integrate selected keywords naturally where appropriate
-- Keep bullet points professional and impactful
-- Focus on achievements and results where available
-- Each bullet point must be factually accurate to the user's actual experience`;
+    const prompt = createBulletPrompt();
 
-    // Call Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
+    // Call Gemini API with optimized settings
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      }),
-    });
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.2,  // Low for consistency
+            topK: 30,
+            topP: 0.9,
+            maxOutputTokens: 2048,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -163,15 +217,16 @@ Remember:
     }
 
     const generatedText = data.candidates[0].content.parts[0].text;
-    console.log('Generated text:', generatedText);
+    console.log('Generated text preview:', generatedText.substring(0, 200) + '...');
 
-    // Parse JSON response from Gemini
+    // Parse JSON response
     let bulletData;
     try {
-      // Extract JSON from markdown code blocks if present
-      const jsonMatch = generatedText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-      const jsonText = jsonMatch ? jsonMatch[1] : generatedText;
-      bulletData = JSON.parse(jsonText);
+      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in AI response');
+      }
+      bulletData = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
       console.error('Error parsing JSON:', parseError);
       console.error('Raw text:', generatedText);
@@ -186,7 +241,7 @@ Remember:
           title: role.title,
           bulletPoints: role.bulletPoints?.map((bullet: string) => {
             const visualWidth = calculateVisualWidth(bullet);
-            console.log(`Bullet: "${bullet}" - Visual Width: ${visualWidth}`);
+            console.log(`Bullet: "${bullet.substring(0, 50)}..." - Visual Width: ${visualWidth}`);
             return {
               text: bullet,
               visualWidth,
@@ -195,10 +250,18 @@ Remember:
           }) || []
         })) || []
       })) || [],
-      missingKeywords: bulletData.missingKeywords || []
+      keywordsUsed: bulletData.keywordsUsed || [],
+      keywordsNotUsed: bulletData.keywordsNotUsed || [],
+      generatedFrom: {
+        totalExperiences: allExperienceIds.length,
+        rolesProcessed: Object.keys(experienceIdsByRole).length,
+        keywordCategories: Object.keys(bulletKeywords).length
+      }
     };
 
     console.log('Resume bullets generated successfully');
+    console.log('Keywords used:', validatedBullets.keywordsUsed);
+    console.log('Keywords not used:', validatedBullets.keywordsNotUsed);
     
     return new Response(JSON.stringify(validatedBullets), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -207,7 +270,8 @@ Remember:
   } catch (error) {
     console.error('Error in generate-resume-bullets function:', error);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Failed to generate resume bullets' 
+      error: error instanceof Error ? error.message : 'Failed to generate resume bullets',
+      timestamp: new Date().toISOString()
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
