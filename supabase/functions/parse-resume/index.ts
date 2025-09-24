@@ -38,71 +38,226 @@ interface ParsedResumeData {
   experiences: ParsedExperience[];
 }
 
-// Smart text preprocessing - removes fluff but keeps structure
+// Optimized hybrid text preprocessing approach
 function preprocessResumeText(text: string): string {
-  // Remove contact info and common fluff, but preserve work experience structure
-  const cleaned = text
-    .replace(/(?:references available|email:|phone:|address:|linkedin:|github:)[^\n]*/gi, '')
-    .replace(/(?:objective|summary|profile)[:\s]*[^\n]*/gi, '') // Remove objective/summary
-    .replace(/(?:skills|technologies|competencies)[:\s]*[^\n]*/gi, '') // Remove skills section
-    .replace(/education[:\s]*[\s\S]*?(?=(?:experience|work|employment|professional))/gi, '') // Remove education
+  console.log(`Original text length: ${text.length}`);
+  
+  // Step 1: Quick normalization
+  let cleaned = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\t/g, ' ')
+    .replace(/\s{2,}/g, ' ')
     .replace(/\n\s*\n/g, '\n')
-    .replace(/\s{3,}/g, ' ')
     .trim();
-    
-  // If still too long, intelligently truncate by keeping work experience sections
-  if (cleaned.length > 6000) {
-    const experienceMatch = cleaned.match(/(experience|work|employment|professional)[\s\S]*/gi);
-    if (experienceMatch && experienceMatch[0]) {
-      return experienceMatch[0].substring(0, 6000);
-    }
-    return cleaned.substring(0, 6000);
+
+  // Step 2: Fast attempt to isolate experience section
+  const experienceSection = fastExtractExperience(cleaned);
+  
+  if (experienceSection && experienceSection.length > 200) {
+    console.log(`✓ Isolated experience section: ${experienceSection.length} chars (${Math.round((experienceSection.length/text.length)*100)}% of original)`);
+    cleaned = experienceSection;
+  } else {
+    console.log(`✗ Experience isolation failed, using removal approach`);
+    cleaned = efficientRemovalCleaning(cleaned);
   }
   
+  // Step 3: Smart truncation only if still too long
+  if (cleaned.length > 6000) {
+    console.log(`Text still too long (${cleaned.length}), applying intelligent truncation`);
+    cleaned = intelligentTruncation(cleaned);
+  }
+  
+  console.log(`Final processed text: ${cleaned.length} chars`);
   return cleaned;
 }
 
-// More efficient but still precise prompt
-function createOptimizedPrompt(resumeText: string): string {
-  return `Parse this resume into structured data. For each bullet point, create ONE experience entry with proper STAR breakdown and meaningful titles.
+// Fast experience extraction with minimal regex operations
+function fastExtractExperience(text: string): string | null {
+  // Single pass to find experience section bounds
+  const experienceRegex = /(?:^|\n)\s*(?:(?:work\s+)?experience|professional\s+experience|employment\s+(?:history|record)|career\s+(?:history|summary)|work\s+history)\s*(?:[:|\n])([\s\S]*?)(?=(?:\n\s*(?:education|skills?|certifications?|awards?|publications?|references?|additional\s+information)\s*[:|\n])|$)/gi;
+  
+  const match = experienceRegex.exec(text);
+  return match && match[1] && match[1].trim().length > 100 ? match[1].trim() : null;
+}
 
-Resume:
+// Optimized removal approach - single pass with combined regex
+function efficientRemovalCleaning(text: string): string {
+  // Single regex that removes multiple section types in one pass
+  return text
+    // Remove everything before first work section
+    .replace(/^[\s\S]*?(?=(?:objective|summary|profile|experience|work|employment|professional))/gi, '')
+    // Remove non-work sections in one pass
+    .replace(/(?:^|\n)\s*(?:(?:contact|personal)\s+(?:information|details)|email:|phone:|tel:|mobile:|address:|linkedin:|github:|portfolio:)[^\n]*/gi, '')
+    .replace(/(?:^|\n)\s*(?:objective|summary|profile|skills?|technologies|competencies|technical\s+skills|education|certifications?|awards?|publications?|references?|additional\s+information)\s*[:|\n][\s\S]*?(?=(?:\n\s*(?:experience|work|employment|professional|\w+\s+(?:engineer|developer|manager|analyst|specialist|coordinator|director|lead|senior|junior))))|$/gi, '')
+    // Clean up whitespace
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    .replace(/\s{3,}/g, ' ')
+    .trim();
+}
+
+
+
+
+
+// NEW: Intelligent truncation that preserves complete job entries
+function intelligentTruncation(text: string): string {
+  const lines = text.split('\n');
+  let result = '';
+  let currentLength = 0;
+  const maxLength = 5800; // Leave room for processing
+  
+  // Try to identify job entries and keep them complete
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineLength = line.length + 1; // +1 for newline
+    
+    // If adding this line would exceed limit
+    if (currentLength + lineLength > maxLength) {
+      // Check if this looks like the start of a new job entry
+      if (isJobEntryStart(line)) {
+        // Don't start a new job entry if we're near the limit
+        break;
+      }
+      // If it's a bullet point or continuation, add it if there's some room
+      if (currentLength < maxLength - 100) {
+        result += line + '\n';
+        currentLength += lineLength;
+      }
+      break;
+    }
+    
+    result += line + '\n';
+    currentLength += lineLength;
+  }
+  
+  return result.trim();
+}
+
+// Helper function to identify job entry starts
+function isJobEntryStart(line: string): boolean {
+  const trimmed = line.trim().toLowerCase();
+  
+  // Check for job title patterns
+  const jobTitlePatterns = [
+    /^[a-z\s]+(?:engineer|developer|manager|analyst|specialist|coordinator|director|lead|senior|junior|associate|consultant|advisor)/,
+    /^(?:senior|junior|lead|principal|staff|associate)\s+[a-z\s]+/,
+    /^\w+\s+(?:at|@)\s+\w+/, // "Position at Company" format
+  ];
+  
+  // Check for company/date patterns
+  const companyDatePattern = /\b(?:19|20)\d{2}\b.*(?:19|20)\d{2}\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i;
+  
+  return jobTitlePatterns.some(pattern => pattern.test(trimmed)) || 
+         companyDatePattern.test(line);
+}
+
+// Enhanced prompt with better guidance for experience extraction
+function createOptimizedPrompt(resumeText: string): string {
+  return `Parse this resume text into structured data. Extract work experience information and convert each responsibility/achievement bullet point into a separate experience entry with STAR format.
+
+Resume Text:
 ${resumeText}
 
-CRITICAL REQUIREMENTS:
-1. Create ONE experience per bullet point
-2. Break each bullet into STAR format (Situation, Task, Action, Result)
-3. Generate titles as: "Result/Impact - Action Keywords" (e.g., "Increased sales 25% - automated reporting system")
+PARSING INSTRUCTIONS:
+1. COMPANIES: Extract all companies worked at with employment periods
+2. ROLES: Extract job titles with their date ranges and associated companies  
+3. EXPERIENCES: For each bullet point under each role, create ONE experience entry
 
-Return ONLY valid JSON:
+EXPERIENCE TITLE GENERATION:
+- Format: "Result/Impact - Action Keywords" 
+- Focus on measurable outcomes when available
+- Examples: "Increased sales 25% - automated reporting", "Led team of 8 - agile development"
+- If no clear result: "Action description - key skills used"
+
+STAR FORMAT BREAKDOWN:
+- Situation: Context or background (can be null if not clear)
+- Task: What needed to be accomplished (can be null if merged with action)  
+- Action: Specific actions taken (REQUIRED - never null)
+- Result: Quantified outcome or benefit (null if not specified)
+
+DATE FORMAT: Use "YYYY-MM" format. If only year available, use "YYYY-01" for start dates and "YYYY-12" for end dates.
+
+Return ONLY valid JSON in this exact format:
 {
-  "companies": [{"name": "Company", "start_date": "YYYY-MM", "end_date": "YYYY-MM", "is_current": false}],
-  "roles": [{"title": "Role", "start_date": "YYYY-MM", "end_date": "YYYY-MM", "is_current": false, "company_name": "Company"}],
+  "companies": [
+    {
+      "name": "Company Name",
+      "start_date": "YYYY-MM", 
+      "end_date": "YYYY-MM",
+      "is_current": false
+    }
+  ],
+  "roles": [
+    {
+      "title": "Job Title",
+      "start_date": "YYYY-MM",
+      "end_date": "YYYY-MM", 
+      "is_current": false,
+      "company_name": "Exact Company Name"
+    }
+  ],
   "experiences": [
     {
       "title": "Impact/Result - Action Keywords",
-      "situation": "Context/background or null",
-      "task": "What needed to be done or null", 
-      "action": "Specific actions taken",
+      "situation": "Context or null",
+      "task": "What needed to be done or null",
+      "action": "Specific actions taken", 
       "result": "Quantified outcome or null",
-      "role_title": "Exact role from roles array",
-      "company_name": "Exact company from companies array"
+      "role_title": "Exact role title from roles array",
+      "company_name": "Exact company name from companies array"
     }
   ]
+}`;
 }
 
-Title Examples:
-- "Reduced costs 30% - process automation"
-- "Led team of 8 - project management"  
-- "Improved accuracy 95% - system redesign"
-- "Generated $2M revenue - client acquisition"`;
+// Enhanced PDF text extraction (basic improvement - consider using proper PDF parser)
+async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
+  const uint8Array = new Uint8Array(arrayBuffer);
+  const text = new TextDecoder().decode(uint8Array);
+  
+  // Try different PDF text extraction methods
+  let extractedText = '';
+  
+  // Method 1: Look for stream content
+  const streamMatches = text.match(/stream\s*\n(.*?)\nendstream/gs);
+  if (streamMatches && streamMatches.length > 0) {
+    extractedText = streamMatches
+      .map(match => match.replace(/stream\s*\n|\nendstream/g, ''))
+      .join(' ')
+      .replace(/[^\w\s\.\,\-\(\)\/\:\%\$\@]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  
+  // Method 2: Look for text objects if streams didn't work
+  if (!extractedText || extractedText.length < 50) {
+    const textMatches = text.match(/\(([^)]+)\)\s*Tj/g);
+    if (textMatches && textMatches.length > 0) {
+      extractedText = textMatches
+        .map(match => match.replace(/^\(|\)\s*Tj$/g, ''))
+        .join(' ')
+        .replace(/\\[rnt]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+  }
+  
+  if (!extractedText || extractedText.length < 50) {
+    throw new Error('Could not extract readable text from PDF. Consider using OCR for scanned documents.');
+  }
+  
+  return extractedText;
 }
 
-// Batch database operations with better error handling
-async function batchInsert(supabase: any, table: string, data: any[], batchSize = 50) {
+// Improved batch insert with transaction support
+async function batchInsert(supabase: any, table: string, data: any[], batchSize = 25) {
+  if (data.length === 0) return [];
+  
   const results = [];
+  
   for (let i = 0; i < data.length; i += batchSize) {
     const batch = data.slice(i, i + batchSize);
+    
     const { data: batchResults, error } = await supabase
       .from(table)
       .insert(batch)
@@ -110,14 +265,58 @@ async function batchInsert(supabase: any, table: string, data: any[], batchSize 
     
     if (error) {
       console.error(`Batch insert error for ${table}:`, error);
+      console.error('Failed batch data:', JSON.stringify(batch, null, 2));
       throw new Error(`Failed to insert ${table}: ${error.message}`);
     }
     
     if (batchResults) {
       results.push(...batchResults);
+      console.log(`Inserted batch ${Math.floor(i/batchSize) + 1} for ${table}: ${batchResults.length} records`);
     }
   }
+  
   return results;
+}
+
+// Enhanced fuzzy matching with better scoring
+function findBestMatch(target: string, candidates: any[], nameField: string): any | null {
+  if (!target || candidates.length === 0) return null;
+  
+  const targetLower = target.trim().toLowerCase();
+  let bestMatch = null;
+  let bestScore = 0;
+  
+  for (const candidate of candidates) {
+    const candidateName = candidate[nameField].trim().toLowerCase();
+    
+    // Exact match gets highest score
+    if (candidateName === targetLower) {
+      return candidate;
+    }
+    
+    // Calculate similarity score
+    let score = 0;
+    
+    // Contains match
+    if (candidateName.includes(targetLower) || targetLower.includes(candidateName)) {
+      score = 0.8;
+    }
+    
+    // Word overlap scoring
+    const targetWords = targetLower.split(/\s+/);
+    const candidateWords = candidateName.split(/\s+/);
+    const commonWords = targetWords.filter(word => candidateWords.includes(word));
+    const wordOverlapScore = commonWords.length / Math.max(targetWords.length, candidateWords.length);
+    
+    score = Math.max(score, wordOverlapScore);
+    
+    if (score > bestScore && score > 0.5) { // Minimum threshold
+      bestScore = score;
+      bestMatch = candidate;
+    }
+  }
+  
+  return bestMatch;
 }
 
 serve(async (req) => {
@@ -126,18 +325,20 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting smart resume parsing');
+    console.log('Starting enhanced resume parsing');
     
-    // Setup (same as before)
+    // Environment and client setup
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    if (!geminiApiKey) throw new Error('Gemini API key not configured');
+    if (!geminiApiKey) {
+      throw new Error('Gemini API key not configured');
+    }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Auth check
+    // Authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'No authorization header' }), {
@@ -156,52 +357,44 @@ serve(async (req) => {
       });
     }
 
-    // Rate limiting check
+    // Enhanced rate limiting check
     const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
-    const { data: recentParses } = await supabase
+    const { data: recentParses, error: rateLimitError } = await supabase
       .from('companies')
-      .select('id')
+      .select('id, created_at')
       .eq('user_id', user.id)
       .gte('created_at', oneHourAgo);
     
-    if (recentParses && recentParses.length >= 3) {
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+    }
+    
+    if (recentParses && recentParses.length >= 5) { // Increased limit slightly
       return new Response(JSON.stringify({ 
-        error: 'Rate limit: Maximum 3 resume parses per hour' 
+        error: `Rate limit exceeded: ${recentParses.length}/5 resume parses in the last hour. Try again later.` 
       }), {
         status: 429,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Extract text (same PDF/text handling as before)
+    // File processing
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const resumeText = formData.get('resumeText') as string;
 
     let extractedText = '';
+    
     if (file) {
-      if (file.type === 'text/plain') {
+      console.log(`Processing file: ${file.name}, type: ${file.type}, size: ${file.size}`);
+      
+      if (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt')) {
         extractedText = await file.text();
       } else if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
         const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const pdfText = new TextDecoder().decode(uint8Array);
-        const textMatches = pdfText.match(/stream\s*\n(.*?)\nendstream/gs);
-        
-        if (textMatches && textMatches.length > 0) {
-          extractedText = textMatches
-            .map(match => match.replace(/stream\s*\n|\nendstream/g, ''))
-            .join(' ')
-            .replace(/[^\w\s\.\,\-\(\)\/\:]/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-        }
-        
-        if (!extractedText || extractedText.length < 50) {
-          throw new Error('Could not extract readable text from PDF');
-        }
+        extractedText = await extractPDFText(arrayBuffer);
       } else {
-        throw new Error('Unsupported file format');
+        throw new Error(`Unsupported file format: ${file.type}. Please use PDF or TXT files.`);
       }
     } else if (resumeText) {
       extractedText = resumeText;
@@ -209,172 +402,213 @@ serve(async (req) => {
       throw new Error('No file or text provided');
     }
 
-    // Smart preprocessing
-    const processedText = preprocessResumeText(extractedText);
-    console.log(`Text optimized: ${extractedText.length} → ${processedText.length} chars`);
+    if (extractedText.length < 100) {
+      throw new Error('Resume text too short. Please provide a complete resume.');
+    }
 
-    // Use Gemini Flash for better cost efficiency while maintaining quality
+    // Enhanced text preprocessing
+    const processedText = preprocessResumeText(extractedText);
+    console.log(`Text processing: ${extractedText.length} → ${processedText.length} chars`);
+
+    // AI parsing with better error handling
     const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: createOptimizedPrompt(processedText) }] }],
         generationConfig: {
-          maxOutputTokens: 4096, // Enough for detailed parsing
-          temperature: 0, // Consistent results
-          topP: 0.8,
-        }
+          maxOutputTokens: 4096,
+          temperature: 0.1, // Slightly higher for more creative titles
+          topP: 0.9,
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+        ]
       })
     });
 
     if (!geminiResponse.ok) {
       const errorText = await geminiResponse.text();
-      console.error('Gemini error:', errorText);
-      throw new Error(`Gemini API error: ${geminiResponse.status}`);
+      console.error('Gemini API error:', errorText);
+      throw new Error(`AI service error: ${geminiResponse.status}. Please try again.`);
     }
 
     const geminiData = await geminiResponse.json();
+    
+    if (geminiData.candidates?.[0]?.finishReason === 'SAFETY') {
+      throw new Error('Resume content was flagged by AI safety filters. Please review and try again.');
+    }
+    
     const generatedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!generatedText) {
-      throw new Error('No response from Gemini API');
+      console.error('No response from Gemini:', JSON.stringify(geminiData, null, 2));
+      throw new Error('No response from AI service. Please try again.');
     }
 
-    // Parse and validate
+    // Enhanced JSON parsing and validation
     let parsedData: ParsedResumeData;
     try {
+      // More robust JSON extraction
       const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON found in Gemini response');
-      parsedData = JSON.parse(jsonMatch[0]);
-      
-      // Validate structure
-      if (!parsedData.companies || !parsedData.roles || !parsedData.experiences) {
-        throw new Error('Invalid data structure from AI parser');
+      if (!jsonMatch) {
+        console.error('No JSON found in response:', generatedText.substring(0, 500));
+        throw new Error('Invalid AI response format');
       }
       
-      // Validate that experiences have proper STAR format
-      for (const exp of parsedData.experiences) {
-        if (!exp.title || !exp.action) {
-          throw new Error('Experiences missing required title or action');
+      const jsonString = jsonMatch[0];
+      parsedData = JSON.parse(jsonString);
+      
+      // Enhanced validation
+      if (!parsedData || typeof parsedData !== 'object') {
+        throw new Error('Invalid data structure');
+      }
+      
+      if (!Array.isArray(parsedData.companies) || !Array.isArray(parsedData.roles) || !Array.isArray(parsedData.experiences)) {
+        throw new Error('Missing required arrays in parsed data');
+      }
+      
+      if (parsedData.companies.length === 0) {
+        throw new Error('No companies found in resume');
+      }
+      
+      if (parsedData.roles.length === 0) {
+        throw new Error('No roles found in resume');  
+      }
+      
+      if (parsedData.experiences.length === 0) {
+        throw new Error('No experiences found in resume');
+      }
+      
+      // Validate experience structure
+      for (const [index, exp] of parsedData.experiences.entries()) {
+        if (!exp.title || !exp.action || !exp.role_title || !exp.company_name) {
+          console.error(`Invalid experience at index ${index}:`, exp);
+          throw new Error(`Experience ${index + 1} missing required fields`);
         }
       }
       
     } catch (parseError) {
-      console.error('Parse error:', generatedText.substring(0, 500));
-      throw new Error('Invalid JSON response from AI parser');
+      console.error('JSON parsing failed:', parseError);
+      console.error('Response text:', generatedText.substring(0, 1000));
+      throw new Error('Failed to parse AI response. Please try again.');
     }
 
-    console.log(`Parsed: ${parsedData.companies.length} companies, ${parsedData.roles.length} roles, ${parsedData.experiences.length} experiences`);
+    console.log(`Successfully parsed: ${parsedData.companies.length} companies, ${parsedData.roles.length} roles, ${parsedData.experiences.length} experiences`);
 
-    // Batch database operations
+    // Database operations with better error handling and matching
     const results = { companies: [], roles: [], experiences: [] };
 
-    // Insert companies
-    if (parsedData.companies.length > 0) {
-      const companyInserts = parsedData.companies.map(company => ({
-        user_id: user.id,
-        name: company.name,
-        start_date: company.start_date,
-        end_date: company.end_date,
-        is_current: company.is_current
-      }));
-      
-      results.companies = await batchInsert(supabase, 'companies', companyInserts);
-    }
-
-    // Insert roles with fuzzy matching for robustness
-    if (parsedData.roles.length > 0) {
-      const roleInserts = parsedData.roles.map(role => {
-        // Try exact match first, then fuzzy match
-        let company = results.companies.find(c => c.name.trim().toLowerCase() === role.company_name.trim().toLowerCase());
-        
-        if (!company) {
-          // Fuzzy match - find company name that contains or is contained in role's company name
-          company = results.companies.find(c => 
-            c.name.toLowerCase().includes(role.company_name.toLowerCase()) ||
-            role.company_name.toLowerCase().includes(c.name.toLowerCase())
-          );
-        }
-        
-        if (!company) {
-          console.error(`Company matching failed for role "${role.title}" at company "${role.company_name}"`);
-          console.error(`Available companies:`, results.companies.map(c => c.name));
-          throw new Error(`Company not found: "${role.company_name}". Available: ${results.companies.map(c => c.name).join(', ')}`);
-        }
-        
-        return {
+    try {
+      // Insert companies
+      if (parsedData.companies.length > 0) {
+        const companyInserts = parsedData.companies.map(company => ({
           user_id: user.id,
-          company_id: company.id,
-          title: role.title,
-          start_date: role.start_date,
-          end_date: role.end_date,
-          is_current: role.is_current
-        };
-      });
-      
-      results.roles = await batchInsert(supabase, 'roles', roleInserts);
+          name: company.name.trim(),
+          start_date: company.start_date,
+          end_date: company.end_date,
+          is_current: company.is_current
+        }));
+        
+        results.companies = await batchInsert(supabase, 'companies', companyInserts);
+      }
+
+      // Insert roles with enhanced matching
+      if (parsedData.roles.length > 0) {
+        const roleInserts = parsedData.roles.map(role => {
+          const company = findBestMatch(role.company_name, results.companies, 'name');
+          
+          if (!company) {
+            console.error(`Company not found for role: "${role.title}" at "${role.company_name}"`);
+            console.error('Available companies:', results.companies.map(c => c.name));
+            throw new Error(`Cannot match role "${role.title}" to any company. Found companies: ${results.companies.map(c => c.name).join(', ')}`);
+          }
+          
+          return {
+            user_id: user.id,
+            company_id: company.id,
+            title: role.title.trim(),
+            start_date: role.start_date,
+            end_date: role.end_date,
+            is_current: role.is_current
+          };
+        });
+        
+        results.roles = await batchInsert(supabase, 'roles', roleInserts);
+      }
+
+      // Insert experiences with enhanced matching
+      if (parsedData.experiences.length > 0) {
+        const experienceInserts = parsedData.experiences.map((experience, index) => {
+          const role = findBestMatch(experience.role_title, results.roles, 'title');
+          
+          if (!role) {
+            console.error(`Role not found for experience ${index + 1}: "${experience.title}" with role "${experience.role_title}"`);
+            console.error('Available roles:', results.roles.map(r => r.title));
+            throw new Error(`Cannot match experience "${experience.title}" to any role. Found roles: ${results.roles.map(r => r.title).join(', ')}`);
+          }
+          
+          return {
+            user_id: user.id,
+            role_id: role.id,
+            title: experience.title.trim(),
+            situation: experience.situation?.trim() || null,
+            task: experience.task?.trim() || null,
+            action: experience.action.trim(),
+            result: experience.result?.trim() || null,
+            tags: [] // Initialize empty tags array
+          };
+        });
+        
+        results.experiences = await batchInsert(supabase, 'experiences', experienceInserts);
+      }
+
+    } catch (dbError) {
+      console.error('Database operation failed:', dbError);
+      throw new Error(`Database error: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
     }
 
-    // Insert experiences with fuzzy matching for robustness
-    if (parsedData.experiences.length > 0) {
-      const experienceInserts = parsedData.experiences.map(experience => {
-        // Try exact match first, then fuzzy match
-        let role = results.roles.find(r => 
-          r.title.trim().toLowerCase() === experience.role_title.trim().toLowerCase()
-        );
-        
-        if (!role) {
-          // Fuzzy match - find role that contains or is contained in experience's role title
-          role = results.roles.find(r => 
-            r.title.toLowerCase().includes(experience.role_title.toLowerCase()) ||
-            experience.role_title.toLowerCase().includes(r.title.toLowerCase())
-          );
-        }
-        
-        if (!role) {
-          console.error(`Role matching failed for experience "${experience.title}" with role "${experience.role_title}"`);
-          console.error(`Available roles:`, results.roles.map(r => r.title));
-          throw new Error(`Role not found: "${experience.role_title}". Available: ${results.roles.map(r => r.title).join(', ')}`);
-        }
-        
-        return {
-          user_id: user.id,
-          role_id: role.id,
-          title: experience.title,
-          situation: experience.situation,
-          task: experience.task,
-          action: experience.action,
-          result: experience.result,
-          tags: []
-        };
-      });
-      
-      results.experiences = await batchInsert(supabase, 'experiences', experienceInserts);
-    }
-
+    // Success response with enhanced details
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Successfully imported ${results.companies.length} companies, ${results.roles.length} roles, and ${results.experiences.length} experiences`,
+      message: `Successfully imported resume data`,
       data: {
         companies: results.companies.length,
         roles: results.roles.length,
-        experiences: results.experiences.length
+        experiences: results.experiences.length,
+        processing_stats: {
+          original_text_length: extractedText.length,
+          processed_text_length: processedText.length,
+          compression_ratio: Math.round((processedText.length / extractedText.length) * 100)
+        }
       },
-      sample_titles: results.experiences.slice(0, 3).map(exp => exp.title)
+      sample_data: {
+        companies: results.companies.slice(0, 2).map(c => c.name),
+        roles: results.roles.slice(0, 3).map(r => r.title),
+        experience_titles: results.experiences.slice(0, 5).map(exp => exp.title)
+      }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in parse-resume function:', error);
+    console.error('Resume parsing error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Failed to parse resume';
-    const statusCode = errorMessage.includes('Rate limit') ? 429 : 
-                      errorMessage.includes('Unsupported') || errorMessage.includes('extract') ? 400 : 500;
+    
+    // Determine appropriate status code
+    let statusCode = 500;
+    if (errorMessage.includes('Rate limit')) statusCode = 429;
+    else if (errorMessage.includes('Unsupported') || errorMessage.includes('too short') || errorMessage.includes('extract')) statusCode = 400;
+    else if (errorMessage.includes('Unauthorized')) statusCode = 401;
     
     return new Response(JSON.stringify({ 
       error: errorMessage,
-      success: false
+      success: false,
+      timestamp: new Date().toISOString()
     }), {
       status: statusCode,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
