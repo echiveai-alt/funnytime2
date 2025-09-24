@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { storeJobKeyPhrases, storeJobDescription, storeRelevantExperiences } from '@/utils/jobAnalysis';
+import { storeJobKeyPhrases, storeJobDescription, storeRelevantExperiences, clearAllJobAnalysisData } from '@/utils/jobAnalysis';
 import { useResumeBullets } from '@/hooks/useResumeBullets';
 
 interface AnalysisResult {
@@ -39,6 +39,9 @@ export const useJobAnalysis = () => {
   const analyzeJobFit = async (jobDescription: string): Promise<AnalysisResult | null> => {
     try {
       setIsAnalyzing(true);
+      
+      // Clear all previous job analysis data to prevent mixing
+      clearAllJobAnalysisData();
       
       // Store job description locally
       storeJobDescription(jobDescription);

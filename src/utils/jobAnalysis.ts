@@ -106,3 +106,18 @@ export const clearStoredRelevantExperiences = () => {
     console.error('Failed to clear relevant experiences:', error);
   }
 };
+
+// Clear all job analysis related data
+export const clearAllJobAnalysisData = () => {
+  try {
+    localStorage.removeItem('jobKeyPhrases');
+    localStorage.removeItem('currentJobDescription');
+    localStorage.removeItem('relevantExperiences');
+    localStorage.removeItem('jobAnalysisResult');
+    localStorage.removeItem('resumeBullets');
+    localStorage.removeItem('selectedKeywords');
+    console.log('All job analysis data cleared');
+  } catch (error) {
+    console.error('Failed to clear job analysis data:', error);
+  }
+};

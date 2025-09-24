@@ -35,6 +35,9 @@ export const useResumeBullets = () => {
     try {
       setIsGenerating(true);
       
+      // Clear previous resume bullets to prevent mixing
+      localStorage.removeItem('resumeBullets');
+      
       // Get current session
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
