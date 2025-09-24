@@ -108,7 +108,7 @@ serve(async (req) => {
     }
 
     // Format experiences and group by role according to job fit analysis results
-    const formattedExperiencesByRole = {};
+    const formattedExperiencesByRole: any = {};
     
     Object.entries(experienceIdsByRole).forEach(([roleKey, roleData]: [string, any]) => {
       if (!roleData?.experienceIds || !Array.isArray(roleData.experienceIds)) {
@@ -305,7 +305,7 @@ Return ONLY JSON:
       if (parseError instanceof SyntaxError) {
         throw new Error(`Invalid JSON in AI response: ${parseError.message}. This may indicate the response was truncated or contains syntax errors.`);
       }
-      throw new Error(`Failed to parse bullet points: ${parseError.message}`);
+      throw new Error(`Failed to parse bullet points: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
     }
 
     // Validate and calculate visual width for each bullet point

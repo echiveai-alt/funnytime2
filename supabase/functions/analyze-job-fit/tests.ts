@@ -159,7 +159,6 @@ async function testAnalyzeJobFit() {
   globalThis.fetch = async (url: any, options?: any) => {
     if (typeof url === 'string' && url.includes('generativelanguage.googleapis.com')) {
       return new Response(JSON.stringify(mockGeminiResponse), {
-        ok: true,
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       });

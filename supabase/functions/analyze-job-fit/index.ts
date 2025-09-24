@@ -52,18 +52,18 @@ function calculateWeightedScore(matches: any[], jobPhrases: any[]): number {
   // Calculate scores for each category
   Object.keys(phrasesByCategory).forEach(category => {
     const phrases = phrasesByCategory[category];
-    const categoryWeight = SCORING_CONFIG.WEIGHTS[category] || 0.1;
+    const categoryWeight = (SCORING_CONFIG.WEIGHTS as any)[category] || 0.1;
     
     phrases.forEach((phrase: any) => {
-      const importanceMultiplier = SCORING_CONFIG.IMPORTANCE_MULTIPLIERS[phrase.importance];
+      const importanceMultiplier = (SCORING_CONFIG.IMPORTANCE_MULTIPLIERS as any)[phrase.importance];
       const maxPhraseScore = categoryWeight * importanceMultiplier * 100;
       totalPossibleScore += maxPhraseScore;
 
       // Find matching experience for this phrase
       const match = matches.find(m => m.jobPhrase === phrase.phrase);
       if (match) {
-        const matchTypeScore = SCORING_CONFIG.MATCH_TYPE_SCORES[match.matchType];
-        const evidenceScore = SCORING_CONFIG.EVIDENCE_MULTIPLIERS[match.evidenceStrength];
+        const matchTypeScore = (SCORING_CONFIG.MATCH_TYPE_SCORES as any)[match.matchType];
+        const evidenceScore = (SCORING_CONFIG.EVIDENCE_MULTIPLIERS as any)[match.evidenceStrength];
         achievedScore += maxPhraseScore * matchTypeScore * evidenceScore;
       }
     });
@@ -184,9 +184,11 @@ serve(async (req) => {
         .single()
     ]);
 
-    if (experiencesResult.status === 'rejected' || experiencesResult.value.error) {
-      throw new Error('Failed to fetch experiences: ' + 
-        (experiencesResult.value?.error?.message || experiencesResult.reason));
+    if (experiencesResult.status === 'rejected') {
+      throw new Error('Failed to fetch experiences: ' + experiencesResult.reason);
+    }
+    if (experiencesResult.value.error) {
+      throw new Error('Failed to fetch experiences: ' + experiencesResult.value.error.message);
     }
 
     const experiences = experiencesResult.value.data;
@@ -319,9 +321,9 @@ serve(async (req) => {
       // Group experiences by role and get top 6 per role
       if (analysis.relevantExperiences) {
         // Group by role (company + role title combination) 
-        const experienceIdsByRole = {};
+        const experienceIdsByRole: any = {};
         
-        analysis.relevantExperiences.forEach(exp => {
+        analysis.relevantExperiences.forEach((exp: any) => {
           const roleKey = `${exp.companyName}-${exp.roleTitle}`;
           
           if (!experienceIdsByRole[roleKey]) {
@@ -338,24 +340,24 @@ serve(async (req) => {
         // Sort and limit to top 6 experience IDs per role
         Object.keys(experienceIdsByRole).forEach(roleKey => {
           const roleExperiences = analysis.relevantExperiences
-            .filter(exp => {
+            .filter((exp: any) => {
               const expRoleKey = `${exp.companyName}-${exp.roleTitle}`;
               return expRoleKey === roleKey;
             })
-            .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+            .sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
             .slice(0, 6);
           
-          experienceIdsByRole[roleKey].experienceIds = roleExperiences.map(exp => exp.id);
+          experienceIdsByRole[roleKey].experienceIds = roleExperiences.map((exp: any) => exp.id);
         });
         
         // CRITICAL: Add experienceIdsByRole for generate-resume-bullets
         analysis.experienceIdsByRole = experienceIdsByRole;
         
         // Keep experiencesByRole for analytics/debugging (ANALYTICS ONLY)
-        const experiencesByRole = {};
+        const experiencesByRole: any = {};
         Object.entries(experienceIdsByRole).forEach(([roleKey, roleData]: [string, any]) => {
           const roleExperiences = analysis.relevantExperiences
-            .filter(exp => roleData.experienceIds.includes(exp.id));
+            .filter((exp: any) => roleData.experienceIds.includes(exp.id));
           
           experiencesByRole[roleKey] = {
             company: roleData.company,
@@ -369,12 +371,12 @@ serve(async (req) => {
       // Enhanced recommendations based on score
       if (analysis.overallScore < SCORING_CONFIG.THRESHOLD) {
         // Focus on improvement areas
-        const highImportanceGaps = analysis.unmatchedPhrases?.filter(p => p.importance === 'high') || [];
+        const highImportanceGaps = analysis.unmatchedPhrases?.filter((p: any) => p.importance === 'high') || [];
         
         if (highImportanceGaps.length > 0) {
           analysis.recommendations = analysis.recommendations || [];
           analysis.recommendations.unshift(
-            `Critical gaps identified: ${highImportanceGaps.map(g => g.phrase).join(', ')}. Consider gaining experience in these areas through projects, certifications, or targeted learning.`
+            `Critical gaps identified: ${highImportanceGaps.map((g: any) => g.phrase).join(', ')}. Consider gaining experience in these areas through projects, certifications, or targeted learning.`
           );
         }
         
@@ -391,7 +393,7 @@ serve(async (req) => {
         // High score - prepare for bullet generation
         analysis.actionPlan = {
           priority: "bullet_generation",
-          experienceIds: analysis.relevantExperiences.map(exp => exp.id),
+          experienceIds: analysis.relevantExperiences.map((exp: any) => exp.id),
           readyForBulletGeneration: true
         };
       }
@@ -399,7 +401,7 @@ serve(async (req) => {
     } catch (parseError) {
       console.error('JSON parsing failed:', parseError);
       console.error('Response text:', responseText);
-      throw new Error('Failed to parse analysis results: ' + parseError.message);
+      throw new Error('Failed to parse analysis results: ' + (parseError instanceof Error ? parseError.message : String(parseError)));
     }
 
     console.log(`Job fit analysis completed: ${analysis.overallScore}% match (${analysis.fitLevel})`);
@@ -411,7 +413,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in analyze-job-fit function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message || 'An unexpected error occurred',
+      error: error instanceof Error ? error.message : 'An unexpected error occurred',
       timestamp: new Date().toISOString()
     }), {
       status: 500,

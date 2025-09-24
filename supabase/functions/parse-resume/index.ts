@@ -500,7 +500,7 @@ serve(async (req) => {
     console.log(`Successfully parsed: ${parsedData.companies.length} companies, ${parsedData.roles.length} roles, ${parsedData.experiences.length} experiences`);
 
     // Database operations with better error handling and matching
-    const results = { companies: [], roles: [], experiences: [] };
+    const results: { companies: any[]; roles: any[]; experiences: any[] } = { companies: [], roles: [], experiences: [] };
 
     try {
       // Insert companies

@@ -137,7 +137,7 @@ Deno.test("Data Contract - Resume Bullets Input", () => {
   const roleKeys = Object.keys(requiredInput.experienceIdsByRole);
   assertEquals(roleKeys.length > 0, true, "Must have at least one role");
   
-  const firstRole = requiredInput.experienceIdsByRole[roleKeys[0]];
+  const firstRole = (requiredInput.experienceIdsByRole as any)[roleKeys[0]];
   assertExists(firstRole.company);
   assertExists(firstRole.roleTitle);
   assertExists(firstRole.experienceIds);
@@ -268,7 +268,6 @@ async function testGenerateResumeBullets() {
   globalThis.fetch = async (url: any, options?: any) => {
     if (typeof url === 'string' && url.includes('generativelanguage.googleapis.com')) {
       return new Response(JSON.stringify(mockGeminiResponse), {
-        ok: true,
         status: 200
       });
     }
