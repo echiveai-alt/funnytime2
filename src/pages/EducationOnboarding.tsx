@@ -115,16 +115,6 @@ const EducationOnboarding = () => {
       }
 
       if (!data.isNotApplicable && data.education) {
-        // Clear any existing education entries first
-        const { error: deleteError } = await supabase
-          .from("education")
-          .delete()
-          .eq("user_id", session.user.id);
-
-        if (deleteError) {
-          throw deleteError;
-        }
-
         // Save all education entries to the new education table
         const educationEntries = data.education
           .filter(entry => entry.degree && entry.school)
