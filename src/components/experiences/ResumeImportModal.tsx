@@ -110,13 +110,13 @@ export const ResumeImportModal = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Import Resume</DialogTitle>
+          <DialogTitle>Import Experiences</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
           {/* Text Input */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Paste Resume Text</h3>
+            <h3 className="text-sm font-medium">Paste Experience Text</h3>
             <Textarea
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
