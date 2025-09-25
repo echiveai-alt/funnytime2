@@ -358,12 +358,12 @@ serve(async (req) => {
     console.log('Starting enhanced resume parsing');
     
     // Environment and client setup
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const geminiApiKey = Deno.env.get('RESUME_PARSER_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    if (!lovableApiKey) {
-      throw new Error('Lovable API key not configured');
+    if (!geminiApiKey) {
+      throw new Error('Resume parser API key not configured');
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -451,9 +451,9 @@ serve(async (req) => {
         .substring(0, 6000); // Truncate if too long
     }
 
-    // AI parsing with retry logic for better reliability using Lovable AI Gateway
-    let aiResponse;
-    let aiData;
+    // AI parsing with retry logic for better reliability
+    let geminiResponse;
+    let geminiData;
     let attempts = 0;
     const maxAttempts = 2;
     
@@ -461,28 +461,28 @@ serve(async (req) => {
       attempts++;
       console.log(`AI parsing attempt ${attempts}/${maxAttempts}`);
       
-      aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${lovableApiKey}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            {
-              role: 'user',
-              content: createOptimizedPrompt(processedText)
-            }
-          ],
-          max_completion_tokens: 4096,
-          temperature: 0.05
+          contents: [{ parts: [{ text: createOptimizedPrompt(processedText) }] }],
+          generationConfig: {
+            maxOutputTokens: 4096,
+            temperature: 0.05, // Lower temperature for more consistent formatting
+            topP: 0.8,
+          },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+          ]
         })
       });
       
-      if (aiResponse.ok) {
-        aiData = await aiResponse.json();
-        const testText = aiData.choices?.[0]?.message?.content;
+      if (geminiResponse.ok) {
+        geminiData = await geminiResponse.json();
+        const testText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
         
         // Check if response contains valid JSON structure
         if (testText && testText.includes('"companies"') && testText.includes('"roles"') && testText.includes('"experiences"')) {
@@ -495,26 +495,28 @@ serve(async (req) => {
         }
       } else {
         if (attempts === maxAttempts) {
-          const errorText = await aiResponse.text();
-          console.error('Lovable AI Gateway error:', errorText);
-          throw new Error(`AI service error: ${aiResponse.status}. Please try again.`);
+          const errorText = await geminiResponse.text();
+          console.error('Gemini API error:', errorText);
+          throw new Error(`AI service error: ${geminiResponse.status}. Please try again.`);
         }
       }
     }
 
-    if (!aiData) {
+    if (!geminiData) {
       throw new Error('Failed to get valid response from AI service');
     }
 
     
-    // Check for safety issues in AI response (simplified for new format)
-    const responseContent = aiData.choices?.[0]?.message?.content;
-    if (!responseContent) {
-      console.error('No response from AI:', JSON.stringify(aiData, null, 2));
-      throw new Error('No response from AI service. Please try again.');
+    if (geminiData.candidates?.[0]?.finishReason === 'SAFETY') {
+      throw new Error('Resume content was flagged by AI safety filters. Please review and try again.');
     }
     
-    const generatedText = responseContent;
+    const generatedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!generatedText) {
+      console.error('No response from Gemini:', JSON.stringify(geminiData, null, 2));
+      throw new Error('No response from AI service. Please try again.');
+    }
 
     // Enhanced JSON parsing and validation
     let parsedData: ParsedResumeData;
