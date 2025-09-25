@@ -407,7 +407,7 @@ serve(async (req) => {
     // AI parsing with retry logic for better reliability
     let parsedData: ParsedResumeData | null = null;
     const maxAttempts = 3;
-    const models = ['gpt-5-nano'];
+    const models = ['gpt-5-nano', 'gpt-4o-mini']; // Start with the more reliable model
     let currentModelIndex = 0;
     
     for (let attempts = 1; attempts <= maxAttempts; attempts++) {
@@ -425,7 +425,7 @@ serve(async (req) => {
             messages: [
               { 
                 role: 'system', 
-                content: 'You are a resume parsing expert. Always respond with valid JSON only. No additional text or formatting.' 
+                content: 'You are a resume parsing expert. Always respond with valid JSON only. No additional text, explanations, or formatting.' 
               },
               { 
                 role: 'user', 
@@ -433,8 +433,7 @@ serve(async (req) => {
               }
             ],
             max_tokens: 4000,
-            temperature: 0.1,
-            response_format: { type: "json_object" }
+            temperature: 0.1
           })
         });
         
@@ -467,15 +466,18 @@ serve(async (req) => {
           continue;
         }
         
-        console.log(`Raw AI response (attempt ${attempts}):`, generatedText.substring(0, 200) + '...');
+        console.log(`Raw AI response (attempt ${attempts}):`, generatedText.substring(0, 500) + '...');
         
         // Enhanced JSON extraction
         const jsonString = extractAndCleanJSON(generatedText);
         
         if (!jsonString) {
-          console.log(`Attempt ${attempts}: Could not extract valid JSON`);
+          console.log(`Attempt ${attempts}: Could not extract valid JSON from response`);
+          console.log(`Full response was:`, generatedText);
           continue;
         }
+        
+        console.log(`Extracted JSON string (attempt ${attempts}):`, jsonString.substring(0, 200) + '...');
         
         // Parse and validate JSON
         let tempData;
@@ -491,6 +493,7 @@ serve(async (req) => {
         
         if (!validation.isValid) {
           console.log(`Attempt ${attempts}: Validation failed:`, validation.errors);
+          console.log(`Raw data that failed validation:`, JSON.stringify(tempData, null, 2));
           
           // If it's the last attempt with current model, try next model
           if (attempts < maxAttempts && currentModelIndex < models.length - 1) {
@@ -519,7 +522,7 @@ serve(async (req) => {
     }
     
     if (!parsedData) {
-      throw new Error('Unable to extract work experience from the provided text. Please ensure your text includes:\n- Company names\n- Job titles/roles\n- Employment dates\n- Specific responsibilities or achievements\n\nYou can paste either your full resume or just the work experience section.');
+      throw new Error('Unable to extract work experience from the provided text after multiple attempts with different models. Please ensure your text includes company names, job titles, employment dates, and specific responsibilities or achievements. You can paste either your full resume or just the work experience section.');
     }
 
     console.log(`Successfully parsed: ${parsedData.companies.length} companies, ${parsedData.roles.length} roles, ${parsedData.experiences.length} experiences`);
