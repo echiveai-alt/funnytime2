@@ -35,6 +35,7 @@ export const OnboardingResumeModal = ({
 }: OnboardingResumeModalProps) => {
   const [resumeText, setResumeText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -75,6 +76,10 @@ export const OnboardingResumeModal = ({
 
       console.log('Resume parsing successful:', { success, message, data });
 
+      // Show processing state and keep modal open
+      setIsLoading(false);
+      setIsProcessing(true);
+
       toast({
         title: "Resume Parsed Successfully!",
         description: message,
@@ -82,10 +87,18 @@ export const OnboardingResumeModal = ({
 
       // Call the callback with the parsed data if provided
       if (onImportComplete && data) {
-        await onImportComplete(data);
+        try {
+          await onImportComplete(data);
+          // Only close modal after data import is complete
+          handleClose();
+        } catch (importError) {
+          console.error('Import error:', importError);
+          setIsProcessing(false);
+          setError('Failed to import parsed data. Please try again.');
+        }
+      } else {
+        handleClose();
       }
-
-      handleClose();
     } catch (error) {
       console.error('Parse error:', error);
       setError(error instanceof Error ? error.message : 'Failed to parse resume. Please try again.');
@@ -95,7 +108,9 @@ export const OnboardingResumeModal = ({
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      if (!isProcessing) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -103,6 +118,7 @@ export const OnboardingResumeModal = ({
     setResumeText("");
     setError(null);
     setIsLoading(false);
+    setIsProcessing(false);
     onClose();
   };
 
@@ -147,18 +163,23 @@ export const OnboardingResumeModal = ({
 
           {/* Actions */}
           <div className="flex justify-between">
-            <Button variant="ghost" onClick={handleSkip} disabled={isLoading}>
+            <Button variant="ghost" onClick={handleSkip} disabled={isLoading || isProcessing}>
               Skip for now
             </Button>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+              <Button variant="outline" onClick={handleClose} disabled={isLoading || isProcessing}>
                 Cancel
               </Button>
-              <Button onClick={handleParse} disabled={isLoading || !resumeText.trim()}>
+              <Button onClick={handleParse} disabled={isLoading || isProcessing || !resumeText.trim()}>
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Parsing...
+                  </>
+                ) : isProcessing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
                   </>
                 ) : (
                   'Parse Resume'

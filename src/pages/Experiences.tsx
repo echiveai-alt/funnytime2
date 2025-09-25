@@ -223,11 +223,8 @@ const Experiences = () => {
           console.log('Resume import completed:', data);
           setResumeParseSuccessful(true);
           
-          // Refresh the experiences data and auto-select the latest role, then close modal
-          setTimeout(async () => {
-            await refreshAndSelectLatest();
-            setShowOnboardingResumeModal(false);
-          }, 1000);
+          // Refresh the experiences data and auto-select the latest role
+          await refreshAndSelectLatest();
         }}
       />
     </>
