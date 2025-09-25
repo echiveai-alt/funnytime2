@@ -123,7 +123,7 @@ const SignUp = () => {
 
   const getResendErrorMessage = () => {
     if (resendAttempts === 1) {
-      return "Please check if you've input the correct email address.";
+      return "Please check if the provided email address is correct.";
     } else if (resendAttempts === 2) {
       return "Please check your spam and other inboxes.";
     }
