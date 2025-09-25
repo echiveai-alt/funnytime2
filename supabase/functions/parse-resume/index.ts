@@ -214,7 +214,6 @@ Extract:
 1. All companies with start/end dates
 2. All job roles with start/end dates and company names  
 3. All bullet points as separate experiences with STAR format
-4. Generate clear, descriptive titles for experiences that highlight the impact or action taken
 
 Return JSON in this exact format:
 {
@@ -223,7 +222,7 @@ Return JSON in this exact format:
   "experiences": [{"title": "Achievement description", "situation": "Context or null", "task": "Task or null", "action": "What was done", "result": "Outcome", "role_title": "Job Title", "company_name": "Company Name"}]
 }
 
-Use YYYY-MM-DD format. Use YYYY-MM-01 regardless if day is provided. Return only valid JSON.`;
+Use YYYY-MM-DD format. If only month/year, use YYYY-MM-01 for start, YYYY-MM-28 for end. Return only valid JSON.`;
 }
 
 // Improved batch insert with transaction support
@@ -357,11 +356,52 @@ serve(async (req) => {
     }
 
     // Get resume text from request body
-    const body = await req.json();
-    const resumeText = body.resumeText;
+    let body;
+    let resumeText;
+    
+    const contentType = req.headers.get('content-type') || '';
+    console.log('Content-Type:', contentType);
+    
+    try {
+      if (contentType.includes('application/json')) {
+        // Handle JSON request
+        body = await req.json();
+        resumeText = body.resumeText;
+      } else if (contentType.includes('application/x-www-form-urlencoded')) {
+        // Handle form data
+        const formData = await req.formData();
+        resumeText = formData.get('resumeText') as string;
+      } else {
+        // Try to read as text and then parse
+        const rawBody = await req.text();
+        console.log('Raw request body (first 200 chars):', rawBody.substring(0, 200));
+        
+        // Try to parse as JSON first
+        try {
+          body = JSON.parse(rawBody);
+          resumeText = body.resumeText;
+        } catch (jsonError) {
+          console.log('Not valid JSON, checking other formats');
+          
+          // Check if it might be form data
+          if (rawBody.includes('resumeText=')) {
+            const params = new URLSearchParams(rawBody);
+            resumeText = params.get('resumeText');
+          } else {
+            // Treat the entire body as resume text
+            resumeText = rawBody.trim();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error reading request body:', error);
+      throw new Error('Failed to read request data. Please check the request format.');
+    }
 
     if (!resumeText || typeof resumeText !== 'string') {
-      throw new Error('No resume text provided');
+      console.error('Invalid resume text received:', resumeText);
+      console.error('Request headers:', req.headers);
+      throw new Error('No valid resume text provided. Please ensure you\'re sending the resume text in the request body.');
     }
 
     if (resumeText.trim().length < 50) {
