@@ -205,57 +205,24 @@ function extractExperienceSection(text: string): string | null {
 
 // Create focused prompt for experience extraction
 function createExperiencePrompt(resumeText: string): string {
-  return `You are a resume parsing expert. Extract work experience information from this text and convert it to structured JSON data.
+  return `Extract work experience from this resume text and format as JSON.
 
-TEXT TO PARSE:
+TEXT:
 ${resumeText}
 
-INSTRUCTIONS:
-1. Extract all companies, job roles, and individual accomplishments/responsibilities from the work experience
-2. Create one experience entry for each bullet point or achievement mentioned
-3. Use STAR format for experiences (Situation, Task, Action, Result)
-4. Generate clear, descriptive titles for experiences that highlight the impact or action taken
-5. If the text contains only partial resume sections, focus on extracting whatever work experience is available
+Extract:
+1. All companies with start/end dates
+2. All job roles with start/end dates and company names  
+3. All bullet points as separate experiences with STAR format
 
-REQUIRED JSON FORMAT:
+Return JSON in this exact format:
 {
-  "companies": [
-    {
-      "name": "Company Name",
-      "start_date": "YYYY-MM-DD",
-      "end_date": "YYYY-MM-DD",
-      "is_current": false
-    }
-  ],
-  "roles": [
-    {
-      "title": "Job Title", 
-      "start_date": "YYYY-MM-DD",
-      "end_date": "YYYY-MM-DD",
-      "is_current": false,
-      "company_name": "Exact Company Name"
-    }
-  ],
-  "experiences": [
-    {
-      "title": "Clear description of achievement or responsibility",
-      "situation": "Context or background (can be null)",
-      "task": "What needed to be accomplished (can be null)", 
-      "action": "Specific actions taken (required)",
-      "result": "Measurable outcome or benefit (required)",
-      "role_title": "Exact role title from roles array",
-      "company_name": "Exact company name from companies array"
-    }
-  ]
+  "companies": [{"name": "Company Name", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "is_current": false}],
+  "roles": [{"title": "Job Title", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "is_current": false, "company_name": "Company Name"}],
+  "experiences": [{"title": "Achievement description", "situation": "Context or null", "task": "Task or null", "action": "What was done", "result": "Outcome", "role_title": "Job Title", "company_name": "Company Name"}]
 }
 
-IMPORTANT RULES:
-- Use "YYYY-MM-DD" date format. If only year available, use "YYYY-01-01" for start dates and "YYYY-12-31" for end dates
-- If only month/year available, use "YYYY-MM-01" for start dates and "YYYY-MM-28" for end dates
-- Action and result fields are required and cannot be null
-- Company names and role titles must exactly match between arrays
-- Return ONLY valid JSON, no additional text or formatting
-- If no clear work experience is found, return empty arrays for all three sections`;
+Use YYYY-MM-DD format. If only month/year, use YYYY-MM-01 for start, YYYY-MM-28 for end. Return only valid JSON.`;
 }
 
 // Improved batch insert with transaction support
@@ -403,11 +370,12 @@ serve(async (req) => {
     // Process the text to focus on experience extraction
     const processedText = preprocessExperienceText(resumeText);
     console.log(`Text processing: ${resumeText.length} → ${processedText.length} chars`);
+    console.log(`Processed text preview:`, processedText.substring(0, 300) + '...');
 
     // AI parsing with retry logic for better reliability
     let parsedData: ParsedResumeData | null = null;
     const maxAttempts = 3;
-    const models = ['gpt-4o-mini']; // Start with the more reliable model
+    const models = ['gpt-5-nano']; // Use only the most reliable model for now
     let currentModelIndex = 0;
     
     for (let attempts = 1; attempts <= maxAttempts; attempts++) {
