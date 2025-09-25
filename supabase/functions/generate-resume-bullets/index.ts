@@ -271,7 +271,7 @@ Return ONLY JSON:
       // Try to find JSON block in response
       const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error('No JSON found in Gemini response. Full text:', generatedText);
+        console.error('No JSON found in OpenAI response. Full text:', generatedText);
         throw new Error('No JSON found in AI response. Response may be truncated or malformed.');
       }
       
@@ -291,7 +291,7 @@ Return ONLY JSON:
       
     } catch (parseError) {
       console.error('JSON parsing failed:', parseError);
-      console.error('Full Gemini response:', generatedText);
+      console.error('Full OpenAI response:', generatedText);
       
       if (parseError instanceof SyntaxError) {
         throw new Error(`Invalid JSON in AI response: ${parseError.message}. This may indicate the response was truncated or contains syntax errors.`);

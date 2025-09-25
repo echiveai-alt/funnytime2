@@ -358,11 +358,11 @@ serve(async (req) => {
     console.log('Starting enhanced resume parsing');
     
     // Environment and client setup
-    const resumeParseKey = Deno.env.get('RESUME_PARSER_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    if (!resumeParseKey) {
+    if (!openaiApiKey) {
       throw new Error('OpenAI API key not configured');
     }
     
@@ -465,7 +465,7 @@ serve(async (req) => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${resumeParseKey}`
+          'Authorization': `Bearer ${openaiApiKey}`
         },
         body: JSON.stringify({
           model: 'gpt-5-nano-2025-08-07',
@@ -492,7 +492,7 @@ serve(async (req) => {
       } else {
         if (attempts === maxAttempts) {
           const errorText = await geminiResponse.text();
-          console.error('Gemini API error:', errorText);
+          console.error('OpenAI API error:', errorText);
           throw new Error(`AI service error: ${geminiResponse.status}. Please try again.`);
         }
       }
