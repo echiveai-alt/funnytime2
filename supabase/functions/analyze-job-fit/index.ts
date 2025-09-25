@@ -230,14 +230,14 @@ serve(async (req) => {
     // Create enhanced prompt
     const prompt = createAnalysisPrompt(jobDescription, formattedExperiences, formattedEducation);
 
-    // Call Gemini API with retry logic
-    let geminiResponse;
+    // Call OpenAI API with retry logic
+    let openaiResponse;
     let retryCount = 0;
     const maxRetries = 3;
 
     while (retryCount < maxRetries) {
       try {
-        geminiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -252,7 +252,7 @@ serve(async (req) => {
           })
         });
         
-        if (geminiResponse.ok) break;
+        if (openaiResponse.ok) break;
         
         retryCount++;
         if (retryCount < maxRetries) {
@@ -265,17 +265,17 @@ serve(async (req) => {
       }
     }
 
-    if (!geminiResponse?.ok) {
+    if (!openaiResponse?.ok) {
       throw new Error('Failed to get response from OpenAI API');
     }
 
-    const geminiData = await geminiResponse.json();
+    const openaiData = await openaiResponse.json();
     
-    if (!geminiData.choices?.[0]?.message?.content) {
+    if (!openaiData.choices?.[0]?.message?.content) {
       throw new Error('Invalid response structure from OpenAI API');
     }
 
-    const responseText = geminiData.choices[0].message.content;
+    const responseText = openaiData.choices[0].message.content;
     
     // Enhanced JSON parsing
     let analysis: any;
