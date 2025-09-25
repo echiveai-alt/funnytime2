@@ -27,7 +27,7 @@ interface ParsedExperience {
   situation: string | null;
   task: string | null;
   action: string;
-  result: string | null;
+  result: string;
   role_title: string;
   company_name: string;
 }
@@ -174,7 +174,7 @@ STAR FORMAT BREAKDOWN:
 - Situation: Context or background (can be null if not clear)
 - Task: What needed to be accomplished (can be null if merged with action)  
 - Action: Specific actions taken (REQUIRED - never null)
-- Result: Quantified outcome or benefit (null if not specified)
+- Result: Quantified outcome or benefit (REQUIRED - never null)
 
 DATE FORMAT: Use "YYYY-MM-DD" format. If only year available, use "YYYY-01-01" for start dates and "YYYY-12-31" for end dates. If month but no day, use "YYYY-MM-01" for start dates and "YYYY-MM-28" for end dates.
 
