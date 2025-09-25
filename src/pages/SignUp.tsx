@@ -29,6 +29,8 @@ const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [resendAttempts, setResendAttempts] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -84,6 +86,50 @@ const SignUp = () => {
     }
   };
 
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: userEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Failed to resend email",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setResendAttempts(prev => prev + 1);
+        toast({
+          title: "Verification email sent",
+          description: "Please check your inbox for the new verification link.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Something went wrong",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const getResendErrorMessage = () => {
+    if (resendAttempts === 1) {
+      return "Please check if you've input the correct email address.";
+    } else if (resendAttempts === 2) {
+      return "Please check your spam and other inboxes.";
+    }
+    return null;
+  };
+
   if (emailSent) {
     return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-secondary">
@@ -96,18 +142,29 @@ const SignUp = () => {
           <p className="text-muted-foreground mb-6">
             We've sent a verification link to <strong>{userEmail}</strong>
           </p>
+          {getResendErrorMessage() && (
+            <Alert className="mb-4 border-destructive bg-destructive/10">
+              <AlertDescription className="text-destructive">
+                {getResendErrorMessage()}
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-3">
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => window.open(`mailto:${userEmail}`, '_blank')}
+              onClick={handleResendVerification}
+              disabled={resendLoading || resendAttempts >= 3}
             >
-              Open Mail App
+              {resendLoading ? "Sending..." : "Resend Verification"}
             </Button>
             <Button 
               variant="ghost" 
               className="w-full"
-              onClick={() => setEmailSent(false)}
+              onClick={() => {
+                setEmailSent(false);
+                setResendAttempts(0);
+              }}
             >
               Change Email
             </Button>
