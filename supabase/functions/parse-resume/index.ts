@@ -175,23 +175,23 @@ STAR FORMAT BREAKDOWN:
 - Action: Specific actions taken (REQUIRED - never null)
 - Result: Quantified outcome or benefit (null if not specified)
 
-DATE FORMAT: Use "YYYY-MM" format. If only year available, use "YYYY-01" for start dates and "YYYY-12" for end dates.
+DATE FORMAT: Use "YYYY-MM-DD" format. If only year available, use "YYYY-01-01" for start dates and "YYYY-12-31" for end dates. If month but no day, use "YYYY-MM-01" for start dates and "YYYY-MM-28" for end dates.
 
 Return ONLY valid JSON in this exact format:
 {
   "companies": [
     {
       "name": "Company Name",
-      "start_date": "YYYY-MM", 
-      "end_date": "YYYY-MM",
+      "start_date": "YYYY-MM-DD", 
+      "end_date": "YYYY-MM-DD",
       "is_current": false
     }
   ],
   "roles": [
     {
       "title": "Job Title",
-      "start_date": "YYYY-MM",
-      "end_date": "YYYY-MM", 
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD",
       "is_current": false,
       "company_name": "Exact Company Name"
     }
@@ -421,33 +421,61 @@ serve(async (req) => {
         .substring(0, 6000); // Truncate if too long
     }
 
-    // AI parsing with better error handling
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: createOptimizedPrompt(processedText) }] }],
-        generationConfig: {
-          maxOutputTokens: 4096,
-          temperature: 0.1, // Slightly higher for more creative titles
-          topP: 0.9,
-        },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-        ]
-      })
-    });
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error('Gemini API error:', errorText);
-      throw new Error(`AI service error: ${geminiResponse.status}. Please try again.`);
+    // AI parsing with retry logic for better reliability
+    let geminiResponse;
+    let geminiData;
+    let attempts = 0;
+    const maxAttempts = 2;
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      console.log(`AI parsing attempt ${attempts}/${maxAttempts}`);
+      
+      geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: createOptimizedPrompt(processedText) }] }],
+          generationConfig: {
+            maxOutputTokens: 4096,
+            temperature: 0.05, // Lower temperature for more consistent formatting
+            topP: 0.8,
+          },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+          ]
+        })
+      });
+      
+      if (geminiResponse.ok) {
+        geminiData = await geminiResponse.json();
+        const testText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        // Check if response contains valid JSON structure
+        if (testText && testText.includes('"companies"') && testText.includes('"roles"') && testText.includes('"experiences"')) {
+          break;
+        } else {
+          console.log(`Attempt ${attempts} failed - invalid response structure`);
+          if (attempts === maxAttempts) {
+            throw new Error('AI service returned unusable responses after multiple attempts. Please try reformatting your resume.');
+          }
+        }
+      } else {
+        if (attempts === maxAttempts) {
+          const errorText = await geminiResponse.text();
+          console.error('Gemini API error:', errorText);
+          throw new Error(`AI service error: ${geminiResponse.status}. Please try again.`);
+        }
+      }
     }
 
-    const geminiData = await geminiResponse.json();
+    if (!geminiData) {
+      throw new Error('Failed to get valid response from AI service');
+    }
+
     
     if (geminiData.candidates?.[0]?.finishReason === 'SAFETY') {
       throw new Error('Resume content was flagged by AI safety filters. Please review and try again.');
