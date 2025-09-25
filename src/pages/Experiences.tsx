@@ -233,11 +233,11 @@ const Experiences = () => {
         onImportComplete={async (data) => {
           console.log('Resume import completed:', data);
           setResumeParseSuccessful(true);
-          setShowOnboardingResumeModal(false);
           
-          // Refresh the experiences data and auto-select the latest role
+          // Refresh the experiences data and auto-select the latest role, then close modal
           setTimeout(async () => {
             await refreshAndSelectLatest();
+            setShowOnboardingResumeModal(false);
           }, 1000);
         }}
       />
