@@ -652,11 +652,32 @@ serve(async (req) => {
       // Insert experiences with enhanced matching
       if (parsedData.experiences.length > 0) {
         const experienceInserts = parsedData.experiences.map((experience, index) => {
-          const role = findBestMatch(experience.role_title, results.roles, 'title');
+          // Find role that matches both title and company
+          const matchingRoles = results.roles.filter(role => {
+            const company = results.companies.find(c => c.id === role.company_id);
+            return company && 
+                   role.title.trim().toLowerCase() === experience.role_title.trim().toLowerCase() &&
+                   company.name.trim().toLowerCase() === experience.company_name.trim().toLowerCase();
+          });
+          
+          let role = matchingRoles.length > 0 ? matchingRoles[0] : null;
+          
+          // Fallback: if exact match fails, try fuzzy matching with company context
+          if (!role) {
+            role = findBestMatch(experience.role_title, results.roles.filter(r => {
+              const company = results.companies.find(c => c.id === r.company_id);
+              return company && company.name.trim().toLowerCase().includes(experience.company_name.trim().toLowerCase());
+            }), 'title');
+          }
+          
+          // Final fallback: match by role title only (original behavior)
+          if (!role) {
+            role = findBestMatch(experience.role_title, results.roles, 'title');
+          }
           
           if (!role) {
-            console.error(`Role not found for experience ${index + 1}: "${experience.title}" with role "${experience.role_title}"`);
-            console.error('Available roles:', results.roles.map(r => r.title));
+            console.error(`Role not found for experience ${index + 1}: "${experience.title}" with role "${experience.role_title}" at company "${experience.company_name}"`);
+            console.error('Available roles:', results.roles.map(r => `${r.title} at ${results.companies.find(c => c.id === r.company_id)?.name}`));
             throw new Error(`Cannot match experience "${experience.title}" to any role. Found roles: ${results.roles.map(r => r.title).join(', ')}`);
           }
           

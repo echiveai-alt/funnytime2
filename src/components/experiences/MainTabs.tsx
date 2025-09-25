@@ -19,10 +19,10 @@ const MainTabs = () => {
   const handleResumeImport = async (parsedData: any) => {
     console.log('Resume import completed:', parsedData);
     
-    // Refresh the experiences data and auto-select the latest role (same as onboarding)
+    // Refresh the experiences data and auto-select the latest role with longer delay
     setTimeout(async () => {
       await refreshAndSelectLatest();
-    }, 1000);
+    }, 2500);
   };
   
   const tabs = [
