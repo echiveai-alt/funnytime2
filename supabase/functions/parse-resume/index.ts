@@ -95,10 +95,6 @@ function efficientRemovalCleaning(text: string): string {
     .trim();
 }
 
-
-
-
-
 // NEW: Intelligent truncation that preserves complete job entries
 function intelligentTruncation(text: string): string {
   const lines = text.split('\n');
@@ -452,8 +448,8 @@ serve(async (req) => {
     }
 
     // AI parsing with retry logic for better reliability
-    let geminiResponse;
-    let geminiData;
+    let openaiResponse;
+    let openaiData;
     let attempts = 0;
     const maxAttempts = 2;
     
@@ -461,7 +457,7 @@ serve(async (req) => {
       attempts++;
       console.log(`AI parsing attempt ${attempts}/${maxAttempts}`);
       
-      geminiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -476,9 +472,9 @@ serve(async (req) => {
         })
       });
       
-      if (geminiResponse.ok) {
-        geminiData = await geminiResponse.json();
-        const testText = geminiData.choices?.[0]?.message?.content;
+      if (openaiResponse.ok) {
+        openaiData = await openaiResponse.json();
+        const testText = openaiData.choices?.[0]?.message?.content;
         
         // Check if response contains valid JSON structure
         if (testText && testText.includes('"companies"') && testText.includes('"roles"') && testText.includes('"experiences"')) {
@@ -491,26 +487,25 @@ serve(async (req) => {
         }
       } else {
         if (attempts === maxAttempts) {
-          const errorText = await geminiResponse.text();
+          const errorText = await openaiResponse.text();
           console.error('OpenAI API error:', errorText);
-          throw new Error(`AI service error: ${geminiResponse.status}. Please try again.`);
+          throw new Error(`AI service error: ${openaiResponse.status}. Please try again.`);
         }
       }
     }
 
-    if (!geminiData) {
+    if (!openaiData) {
       throw new Error('Failed to get valid response from AI service');
     }
 
-    
-    if (geminiData.choices?.[0]?.finish_reason === 'content_filter') {
+    if (openaiData.choices?.[0]?.finish_reason === 'content_filter') {
       throw new Error('Resume content was flagged by AI safety filters. Please review and try again.');
     }
     
-    const generatedText = geminiData.choices?.[0]?.message?.content;
+    const generatedText = openaiData.choices?.[0]?.message?.content;
     
     if (!generatedText) {
-      console.error('No response from OpenAI:', JSON.stringify(geminiData, null, 2));
+      console.error('No response from OpenAI:', JSON.stringify(openaiData, null, 2));
       throw new Error('No response from AI service. Please try again.');
     }
 
