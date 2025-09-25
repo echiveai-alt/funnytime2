@@ -60,6 +60,14 @@ const Experiences = () => {
     }
   }, [searchParams, setSearchParams, experiencesLoading, companies.length]);
 
+  // Auto-show onboarding resume modal for users with no company data
+  useEffect(() => {
+    if (!experiencesLoading && companies.length === 0 && !hasShownOnboardingModal && !showOnboardingResumeModal) {
+      setShowOnboardingResumeModal(true);
+      setHasShownOnboardingModal(true);
+    }
+  }, [experiencesLoading, companies.length, hasShownOnboardingModal, showOnboardingResumeModal]);
+
 
   const handleAddExperience = async () => {
     try {
