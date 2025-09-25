@@ -38,200 +38,6 @@ interface ParsedResumeData {
   experiences: ParsedExperience[];
 }
 
-/* =========================
-   Company de-dupe helpers
-   ========================= */
-function normalizeCompanyName(name: string): string {
-  return name
-    .normalize('NFKC')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-}
-
-function isoMin(a?: string | null, b?: string | null): string | null {
-  if (!a) return b ?? null;
-  if (!b) return a ?? null;
-  return a < b ? a : b;
-}
-
-function isoMax(a?: string | null, b?: string | null): string | null {
-  if (!a) return b ?? null;
-  if (!b) return a ?? null;
-  return a > b ? a : b;
-}
-
-function mergeDateEnvelope(
-  items: Array<{ start_date: string; end_date: string | null; is_current: boolean }>
-): { start_date: string; end_date: string | null; is_current: boolean } {
-  let start: string | null = null;
-  let end: string | null = null;
-  let is_current = false;
-
-  for (const it of items) {
-    start = isoMin(start, it.start_date);
-    if (it.is_current) {
-      is_current = true;
-      end = null;
-    } else if (!is_current) {
-      end = isoMax(end, it.end_date ?? null);
-    }
-  }
-  return { start_date: start ?? items[0].start_date, end_date: is_current ? null : end, is_current };
-}
-
-/* cache whether DB has the name_normalized column */
-let HAS_NORMALIZED_COL: boolean | null = null;
-function looksLikeMissingColumn(err: any): boolean {
-  const msg = (err?.message || err?.hint || '').toString().toLowerCase();
-  return msg.includes('column') && msg.includes('name_normalized') && msg.includes('does not exist');
-}
-
-/**
- * Returns a single canonical company row for this user+name.
- * - Prefers fast, index-backed equality on name_normalized (if available)
- * - Falls back to ILIKE if the column doesn’t exist yet
- * - Merges dates
- * - Reassigns roles from duplicates to canonical and deletes extras
- * - Handles concurrent insert races (unique violation 23505)
- */
-async function upsertOrGetCompany(
-  supabase: any,
-  userId: string,
-  company: { name: string; start_date: string; end_date: string | null; is_current: boolean }
-): Promise<any> {
-  const displayName = company.name.trim();
-  const norm = normalizeCompanyName(displayName);
-
-  async function selectExisting(): Promise<{ rows: any[]; usedNormalized: boolean }> {
-    // If we already learned the column is missing, go straight to ILIKE
-    if (HAS_NORMALIZED_COL === false) {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id, name, start_date, end_date, is_current, created_at')
-        .eq('user_id', userId)
-        .ilike('name', displayName)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return { rows: data ?? [], usedNormalized: false };
-    }
-
-    // Try normalized match
-    const sel = await supabase
-      .from('companies')
-      .select('id, name, start_date, end_date, is_current, created_at')
-      .eq('user_id', userId)
-      .eq('name_normalized', norm)
-      .order('created_at', { ascending: true });
-
-    if (sel.error) {
-      if (looksLikeMissingColumn(sel.error)) {
-        HAS_NORMALIZED_COL = false;
-        // Retry with ILIKE
-        const { data, error } = await supabase
-          .from('companies')
-          .select('id, name, start_date, end_date, is_current, created_at')
-          .eq('user_id', userId)
-          .ilike('name', displayName)
-          .order('created_at', { ascending: true });
-        if (error) throw error;
-        return { rows: data ?? [], usedNormalized: false };
-      }
-      throw sel.error;
-    } else {
-      HAS_NORMALIZED_COL = true;
-      return { rows: sel.data ?? [], usedNormalized: true };
-    }
-  }
-
-  let existingSel = await selectExisting();
-  const existing = existingSel.rows;
-
-  // Nothing exists — insert new (handle race if unique index present)
-  if (!existing || existing.length === 0) {
-    const { data: inserted, error: insErr } = await supabase
-      .from('companies')
-      .insert({
-        user_id: userId,
-        name: displayName,
-        start_date: company.start_date,
-        end_date: company.end_date,
-        is_current: company.is_current,
-      })
-      .select()
-      .single();
-
-    if (insErr) {
-      const code = (insErr as any)?.code;
-      const msg = (insErr as any)?.message || '';
-      if (code === '23505' || /duplicate key value/i.test(msg)) {
-        // Someone else inserted concurrently — reselect canonical
-        existingSel = await selectExisting();
-        if (existingSel.rows.length > 0) return existingSel.rows[0];
-      }
-      throw insErr;
-    }
-    return inserted;
-  }
-
-  // We found one or more — pick the canonical (oldest created)
-  const canonical = existing[0];
-
-  // Merge date envelope across existing + incoming
-  const merged = mergeDateEnvelope([
-    ...existing.map((e: any) => ({
-      start_date: e.start_date,
-      end_date: e.end_date,
-      is_current: e.is_current,
-    })),
-    {
-      start_date: company.start_date,
-      end_date: company.end_date,
-      is_current: company.is_current,
-    },
-  ]);
-
-  // Update canonical if dates changed
-  if (
-    canonical.start_date !== merged.start_date ||
-    canonical.is_current !== merged.is_current ||
-    (canonical.end_date ?? null) !== (merged.end_date ?? null)
-  ) {
-    const { data: updated, error: updErr } = await supabase
-      .from('companies')
-      .update({
-        start_date: merged.start_date,
-        end_date: merged.end_date,
-        is_current: merged.is_current,
-      })
-      .eq('id', canonical.id)
-      .select()
-      .single();
-    if (updErr) throw updErr;
-    Object.assign(canonical, updated);
-  }
-
-  // If duplicates exist, move roles and delete extras
-  if (existing.length > 1) {
-    const duplicateIds = existing.slice(1).map((r: any) => r.id);
-
-    const { error: moveErr } = await supabase
-      .from('roles')
-      .update({ company_id: canonical.id })
-      .in('company_id', duplicateIds);
-    if (moveErr) throw moveErr;
-
-    const { error: delErr } = await supabase.from('companies').delete().in('id', duplicateIds);
-    if (delErr) throw delErr;
-  }
-
-  return canonical;
-}
-
-/* =========================
-   Validation & Parsing
-   ========================= */
-
 // Improved validation function for parsed data
 function validateParsedData(data: any): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -241,35 +47,75 @@ function validateParsedData(data: any): { isValid: boolean; errors: string[] } {
     return { isValid: false, errors };
   }
   
-  if (!Array.isArray(data.companies)) errors.push('Missing or invalid companies array');
-  if (!Array.isArray(data.roles)) errors.push('Missing or invalid roles array');
-  if (!Array.isArray(data.experiences)) errors.push('Missing or invalid experiences array');
-  if (errors.length > 0) return { isValid: false, errors };
+  // Check required arrays exist
+  if (!Array.isArray(data.companies)) {
+    errors.push('Missing or invalid companies array');
+  }
+  if (!Array.isArray(data.roles)) {
+    errors.push('Missing or invalid roles array');
+  }
+  if (!Array.isArray(data.experiences)) {
+    errors.push('Missing or invalid experiences array');
+  }
   
-  if (data.companies.length === 0) errors.push('No companies found in resume');
-  if (data.roles.length === 0) errors.push('No roles found in resume');
-  if (data.experiences.length === 0) errors.push('No experiences found in resume');
+  if (errors.length > 0) {
+    return { isValid: false, errors };
+  }
   
+  // Check minimum data requirements
+  if (data.companies.length === 0) {
+    errors.push('No companies found in resume');
+  }
+  if (data.roles.length === 0) {
+    errors.push('No roles found in resume');
+  }
+  if (data.experiences.length === 0) {
+    errors.push('No experiences found in resume');
+  }
+  
+  // Validate company structure
   for (let i = 0; i < data.companies.length; i++) {
     const company = data.companies[i];
-    if (!company.name || typeof company.name !== 'string') errors.push(`Company ${i + 1}: missing or invalid name`);
-    if (!company.start_date || typeof company.start_date !== 'string') errors.push(`Company ${i + 1}: missing or invalid start_date`);
+    if (!company.name || typeof company.name !== 'string') {
+      errors.push(`Company ${i + 1}: missing or invalid name`);
+    }
+    if (!company.start_date || typeof company.start_date !== 'string') {
+      errors.push(`Company ${i + 1}: missing or invalid start_date`);
+    }
   }
   
+  // Validate role structure
   for (let i = 0; i < data.roles.length; i++) {
     const role = data.roles[i];
-    if (!role.title || typeof role.title !== 'string') errors.push(`Role ${i + 1}: missing or invalid title`);
-    if (!role.company_name || typeof role.company_name !== 'string') errors.push(`Role ${i + 1}: missing or invalid company_name`);
-    if (!role.start_date || typeof role.start_date !== 'string') errors.push(`Role ${i + 1}: missing or invalid start_date`);
+    if (!role.title || typeof role.title !== 'string') {
+      errors.push(`Role ${i + 1}: missing or invalid title`);
+    }
+    if (!role.company_name || typeof role.company_name !== 'string') {
+      errors.push(`Role ${i + 1}: missing or invalid company_name`);
+    }
+    if (!role.start_date || typeof role.start_date !== 'string') {
+      errors.push(`Role ${i + 1}: missing or invalid start_date`);
+    }
   }
   
+  // Validate experience structure
   for (let i = 0; i < data.experiences.length; i++) {
     const exp = data.experiences[i];
-    if (!exp.title || typeof exp.title !== 'string') errors.push(`Experience ${i + 1}: missing or invalid title`);
-    if (!exp.action || typeof exp.action !== 'string') errors.push(`Experience ${i + 1}: missing or invalid action`);
-    if (!exp.result || typeof exp.result !== 'string') errors.push(`Experience ${i + 1}: missing or invalid result`);
-    if (!exp.role_title || typeof exp.role_title !== 'string') errors.push(`Experience ${i + 1}: missing or invalid role_title`);
-    if (!exp.company_name || typeof exp.company_name !== 'string') errors.push(`Experience ${i + 1}: missing or invalid company_name`);
+    if (!exp.title || typeof exp.title !== 'string') {
+      errors.push(`Experience ${i + 1}: missing or invalid title`);
+    }
+    if (!exp.action || typeof exp.action !== 'string') {
+      errors.push(`Experience ${i + 1}: missing or invalid action`);
+    }
+    if (!exp.result || typeof exp.result !== 'string') {
+      errors.push(`Experience ${i + 1}: missing or invalid result`);
+    }
+    if (!exp.role_title || typeof exp.role_title !== 'string') {
+      errors.push(`Experience ${i + 1}: missing or invalid role_title`);
+    }
+    if (!exp.company_name || typeof exp.company_name !== 'string') {
+      errors.push(`Experience ${i + 1}: missing or invalid company_name`);
+    }
   }
   
   return { isValid: errors.length === 0, errors };
@@ -278,18 +124,28 @@ function validateParsedData(data: any): { isValid: boolean; errors: string[] } {
 // Improved JSON extraction and cleaning
 function extractAndCleanJSON(text: string): string | null {
   try {
+    // Remove any markdown formatting
     let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Find JSON object boundaries more accurately
     const jsonStart = cleaned.indexOf('{');
     const jsonEnd = cleaned.lastIndexOf('}') + 1;
-    if (jsonStart === -1 || jsonEnd === 0) return null;
+    
+    if (jsonStart === -1 || jsonEnd === 0) {
+      return null;
+    }
+    
     let jsonString = cleaned.substring(jsonStart, jsonEnd);
+    
+    // Clean common issues
     jsonString = jsonString
-      .replace(/,\s*}/g, '}')
-      .replace(/,\s*]/g, ']')
-      .replace(/\n/g, ' ')
-      .replace(/\t/g, ' ')
-      .replace(/\s+/g, ' ')
+      .replace(/,\s*}/g, '}')  // Remove trailing commas
+      .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
+      .replace(/\n/g, ' ')     // Replace newlines with spaces
+      .replace(/\t/g, ' ')     // Replace tabs with spaces
+      .replace(/\s+/g, ' ')    // Normalize whitespace
       .trim();
+    
     return jsonString;
   } catch (error) {
     console.error('JSON extraction error:', error);
@@ -300,6 +156,8 @@ function extractAndCleanJSON(text: string): string | null {
 // Simplified text preprocessing focused on experience extraction
 function preprocessExperienceText(text: string): string {
   console.log(`Original text length: ${text.length}`);
+  
+  // Basic normalization
   let cleaned = text
     .replace(/\r\n/g, '\n')
     .replace(/\t/g, ' ')
@@ -307,33 +165,41 @@ function preprocessExperienceText(text: string): string {
     .replace(/\n\s*\n/g, '\n')
     .trim();
 
+  // Try to extract experience section if text looks like a full resume
   const experienceSection = extractExperienceSection(cleaned);
+  
   if (experienceSection && experienceSection.length > 100) {
     console.log(`✓ Found experience section: ${experienceSection.length} chars`);
     cleaned = experienceSection;
   } else {
     console.log(`✗ No clear experience section found, using full text`);
   }
+  
+  // Truncate if too long (keeping it reasonable for AI processing)
   if (cleaned.length > 4000) {
     console.log(`Text too long (${cleaned.length}), truncating`);
     cleaned = cleaned.substring(0, 4000);
   }
+  
   console.log(`Final processed text: ${cleaned.length} chars`);
   return cleaned;
 }
 
 // Extract experience section from resume text
 function extractExperienceSection(text: string): string | null {
+  // Look for experience section headers
   const experiencePatterns = [
     /(?:^|\n)\s*(?:(?:work\s+)?experience|professional\s+experience|employment\s+(?:history|record)|career\s+(?:history|summary)|work\s+history)\s*[:|\n]([\s\S]*?)(?=(?:\n\s*(?:education|skills?|certifications?|awards?|publications?|references?|additional\s+information|languages?|volunteer)\s*[:|\n])|$)/gi,
     /(?:^|\n)\s*(?:employment|work)\s*[:|\n]([\s\S]*?)(?=(?:\n\s*(?:education|skills?|certifications?|awards?|publications?|references?|additional\s+information|languages?|volunteer)\s*[:|\n])|$)/gi
   ];
+  
   for (const pattern of experiencePatterns) {
     const match = pattern.exec(text);
     if (match && match[1] && match[1].trim().length > 100) {
       return match[1].trim();
     }
   }
+  
   return null;
 }
 
@@ -368,55 +234,73 @@ Rules:
 - Return only valid JSON`;
 }
 
-// Batch insert helper
+// Improved batch insert with transaction support
 async function batchInsert(supabase: any, table: string, data: any[], batchSize = 25) {
   if (data.length === 0) return [];
+  
   const results = [];
+  
   for (let i = 0; i < data.length; i += batchSize) {
     const batch = data.slice(i, i + batchSize);
+    
     const { data: batchResults, error } = await supabase
       .from(table)
       .insert(batch)
       .select();
+    
     if (error) {
       console.error(`Batch insert error for ${table}:`, error);
       console.error('Failed batch data:', JSON.stringify(batch, null, 2));
       throw new Error(`Failed to insert ${table}: ${error.message}`);
     }
+    
     if (batchResults) {
       results.push(...batchResults);
       console.log(`Inserted batch ${Math.floor(i/batchSize) + 1} for ${table}: ${batchResults.length} records`);
     }
   }
+  
   return results;
 }
 
 // Enhanced fuzzy matching with better scoring
 function findBestMatch(target: string, candidates: any[], nameField: string): any | null {
   if (!target || candidates.length === 0) return null;
+  
   const targetLower = target.trim().toLowerCase();
   let bestMatch = null;
   let bestScore = 0;
+  
   for (const candidate of candidates) {
-    const candidateName = String(candidate[nameField] ?? '').trim().toLowerCase();
-    if (!candidateName) continue;
-
-    if (candidateName === targetLower) return candidate;
-
+    const candidateName = candidate[nameField].trim().toLowerCase();
+    
+    // Exact match gets highest score
+    if (candidateName === targetLower) {
+      return candidate;
+    }
+    
+    // Calculate similarity score
     let score = 0;
+    
+    // Contains match
     if (candidateName.includes(targetLower) || targetLower.includes(candidateName)) {
       score = 0.8;
     }
+    
+    // Word overlap scoring
     const targetWords = targetLower.split(/\s+/);
     const candidateWords = candidateName.split(/\s+/);
     const commonWords = targetWords.filter(word => candidateWords.includes(word));
     const wordOverlapScore = commonWords.length / Math.max(targetWords.length, candidateWords.length);
+    
     score = Math.max(score, wordOverlapScore);
-    if (score > bestScore && score > 0.5) {
+    
+    if (score > bestScore && score > 0.5) { // Minimum threshold
       bestScore = score;
       bestMatch = candidate;
     }
   }
+  
   return bestMatch;
 }
 
@@ -481,30 +365,39 @@ serve(async (req) => {
     }
 
     // Get resume text from request body
-    let body: any;
-    let resumeText: string | undefined;
+    let body;
+    let resumeText;
     
     const contentType = req.headers.get('content-type') || '';
     console.log('Content-Type:', contentType);
     
     try {
       if (contentType.includes('application/json')) {
+        // Handle JSON request
         body = await req.json();
         resumeText = body.resumeText;
       } else if (contentType.includes('application/x-www-form-urlencoded')) {
+        // Handle form data
         const formData = await req.formData();
         resumeText = formData.get('resumeText') as string;
       } else {
+        // Try to read as text and then parse
         const rawBody = await req.text();
         console.log('Raw request body (first 200 chars):', rawBody.substring(0, 200));
+        
+        // Try to parse as JSON first
         try {
           body = JSON.parse(rawBody);
           resumeText = body.resumeText;
-        } catch (_jsonError) {
+        } catch (jsonError) {
+          console.log('Not valid JSON, checking other formats');
+          
+          // Check if it might be form data
           if (rawBody.includes('resumeText=')) {
             const params = new URLSearchParams(rawBody);
-            resumeText = params.get('resumeText') ?? undefined;
+            resumeText = params.get('resumeText');
           } else {
+            // Treat the entire body as resume text
             resumeText = rawBody.trim();
           }
         }
@@ -529,10 +422,10 @@ serve(async (req) => {
     console.log(`Text processing: ${resumeText.length} → ${processedText.length} chars`);
     console.log(`Processed text preview:`, processedText.substring(0, 300) + '...');
 
-    // AI parsing with retry logic
+    // AI parsing with retry logic for better reliability
     let parsedData: ParsedResumeData | null = null;
     const maxAttempts = 3;
-    const models = ['gpt-5-nano']; // your current model
+    const models = ['gpt-3.5-turbo']; // Use only the most reliable model for now
     let currentModelIndex = 0;
     
     for (let attempts = 1; attempts <= maxAttempts; attempts++) {
@@ -565,10 +458,13 @@ serve(async (req) => {
         if (!openaiResponse.ok) {
           const errorText = await openaiResponse.text();
           console.error(`OpenAI API error (attempt ${attempts}):`, errorText);
+          
+          // Try next model if available
           if (currentModelIndex < models.length - 1) {
             currentModelIndex++;
             continue;
           }
+          
           if (attempts === maxAttempts) {
             throw new Error(`AI service error: ${openaiResponse.status}. Please try again later.`);
           }
@@ -576,25 +472,32 @@ serve(async (req) => {
         }
         
         const openaiData = await openaiResponse.json();
+        
         if (openaiData.choices?.[0]?.finish_reason === 'content_filter') {
           throw new Error('Resume content was flagged by AI safety filters. Please review and try again.');
         }
         
         const generatedText = openaiData.choices?.[0]?.message?.content;
+        
         if (!generatedText) {
           console.error(`No response from OpenAI (attempt ${attempts}):`, JSON.stringify(openaiData, null, 2));
           continue;
         }
         
         console.log(`Raw AI response (attempt ${attempts}):`, generatedText.substring(0, 500) + '...');
+        
+        // Enhanced JSON extraction
         const jsonString = extractAndCleanJSON(generatedText);
+        
         if (!jsonString) {
           console.log(`Attempt ${attempts}: Could not extract valid JSON from response`);
           console.log(`Full response was:`, generatedText);
           continue;
         }
+        
         console.log(`Extracted JSON string (attempt ${attempts}):`, jsonString.substring(0, 200) + '...');
         
+        // Parse and validate JSON
         let tempData;
         try {
           tempData = JSON.parse(jsonString);
@@ -603,25 +506,33 @@ serve(async (req) => {
           continue;
         }
         
+        // Comprehensive validation
         const validation = validateParsedData(tempData);
+        
         if (!validation.isValid) {
           console.log(`Attempt ${attempts}: Validation failed:`, validation.errors);
           console.log(`Raw data that failed validation:`, JSON.stringify(tempData, null, 2));
+          
+          // If it's the last attempt with current model, try next model
           if (attempts < maxAttempts && currentModelIndex < models.length - 1) {
             currentModelIndex++;
           }
           continue;
         }
         
+        // Success!
         parsedData = tempData as ParsedResumeData;
         console.log(`✓ Successfully parsed data on attempt ${attempts}`);
         break;
         
       } catch (attemptError) {
         console.error(`Attempt ${attempts} failed:`, attemptError);
+        
+        // Try next model if available
         if (currentModelIndex < models.length - 1) {
           currentModelIndex++;
         }
+        
         if (attempts === maxAttempts) {
           throw attemptError;
         }
@@ -634,23 +545,29 @@ serve(async (req) => {
 
     console.log(`Successfully parsed: ${parsedData.companies.length} companies, ${parsedData.roles.length} roles, ${parsedData.experiences.length} experiences`);
 
-    // Database operations with de-dupe/merge
+    // Database operations with better error handling and matching
     const results: { companies: any[]; roles: any[]; experiences: any[] } = { companies: [], roles: [], experiences: [] };
 
     try {
-      // Calculate proper company dates from roles and remove duplicates (by name)
+      // Calculate proper company dates from roles and remove duplicates
       const companyDateMap = new Map<string, { start_date: string; end_date: string | null; is_current: boolean }>();
+      
       for (const role of parsedData.roles) {
-        const companyNameKey = normalizeCompanyName(role.company_name);
-        const existing = companyDateMap.get(companyNameKey);
+        const companyName = role.company_name.trim().toLowerCase(); // Use lowercase for comparison
+        const existing = companyDateMap.get(companyName);
+        
         if (!existing) {
-          companyDateMap.set(companyNameKey, {
+          companyDateMap.set(companyName, {
             start_date: role.start_date,
             end_date: role.end_date,
             is_current: role.is_current
           });
         } else {
-          if (role.start_date < existing.start_date) existing.start_date = role.start_date;
+          // Update with earliest start date and latest end date
+          if (role.start_date < existing.start_date) {
+            existing.start_date = role.start_date;
+          }
+          
           if (role.is_current) {
             existing.is_current = true;
             existing.end_date = null;
@@ -660,91 +577,69 @@ serve(async (req) => {
         }
       }
 
-      // Create map of unique companies using normalized key, correcting dates via roles
+      // Create unique companies list by consolidating duplicates
       const uniqueCompanies = new Map<string, ParsedCompany>();
+      
       for (const company of parsedData.companies) {
-        const companyKey = normalizeCompanyName(company.name);
+        const companyKey = company.name.trim().toLowerCase();
         const correctedDates = companyDateMap.get(companyKey);
+        
         if (!uniqueCompanies.has(companyKey)) {
           uniqueCompanies.set(companyKey, {
-            name: company.name.trim(), // preserve original casing
+            name: company.name.trim(), // Keep original casing
             start_date: correctedDates?.start_date || company.start_date,
             end_date: correctedDates?.end_date || company.end_date,
-            is_current: correctedDates?.is_current ?? company.is_current
+            is_current: correctedDates?.is_current || company.is_current
           });
         }
       }
 
-      // Upsert/merge companies (no duplicates) and keep a canonical map
-      const companiesByKey = new Map<string, any>();
-      const canonicalCompanies: any[] = [];
-
-      for (const company of Array.from(uniqueCompanies.values())) {
-        const canonical = await upsertOrGetCompany(supabase, user.id, {
+      // Insert unique companies
+      if (uniqueCompanies.size > 0) {
+        const companyInserts = Array.from(uniqueCompanies.values()).map(company => ({
+          user_id: user.id,
           name: company.name,
           start_date: company.start_date,
           end_date: company.end_date,
-          is_current: company.is_current,
-        });
-        canonicalCompanies.push(canonical);
-        companiesByKey.set(normalizeCompanyName(company.name), canonical);
+          is_current: company.is_current
+        }));
+        
+        results.companies = await batchInsert(supabase, 'companies', companyInserts);
+        console.log(`✓ Inserted ${results.companies.length} unique companies`);
       }
 
-      results.companies = canonicalCompanies;
-      console.log(`✓ Upserted/merged ${results.companies.length} companies`);
-
-      // Insert roles with enhanced matching to canonical companies
+      // Insert roles with enhanced matching (case-insensitive)
       if (parsedData.roles.length > 0) {
-        const roleInserts: any[] = [];
-
-        for (const role of parsedData.roles) {
-          const byKey = companiesByKey.get(normalizeCompanyName(role.company_name));
-          let companyId: string | null = byKey?.id ?? null;
-
-          // Fallback: case-insensitive DB lookup using name_normalized if we have it
-          if (!companyId) {
-            if (HAS_NORMALIZED_COL) {
-              const { data: found, error: findErr } = await supabase
-                .from('companies')
-                .select('id, name')
-                .eq('user_id', user.id)
-                .eq('name_normalized', normalizeCompanyName(role.company_name))
-                .limit(1);
-              if (findErr) throw findErr;
-              if (found && found.length > 0) companyId = found[0].id;
-            } else {
-              const { data: found, error: findErr } = await supabase
-                .from('companies')
-                .select('id, name')
-                .eq('user_id', user.id)
-                .ilike('name', role.company_name.trim())
-                .limit(1);
-              if (findErr) throw findErr;
-              if (found && found.length > 0) companyId = found[0].id;
-            }
+        const roleInserts = parsedData.roles.map(role => {
+          // Find company using case-insensitive matching
+          const company = results.companies.find(c => 
+            c.name.trim().toLowerCase() === role.company_name.trim().toLowerCase()
+          );
+          
+          if (!company) {
+            console.error(`Company not found for role: "${role.title}" at "${role.company_name}"`);
+            console.error('Available companies:', results.companies.map(c => c.name));
+            throw new Error(`Cannot match role "${role.title}" to any company. Found companies: ${results.companies.map(c => c.name).join(', ')}`);
           }
-
-          if (!companyId) {
-            throw new Error(`Cannot match role "${role.title}" to company "${role.company_name}".`);
-          }
-
-          roleInserts.push({
+          
+          return {
             user_id: user.id,
-            company_id: companyId,
+            company_id: company.id,
             title: role.title.trim(),
             start_date: role.start_date,
             end_date: role.end_date,
             is_current: role.is_current
-          });
-        }
-
+          };
+        });
+        
         results.roles = await batchInsert(supabase, 'roles', roleInserts);
         console.log(`✓ Inserted ${results.roles.length} roles`);
       }
 
-      // Insert experiences (role matching unchanged)
+      // Insert experiences with enhanced matching (case-insensitive)
       if (parsedData.experiences.length > 0) {
         const experienceInserts = parsedData.experiences.map((experience, index) => {
+          // Find role that matches both title and company (case-insensitive)
           const matchingRoles = results.roles.filter(role => {
             const company = results.companies.find(c => c.id === role.company_id);
             return company && 
@@ -754,17 +649,15 @@ serve(async (req) => {
           
           let role = matchingRoles.length > 0 ? matchingRoles[0] : null;
           
+          // Fallback: if exact match fails, try fuzzy matching with company context
           if (!role) {
-            role = findBestMatch(
-              experience.role_title,
-              results.roles.filter(r => {
-                const company = results.companies.find(c => c.id === r.company_id);
-                return company && company.name.trim().toLowerCase().includes(experience.company_name.trim().toLowerCase());
-              }),
-              'title'
-            );
+            role = findBestMatch(experience.role_title, results.roles.filter(r => {
+              const company = results.companies.find(c => c.id === r.company_id);
+              return company && company.name.trim().toLowerCase().includes(experience.company_name.trim().toLowerCase());
+            }), 'title');
           }
           
+          // Final fallback: match by role title only
           if (!role) {
             role = findBestMatch(experience.role_title, results.roles, 'title');
           }
@@ -825,6 +718,7 @@ serve(async (req) => {
     let statusCode = 500;
     let errorMessage = baseErrorMessage;
     
+    // Provide specific error messages and status codes
     if (baseErrorMessage.includes('Rate limit')) {
       statusCode = 429;
     } else if (baseErrorMessage.includes('too short') || baseErrorMessage.includes('No resume text')) {
@@ -833,7 +727,7 @@ serve(async (req) => {
       statusCode = 401;
     } else if (baseErrorMessage.includes('Unable to extract work experience')) {
       statusCode = 422;
-      errorMessage = baseErrorMessage;
+      errorMessage = baseErrorMessage; // Keep the detailed message as is
     }
     
     return new Response(JSON.stringify({ 
