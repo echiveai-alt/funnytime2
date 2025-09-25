@@ -214,6 +214,7 @@ Extract:
 1. All companies with start/end dates
 2. All job roles with start/end dates and company names  
 3. All bullet points as separate experiences with STAR format
+4. Generate clear, descriptive titles for experiences that highlight the impact or action taken
 
 Return JSON in this exact format:
 {
@@ -222,7 +223,7 @@ Return JSON in this exact format:
   "experiences": [{"title": "Achievement description", "situation": "Context or null", "task": "Task or null", "action": "What was done", "result": "Outcome", "role_title": "Job Title", "company_name": "Company Name"}]
 }
 
-Use YYYY-MM-DD format. If only month/year, use YYYY-MM-01 for start, YYYY-MM-28 for end. Return only valid JSON.`;
+Use YYYY-MM-DD format. Use YYYY-MM-01 regardless if day is provided. Return only valid JSON.`;
 }
 
 // Improved batch insert with transaction support
