@@ -407,7 +407,7 @@ serve(async (req) => {
     // AI parsing with retry logic for better reliability
     let parsedData: ParsedResumeData | null = null;
     const maxAttempts = 3;
-    const models = ['gpt-5-nano', 'gpt-4o-mini']; // Start with the more reliable model
+    const models = ['gpt-4o-mini']; // Start with the more reliable model
     let currentModelIndex = 0;
     
     for (let attempts = 1; attempts <= maxAttempts; attempts++) {
