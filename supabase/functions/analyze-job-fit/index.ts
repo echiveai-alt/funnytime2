@@ -143,11 +143,11 @@ serve(async (req) => {
   }
 
   try {
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    const geminiApiKey1 = Deno.env.get('ANALYZE_JOB_FIT_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!geminiApiKey || !supabaseUrl || !supabaseServiceKey) {
+    if (!geminiApiKey1 || !supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
     }
 
@@ -238,7 +238,7 @@ serve(async (req) => {
     while (retryCount < maxRetries) {
       try {
         geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey1}`,
           {
             method: 'POST',
             headers: {
