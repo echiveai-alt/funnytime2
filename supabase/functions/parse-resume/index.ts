@@ -358,12 +358,12 @@ serve(async (req) => {
     console.log('Starting enhanced resume parsing');
     
     // Environment and client setup
-    const geminiApiKey = Deno.env.get('ANALYZE_JOB_FIT_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    if (!geminiApiKey) {
-      throw new Error('Gemini API key not configured');
+    if (!openaiApiKey) {
+      throw new Error('OpenAI API key not configured');
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -461,28 +461,24 @@ serve(async (req) => {
       attempts++;
       console.log(`AI parsing attempt ${attempts}/${maxAttempts}`);
       
-      geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+      geminiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiApiKey}`
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: createOptimizedPrompt(processedText) }] }],
-          generationConfig: {
-            maxOutputTokens: 4096,
-            temperature: 0.05, // Lower temperature for more consistent formatting
-            topP: 0.8,
-          },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-          ]
+          model: 'gpt-5-nano-2025-08-07',
+          messages: [
+            { role: 'user', content: createOptimizedPrompt(processedText) }
+          ],
+          max_completion_tokens: 4096
         })
       });
       
       if (geminiResponse.ok) {
         geminiData = await geminiResponse.json();
-        const testText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+        const testText = geminiData.choices?.[0]?.message?.content;
         
         // Check if response contains valid JSON structure
         if (testText && testText.includes('"companies"') && testText.includes('"roles"') && testText.includes('"experiences"')) {
@@ -507,14 +503,14 @@ serve(async (req) => {
     }
 
     
-    if (geminiData.candidates?.[0]?.finishReason === 'SAFETY') {
+    if (geminiData.choices?.[0]?.finish_reason === 'content_filter') {
       throw new Error('Resume content was flagged by AI safety filters. Please review and try again.');
     }
     
-    const generatedText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const generatedText = geminiData.choices?.[0]?.message?.content;
     
     if (!generatedText) {
-      console.error('No response from Gemini:', JSON.stringify(geminiData, null, 2));
+      console.error('No response from OpenAI:', JSON.stringify(geminiData, null, 2));
       throw new Error('No response from AI service. Please try again.');
     }
 

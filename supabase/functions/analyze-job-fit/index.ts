@@ -143,11 +143,11 @@ serve(async (req) => {
   }
 
   try {
-    const geminiApiKey = Deno.env.get('ANALYZE_JOB_FIT_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!geminiApiKey || !supabaseUrl || !supabaseServiceKey) {
+    if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
     }
 
@@ -237,28 +237,20 @@ serve(async (req) => {
 
     while (retryCount < maxRetries) {
       try {
-        geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contents: [{
-                parts: [{
-                  text: prompt
-                }]
-              }],
-              generationConfig: {
-                temperature: 0.1, // Lower for more consistency
-                topK: 20,         // Lower for more focused responses
-                topP: 0.8,        // Lower for more consistency
-                maxOutputTokens: 3072, // Increased for detailed analysis
-              }
-            }),
-          }
-        );
+        geminiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiApiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-5-nano-2025-08-07',
+            messages: [
+              { role: 'user', content: prompt }
+            ],
+            max_completion_tokens: 3072
+          })
+        });
         
         if (geminiResponse.ok) break;
         
@@ -274,16 +266,16 @@ serve(async (req) => {
     }
 
     if (!geminiResponse?.ok) {
-      throw new Error('Failed to get response from Gemini API');
+      throw new Error('Failed to get response from OpenAI API');
     }
 
     const geminiData = await geminiResponse.json();
     
-    if (!geminiData.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new Error('Invalid response structure from Gemini API');
+    if (!geminiData.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response structure from OpenAI API');
     }
 
-    const responseText = geminiData.candidates[0].content.parts[0].text;
+    const responseText = geminiData.choices[0].message.content;
     
     // Enhanced JSON parsing
     let analysis: any;

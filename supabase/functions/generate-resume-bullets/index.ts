@@ -14,11 +14,11 @@ serve(async (req) => {
   }
 
   try {
-    const geminiApiKey = Deno.env.get('GENERATE_RESUME_BULLETS_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!geminiApiKey || !supabaseUrl || !supabaseServiceKey) {
+    if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
     }
 
@@ -233,44 +233,36 @@ Return ONLY JSON:
 
     const prompt = createBulletPrompt();
 
-    // Call Gemini API with optimized settings
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.2,  // Low for consistency
-            topK: 30,
-            topP: 0.9,
-            maxOutputTokens: 2048,
-          },
-        }),
-      }
-    );
+    // Call OpenAI API with optimized settings
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-5-nano-2025-08-07',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        max_completion_tokens: 2048
+      })
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Gemini API error:', errorText);
-      throw new Error(`Gemini API request failed: ${response.statusText}`);
+      console.error('OpenAI API error:', errorText);
+      throw new Error(`OpenAI API request failed: ${response.statusText}`);
     }
 
     const data = await response.json();
-    console.log('Gemini API response received');
+    console.log('OpenAI API response received');
 
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      throw new Error('Invalid response from Gemini API');
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response from OpenAI API');
     }
 
-    const generatedText = data.candidates[0].content.parts[0].text;
+    const generatedText = data.choices[0].message.content;
     console.log('Generated text preview:', generatedText.substring(0, 200) + '...');
 
     // Enhanced JSON parsing with better error handling
