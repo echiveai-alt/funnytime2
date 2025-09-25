@@ -354,16 +354,16 @@ serve(async (req) => {
     console.log('Starting enhanced resume parsing');
     
     // Environment and client setup
-    const openaiApiKey = Deno.env.get('RESUME_PARSER_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     if (!openaiApiKey) {
-      console.error('RESUME_PARSER_KEY not found in environment variables');
-      throw new Error('Resume parser API key not configured');
+      console.error('OPENAI_API_KEY not found in environment variables');
+      throw new Error('OpenAI API key not configured');
     }
     
-    console.log('RESUME_PARSER_KEY found successfully');
+    console.log('OPENAI_API_KEY found successfully');
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
