@@ -184,7 +184,8 @@ export const OnboardingResumeModal = ({
           {/* Custom message */}
           <div className="p-4 bg-muted/50 rounded-lg border border-border/50">
             <p className="text-sm text-muted-foreground">
-              Upload your resume to kick things off. Then review and add specifics on the Experience cards—especially in the Actions—so our AI can craft JD-aligned bullet points.
+              Upload your resume to kick things off. Then review and add specifics on the Experience cards—especially in the Actions—so our AI can craft JD-aligned bullet points. 
+              We need your professional experience for each company and role, plus the start and end dates.
             </p>
           </div>
 
