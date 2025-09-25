@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { Brain } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CompanyTabs } from "@/components/experiences/CompanyTabs";
@@ -11,18 +10,21 @@ import { RoleModal } from "@/components/experiences/RoleModal";
 import { OnboardingResumeModal } from "@/components/experiences/OnboardingResumeModal";
 import { useExperiences } from "@/hooks/useExperiences";
 
+type Modal = null | "resume" | "company" | "role";
+const SESSION_FLAG = "exp_onboarding_shown";
+
 const Experiences = () => {
   console.log("Experiences component loading...");
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [showCompanyModal, setShowCompanyModal] = useState(false);
-  const [showRoleModal, setShowRoleModal] = useState(false);
-  const [showOnboardingResumeModal, setShowOnboardingResumeModal] = useState(false);
-  const [hasShownOnboardingModal, setHasShownOnboardingModal] = useState(false);
+  // Single source of truth for which modal is open
+  const [openModal, setOpenModal] = useState<Modal>(null);
 
-  // Success flag blocks CompanyModal from popping after a good import
-  const [resumeParseSuccessful, setResumeParseSuccessful] = useState(false);
+  // Session-scoped “has auto-shown resume modal” flag
+  const [hasAutoShownThisSession, setHasAutoShownThisSession] = useState<boolean>(() => {
+    return sessionStorage.getItem(SESSION_FLAG) === "1";
+  });
 
+  // Editing payloads (kept separate)
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [editingRole, setEditingRole] = useState<any>(null);
 
@@ -51,53 +53,24 @@ const Experiences = () => {
     refreshAndSelectLatest,
   } = useExperiences();
 
-  /** URL hygiene only — strip showResumeImport if present (no longer controls opening). */
-  useEffect(() => {
-    if (searchParams.has("showResumeImport")) {
-      const next = new URLSearchParams(searchParams);
-      next.delete("showResumeImport");
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
-
-  /** Auto-show onboarding modal exactly once for users with no companies. */
-  useEffect(() => {
-    if (experiencesLoading) return;
-    const noCompanies = companies.length === 0;
-    if (noCompanies && !hasShownOnboardingModal && !showOnboardingResumeModal) {
-      setShowOnboardingResumeModal(true);
-      setHasShownOnboardingModal(true);
-    }
-  }, [experiencesLoading, companies.length, hasShownOnboardingModal, showOnboardingResumeModal]);
+  const noCompanies = companies.length === 0;
 
   /**
-   * Decide about CompanyModal *after* the onboarding modal is closed.
-   * This avoids races and ensures we consider the refreshed `companies` state.
+   * 1) First visit this session + no companies => auto-open Resume (once per session).
+   *    Won’t trigger if any modal is already open.
    */
   useEffect(() => {
     if (experiencesLoading) return;
-
-    const onboardingClosed = !showOnboardingResumeModal;
-    const noCompanies = companies.length === 0;
-
-    // Only open CompanyModal if: onboarding is closed, there are still no companies,
-    // and parsing did not succeed.
-    if (onboardingClosed && noCompanies && !resumeParseSuccessful && !showCompanyModal) {
-      setShowCompanyModal(true);
+    if (!hasAutoShownThisSession && noCompanies && openModal === null) {
+      setOpenModal("resume");
+      setHasAutoShownThisSession(true);
+      sessionStorage.setItem(SESSION_FLAG, "1");
     }
+  }, [experiencesLoading, hasAutoShownThisSession, noCompanies, openModal]);
 
-    // Optional: if companies arrive later while CompanyModal is open, auto-close it.
-    if (showCompanyModal && companies.length > 0) {
-      setShowCompanyModal(false);
-    }
-  }, [
-    experiencesLoading,
-    showOnboardingResumeModal,
-    companies.length,
-    resumeParseSuccessful,
-    showCompanyModal,
-  ]);
-
+  /**
+   * Experience actions
+   */
   const handleAddExperience = async () => {
     try {
       await createExperience();
@@ -116,33 +89,61 @@ const Experiences = () => {
     await deleteExperience(selectedExperience.id);
   };
 
+  /**
+   * Button handlers (openers)
+   */
+  const openImportResume = () => setOpenModal("resume");
+
+  const openAddCompany = () => {
+    setEditingCompany(null);
+    setOpenModal("company");
+  };
+
+  const openEditCompany = (company: any) => {
+    setEditingCompany(company);
+    setOpenModal("company");
+  };
+
+  const openAddRole = () => {
+    setEditingRole(null);
+    setOpenModal("role");
+  };
+
+  const openEditRole = (role: any) => {
+    setEditingRole(role);
+    setOpenModal("role");
+  };
+
+  /**
+   * Modal close helpers
+   */
+  const closeAllModals = () => setOpenModal(null);
+
   return (
     <>
       {/* Sticky Navigation Tabs */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50">
         <div className="max-w-7xl mx-auto px-6">
+          {/* Company Tabs */}
           <CompanyTabs
             companies={companies}
             selectedCompany={selectedCompany}
             onSelectCompany={setSelectedCompany}
-            onAddCompany={() => setShowCompanyModal(true)}
-            onEditCompany={(company) => {
-              setEditingCompany(company);
-              setShowCompanyModal(true);
-            }}
+            onAddCompany={openAddCompany}
+            onEditCompany={openEditCompany}
             isLoading={experiencesLoading}
+            // If you have an "Import Experiences" button up here, wire it to:
+            // onImportExperiences={openImportResume}
           />
 
+          {/* Role Tabs */}
           {selectedCompany && (
             <RoleTabs
               roles={getFilteredRoles(selectedCompany.id)}
               selectedRole={selectedRole}
               onSelectRole={setSelectedRole}
-              onAddRole={() => setShowRoleModal(true)}
-              onEditRole={(role) => {
-                setEditingRole(role);
-                setShowRoleModal(true);
-              }}
+              onAddRole={openAddRole}
+              onEditRole={openEditRole}
               isLoading={experiencesLoading}
             />
           )}
@@ -162,6 +163,7 @@ const Experiences = () => {
           </div>
         ) : selectedRole ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-20rem)]">
+            {/* Experiences List */}
             <div className="lg:col-span-4 xl:col-span-4">
               <ExperiencesList
                 experiences={experiences}
@@ -174,6 +176,8 @@ const Experiences = () => {
                 isLoading={experiencesLoading}
               />
             </div>
+
+            {/* STAR Input Panel */}
             <div className="lg:col-span-8 xl:col-span-8">
               <STARInputPanel
                 experience={selectedExperience}
@@ -189,7 +193,9 @@ const Experiences = () => {
               <div className="flex items-center justify-center w-16 h-16 bg-muted rounded-xl shadow-soft mx-auto mb-6">
                 <Brain className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Select a role to get started</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">
+                Select a role to get started
+              </h2>
               <p className="text-muted-foreground">
                 Choose a company and role from the tabs above to start adding your STAR experiences.
               </p>
@@ -199,30 +205,58 @@ const Experiences = () => {
       </main>
 
       {/* Modals */}
-      <CompanyModal
-        isOpen={showCompanyModal}
-        onClose={() => {
-          setShowCompanyModal(false);
-          setEditingCompany(null);
+
+      {/* 2) Resume (Onboarding) Modal */}
+      <OnboardingResumeModal
+        isOpen={openModal === "resume"}
+        // 1a) Parse success: refresh/select latest role, then close
+        onImportComplete={async (_data) => {
+          try {
+            await refreshAndSelectLatest(); // ensures "most recent role is active"
+          } finally {
+            setOpenModal(null); // close resume modal
+          }
         }}
-        onSave={async (data, roleTitle) => {
+        // 1b/2) Cancel/Skip: if still no companies, open Company; else just close
+        onClose={() => {
+          if (noCompanies) {
+            setOpenModal("company");
+          } else {
+            setOpenModal(null);
+          }
+        }}
+      />
+
+      {/* 3) Company Modal */}
+      <CompanyModal
+        isOpen={openModal === "company"}
+        onClose={() => {
+          setEditingCompany(null);
+          setOpenModal(null); // back to page
+        }}
+        onSave={async (data, _roleTitle) => {
+          // If editing, update; else create. After save, ensure selection is current,
+          // then go to Role modal (requirement 3).
           if (editingCompany) {
             await updateCompany(editingCompany.id, data);
           } else {
-            await createCompany(data, roleTitle);
+            await createCompany(data, undefined);
           }
           setEditingCompany(null);
+          await refreshAndSelectLatest(); // ensure selectedCompany is the newly added/updated one
+          setOpenModal("role"); // open Role modal next
         }}
         onDelete={editingCompany ? deleteCompany : undefined}
         company={editingCompany}
         isLoading={experiencesLoading}
       />
 
+      {/* 4) Role Modal */}
       <RoleModal
-        isOpen={showRoleModal}
+        isOpen={openModal === "role"}
         onClose={() => {
-          setShowRoleModal(false);
           setEditingRole(null);
+          setOpenModal(null); // back to page
         }}
         onSave={async (data) => {
           if (editingRole) {
@@ -231,30 +265,13 @@ const Experiences = () => {
             await createRole(data);
           }
           setEditingRole(null);
+          await refreshAndSelectLatest(); // keep selection fresh
+          setOpenModal(null); // close role modal
         }}
         onDelete={editingRole ? deleteRole : undefined}
         role={editingRole}
         companyId={selectedCompany?.id || ""}
         isLoading={experiencesLoading}
-      />
-
-      <OnboardingResumeModal
-        isOpen={showOnboardingResumeModal}
-        onClose={() => {
-          // Just close; don't decide about CompanyModal here.
-          // The effect above will decide based on current state.
-          setShowOnboardingResumeModal(false);
-        }}
-        onImportComplete={async (data) => {
-          console.log("Resume import completed:", data);
-          setResumeParseSuccessful(true);
-
-          // Refresh to pull in companies created by parsing
-          await refreshAndSelectLatest();
-
-          // Close the onboarding modal *after* refresh so state is current.
-          setShowOnboardingResumeModal(false);
-        }}
       />
     </>
   );
