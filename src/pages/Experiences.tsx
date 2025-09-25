@@ -19,6 +19,7 @@ const Experiences = () => {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showOnboardingResumeModal, setShowOnboardingResumeModal] = useState(false);
   const [hasShownOnboardingModal, setHasShownOnboardingModal] = useState(false);
+  const [resumeParseSuccessful, setResumeParseSuccessful] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
 
@@ -223,13 +224,15 @@ const Experiences = () => {
         isOpen={showOnboardingResumeModal}
         onClose={() => {
           setShowOnboardingResumeModal(false);
-          // If user cancels resume import and has no companies, show company modal
-          if (companies.length === 0) {
+          // If user cancels resume import and has no companies, and parse wasn't successful, show company modal
+          if (companies.length === 0 && !resumeParseSuccessful) {
             setShowCompanyModal(true);
           }
+          setResumeParseSuccessful(false); // Reset for next time
         }}
         onImportComplete={async (data) => {
           console.log('Resume import completed:', data);
+          setResumeParseSuccessful(true);
           setShowOnboardingResumeModal(false);
           
           // Refresh the experiences data and auto-select the latest role
