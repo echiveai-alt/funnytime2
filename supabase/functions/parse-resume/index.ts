@@ -358,12 +358,12 @@ serve(async (req) => {
     console.log('Starting enhanced resume parsing');
     
     // Environment and client setup
-    const geminiApiKey = Deno.env.get('RESUME_PARSER_KEY');
+    const geminiApiKey = Deno.env.get('ANALYZE_JOB_FIT_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     if (!geminiApiKey) {
-      throw new Error('Resume parser API key not configured');
+      throw new Error('Gemini API key not configured');
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -461,7 +461,7 @@ serve(async (req) => {
       attempts++;
       console.log(`AI parsing attempt ${attempts}/${maxAttempts}`);
       
-      geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiApiKey}`, {
+      geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
