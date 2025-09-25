@@ -359,8 +359,11 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
+      console.error('RESUME_PARSER_KEY not found in environment variables');
+      throw new Error('Resume parser API key not configured');
     }
+    
+    console.log('RESUME_PARSER_KEY found successfully');
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
