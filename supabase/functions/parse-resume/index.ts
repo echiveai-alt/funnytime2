@@ -358,12 +358,12 @@ serve(async (req) => {
     console.log('Starting enhanced resume parsing');
     
     // Environment and client setup
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    const geminiApiKey = Deno.env.get('RESUME_PARSER_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     if (!geminiApiKey) {
-      throw new Error('Gemini API key not configured');
+      throw new Error('Resume parser API key not configured');
     }
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
