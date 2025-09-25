@@ -416,7 +416,7 @@ serve(async (req) => {
     // AI parsing with retry logic for better reliability
     let parsedData: ParsedResumeData | null = null;
     const maxAttempts = 3;
-    const models = ['gpt-5-nano']; // Use only the most reliable model for now
+    const models = ['gpt-3.5-turbo']; // Use only the most reliable model for now
     let currentModelIndex = 0;
     
     for (let attempts = 1; attempts <= maxAttempts; attempts++) {
@@ -441,7 +441,7 @@ serve(async (req) => {
                 content: createExperiencePrompt(processedText) 
               }
             ],
-            max_tokens: 4000,
+            max_completion_tokens: 4000,
             temperature: 0.1
           })
         });
