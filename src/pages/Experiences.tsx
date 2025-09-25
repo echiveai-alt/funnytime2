@@ -12,7 +12,6 @@ import { OnboardingResumeModal } from "@/components/experiences/OnboardingResume
 import { useExperiences } from "@/hooks/useExperiences";
 
 const Experiences = () => {
-  // Fixed isLoading reference issue - debugging
   console.log("Experiences component loading...");
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,7 +19,10 @@ const Experiences = () => {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showOnboardingResumeModal, setShowOnboardingResumeModal] = useState(false);
   const [hasShownOnboardingModal, setHasShownOnboardingModal] = useState(false);
+
+  // Success flag blocks CompanyModal from popping after a good import
   const [resumeParseSuccessful, setResumeParseSuccessful] = useState(false);
+
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [editingRole, setEditingRole] = useState<any>(null);
 
@@ -49,11 +51,7 @@ const Experiences = () => {
     refreshAndSelectLatest,
   } = useExperiences();
 
-  /**
-   * URL hygiene only:
-   * If ?showResumeImport is present, remove it from the URL.
-   * This no longer controls whether the modal opens.
-   */
+  /** URL hygiene only — strip showResumeImport if present (no longer controls opening). */
   useEffect(() => {
     if (searchParams.has("showResumeImport")) {
       const next = new URLSearchParams(searchParams);
@@ -62,19 +60,43 @@ const Experiences = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  /**
-   * Auto-show onboarding resume modal exactly once for users with no company data.
-   * Does NOT depend on any URL flags.
-   */
+  /** Auto-show onboarding modal exactly once for users with no companies. */
   useEffect(() => {
     if (experiencesLoading) return;
-
     const noCompanies = companies.length === 0;
     if (noCompanies && !hasShownOnboardingModal && !showOnboardingResumeModal) {
       setShowOnboardingResumeModal(true);
       setHasShownOnboardingModal(true);
     }
   }, [experiencesLoading, companies.length, hasShownOnboardingModal, showOnboardingResumeModal]);
+
+  /**
+   * Decide about CompanyModal *after* the onboarding modal is closed.
+   * This avoids races and ensures we consider the refreshed `companies` state.
+   */
+  useEffect(() => {
+    if (experiencesLoading) return;
+
+    const onboardingClosed = !showOnboardingResumeModal;
+    const noCompanies = companies.length === 0;
+
+    // Only open CompanyModal if: onboarding is closed, there are still no companies,
+    // and parsing did not succeed.
+    if (onboardingClosed && noCompanies && !resumeParseSuccessful && !showCompanyModal) {
+      setShowCompanyModal(true);
+    }
+
+    // Optional: if companies arrive later while CompanyModal is open, auto-close it.
+    if (showCompanyModal && companies.length > 0) {
+      setShowCompanyModal(false);
+    }
+  }, [
+    experiencesLoading,
+    showOnboardingResumeModal,
+    companies.length,
+    resumeParseSuccessful,
+    showCompanyModal,
+  ]);
 
   const handleAddExperience = async () => {
     try {
@@ -99,7 +121,6 @@ const Experiences = () => {
       {/* Sticky Navigation Tabs */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50">
         <div className="max-w-7xl mx-auto px-6">
-          {/* Company Tabs */}
           <CompanyTabs
             companies={companies}
             selectedCompany={selectedCompany}
@@ -112,7 +133,6 @@ const Experiences = () => {
             isLoading={experiencesLoading}
           />
 
-          {/* Role Tabs */}
           {selectedCompany && (
             <RoleTabs
               roles={getFilteredRoles(selectedCompany.id)}
@@ -131,7 +151,6 @@ const Experiences = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-6">
-        {/* Show loading state only when initially loading and no saved role */}
         {experiencesLoading && !selectedRole ? (
           <div className="flex items-center justify-center h-[60vh]">
             <Card className="p-12 shadow-soft text-center max-w-md">
@@ -143,7 +162,6 @@ const Experiences = () => {
           </div>
         ) : selectedRole ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-20rem)]">
-            {/* Experiences List - 35% width on desktop */}
             <div className="lg:col-span-4 xl:col-span-4">
               <ExperiencesList
                 experiences={experiences}
@@ -156,8 +174,6 @@ const Experiences = () => {
                 isLoading={experiencesLoading}
               />
             </div>
-
-            {/* STAR Input Panel - 65% width on desktop */}
             <div className="lg:col-span-8 xl:col-span-8">
               <STARInputPanel
                 experience={selectedExperience}
@@ -173,9 +189,7 @@ const Experiences = () => {
               <div className="flex items-center justify-center w-16 h-16 bg-muted rounded-xl shadow-soft mx-auto mb-6">
                 <Brain className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-4">
-                Select a role to get started
-              </h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">Select a role to get started</h2>
               <p className="text-muted-foreground">
                 Choose a company and role from the tabs above to start adding your STAR experiences.
               </p>
@@ -227,19 +241,19 @@ const Experiences = () => {
       <OnboardingResumeModal
         isOpen={showOnboardingResumeModal}
         onClose={() => {
+          // Just close; don't decide about CompanyModal here.
+          // The effect above will decide based on current state.
           setShowOnboardingResumeModal(false);
-          // If user cancels resume import and has no companies, and parse wasn't successful, show company modal
-          if (companies.length === 0 && !resumeParseSuccessful) {
-            setShowCompanyModal(true);
-          }
-          // Reset success flag after checking it
-          setResumeParseSuccessful(false);
         }}
         onImportComplete={async (data) => {
           console.log("Resume import completed:", data);
           setResumeParseSuccessful(true);
-          // Refresh the experiences data and auto-select the latest role
+
+          // Refresh to pull in companies created by parsing
           await refreshAndSelectLatest();
+
+          // Close the onboarding modal *after* refresh so state is current.
+          setShowOnboardingResumeModal(false);
         }}
       />
     </>
