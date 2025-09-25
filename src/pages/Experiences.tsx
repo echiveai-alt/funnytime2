@@ -225,7 +225,8 @@ const Experiences = () => {
           if (companies.length === 0 && !resumeParseSuccessful) {
             setShowCompanyModal(true);
           }
-          setResumeParseSuccessful(false); // Reset for next time
+          // Reset success flag after checking it
+          setResumeParseSuccessful(false);
         }}
         onImportComplete={async (data) => {
           console.log('Resume import completed:', data);
