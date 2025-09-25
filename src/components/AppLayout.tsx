@@ -65,7 +65,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-primary rounded-xl shadow-soft">
                 <Brain className="w-6 h-6 text-primary-foreground" />
               </div>
-              <span className="text-2xl font-bold text-foreground">echive.ai</span>
+              <span className="text-2xl font-bold text-foreground">keystep.ai</span>
             </div>
             <Button variant="ghost" onClick={handleSignOut}>
               Sign Out

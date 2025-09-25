@@ -158,7 +158,7 @@ const EducationOnboarding = () => {
 
       toast({
         title: "Education details saved!",
-        description: "Welcome to echive.ai",
+        description: "Welcome to keystep.ai",
       });
 
       navigate("/app/experiences?showResumeImport=true");

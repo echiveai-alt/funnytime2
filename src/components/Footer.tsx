@@ -11,7 +11,7 @@ const Footer = () => {
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-primary rounded-xl shadow-soft">
                 <Brain className="w-6 h-6 text-primary-foreground" />
               </div>
-              <span className="text-2xl font-bold text-foreground">echive.ai</span>
+              <span className="text-2xl font-bold text-foreground">keystep.ai</span>
             </div>
             <p className="text-muted-foreground mb-4 max-w-md">
               Transform your professional experiences into compelling resume bullet points with AI-powered precision.
@@ -44,7 +44,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-muted-foreground text-sm">
-            © 2024 echive.ai. All rights reserved.
+            © 2024 keystep.ai. All rights reserved.
           </p>
           <div className="flex items-center gap-6 mt-4 md:mt-0">
             <a href="#" className="text-muted-foreground hover:text-foreground transition-smooth">

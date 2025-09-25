@@ -46,7 +46,7 @@ const Benefits = () => {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            Why echive.ai?
+            Why keystep.ai?
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
             Stop spending hours crafting resume bullet points. Let AI do the heavy lifting while you focus on what matters most.

@@ -33,7 +33,7 @@ const HowItWorks = () => {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-            How echive.ai Works
+            How keystep.ai Works
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Transform your career story into targeted bullet points with our AI-powered platform

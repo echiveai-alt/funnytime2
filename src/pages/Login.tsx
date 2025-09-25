@@ -82,7 +82,7 @@ const Login = () => {
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Sign in</h1>
           <p className="text-muted-foreground">
-            Welcome back to echive.ai
+            Welcome back to keystep.ai
           </p>
         </div>
 
