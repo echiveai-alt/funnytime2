@@ -406,9 +406,20 @@ serve(async (req) => {
       throw new Error('Resume text too short. Please provide a complete resume.');
     }
 
-    // Enhanced text preprocessing
-    const processedText = preprocessResumeText(extractedText);
+    // Enhanced text preprocessing with fallback
+    let processedText = preprocessResumeText(extractedText);
     console.log(`Text processing: ${extractedText.length} → ${processedText.length} chars`);
+    
+    // If preprocessing removed too much content, use original with basic cleaning
+    if (processedText.length < extractedText.length * 0.1) {
+      console.log('Preprocessing removed too much content, using fallback');
+      processedText = extractedText
+        .replace(/\r\n/g, '\n')
+        .replace(/\t/g, ' ')
+        .replace(/\s{3,}/g, ' ')
+        .trim()
+        .substring(0, 6000); // Truncate if too long
+    }
 
     // AI parsing with better error handling
     const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
@@ -472,15 +483,18 @@ serve(async (req) => {
       }
       
       if (parsedData.companies.length === 0) {
-        throw new Error('No companies found in resume');
+        console.error('Response text:', generatedText);
+        throw new Error('Unable to extract work experience from the resume. Please ensure your resume contains clear employment history with company names, job titles, and dates. You may also try uploading a text version of your resume for better parsing.');
       }
       
       if (parsedData.roles.length === 0) {
-        throw new Error('No roles found in resume');  
+        console.error('Companies found but no roles:', parsedData.companies);
+        throw new Error('Found companies but no job roles. Please ensure your resume clearly lists job titles for each position.');  
       }
       
       if (parsedData.experiences.length === 0) {
-        throw new Error('No experiences found in resume');
+        console.error('Companies and roles found but no experiences:', { companies: parsedData.companies, roles: parsedData.roles });
+        throw new Error('Found job history but no detailed responsibilities or achievements. Please ensure your resume includes bullet points describing your work accomplishments.');
       }
       
       // Validate experience structure
@@ -494,7 +508,13 @@ serve(async (req) => {
     } catch (parseError) {
       console.error('JSON parsing failed:', parseError);
       console.error('Response text:', generatedText.substring(0, 1000));
-      throw new Error('Failed to parse AI response. Please try again.');
+      
+      // Try to provide more helpful error messages based on the response
+      if (generatedText.includes('cannot') || generatedText.includes('unable') || generatedText.includes('unclear')) {
+        throw new Error('The AI could not clearly identify work experience in your resume. Please ensure your resume has a clear work experience section with company names, job titles, dates, and bullet points describing your responsibilities.');
+      }
+      
+      throw new Error('Failed to parse AI response. The resume format may be unclear or corrupted. Try uploading a text version or reformatting your PDF.');
     }
 
     console.log(`Successfully parsed: ${parsedData.companies.length} companies, ${parsedData.roles.length} roles, ${parsedData.experiences.length} experiences`);
@@ -597,13 +617,24 @@ serve(async (req) => {
   } catch (error) {
     console.error('Resume parsing error:', error);
     
-    const errorMessage = error instanceof Error ? error.message : 'Failed to parse resume';
-    
-    // Determine appropriate status code
+    const baseErrorMessage = error instanceof Error ? error.message : 'Failed to parse resume';
     let statusCode = 500;
-    if (errorMessage.includes('Rate limit')) statusCode = 429;
-    else if (errorMessage.includes('Unsupported') || errorMessage.includes('too short') || errorMessage.includes('extract')) statusCode = 400;
-    else if (errorMessage.includes('Unauthorized')) statusCode = 401;
+    let errorMessage = baseErrorMessage;
+    
+    // Provide more specific error messages and status codes
+    if (baseErrorMessage.includes('Rate limit')) {
+      statusCode = 429;
+    } else if (baseErrorMessage.includes('Unsupported') || baseErrorMessage.includes('too short')) {
+      statusCode = 400;
+    } else if (baseErrorMessage.includes('Unauthorized')) {
+      statusCode = 401;
+    } else if (baseErrorMessage.includes('extract work experience') || baseErrorMessage.includes('clearly identify') || baseErrorMessage.includes('No companies found')) {
+      statusCode = 422; // Unprocessable Entity
+      errorMessage += ' Try uploading a text version of your resume or ensure it has a clear work experience section with company names, job titles, and dates.';
+    } else if (baseErrorMessage.includes('corrupted') || baseErrorMessage.includes('unclear')) {
+      statusCode = 422;
+      errorMessage += ' Consider reformatting your resume or converting it to a text file for better parsing.';
+    }
     
     return new Response(JSON.stringify({ 
       error: errorMessage,
