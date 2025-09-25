@@ -203,7 +203,7 @@ Return ONLY valid JSON in this exact format:
       "situation": "Context or null",
       "task": "What needed to be done or null",
       "action": "Specific actions taken", 
-      "result": "Quantified outcome or null",
+      "result": "Outcome",
       "role_title": "Exact role title from roles array",
       "company_name": "Exact company name from companies array"
     }
@@ -688,7 +688,7 @@ serve(async (req) => {
             situation: experience.situation?.trim() || null,
             task: experience.task?.trim() || null,
             action: experience.action.trim(),
-            result: experience.result?.trim() || null,
+            result: experience.result?.trim(),
             tags: [] // Initialize empty tags array
           };
         });
