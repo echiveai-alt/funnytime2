@@ -159,9 +159,10 @@ Resume Text:
 ${resumeText}
 
 PARSING INSTRUCTIONS:
-1. COMPANIES: Extract all companies worked at with employment periods
-2. ROLES: Extract job titles with their date ranges and associated companies  
+1. COMPANIES: Extract all companies worked at (dates will be calculated from roles)
+2. ROLES: Extract job titles with their exact date ranges and associated companies  
 3. EXPERIENCES: For each bullet point under each role, create ONE experience entry
+4. IMPORTANT: Create exactly one experience entry per bullet point - do not create extra entries
 
 EXPERIENCE TITLE GENERATION:
 - Format: "Result/Impact - Action Keywords" 
@@ -210,42 +211,71 @@ Return ONLY valid JSON in this exact format:
 }`;
 }
 
-// Enhanced PDF text extraction (basic improvement - consider using proper PDF parser)
+// Enhanced PDF text extraction with better methods
 async function extractPDFText(arrayBuffer: ArrayBuffer): Promise<string> {
   const uint8Array = new Uint8Array(arrayBuffer);
-  const text = new TextDecoder().decode(uint8Array);
+  const text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(uint8Array);
   
-  // Try different PDF text extraction methods
   let extractedText = '';
   
-  // Method 1: Look for stream content
-  const streamMatches = text.match(/stream\s*\n(.*?)\nendstream/gs);
-  if (streamMatches && streamMatches.length > 0) {
+  // Method 1: Look for uncompressed stream content with better regex
+  const streamPattern = /stream\s*?\n([\s\S]*?)\s*?endstream/gi;
+  const streamMatches = [...text.matchAll(streamPattern)];
+  
+  if (streamMatches.length > 0) {
     extractedText = streamMatches
-      .map(match => match.replace(/stream\s*\n|\nendstream/g, ''))
-      .join(' ')
-      .replace(/[^\w\s\.\,\-\(\)\/\:\%\$\@]/g, ' ')
-      .replace(/\s+/g, ' ')
+      .map(match => match[1])
+      .join('\n')
+      .replace(/BT\s+/, '') // Remove text matrix commands
+      .replace(/ET\s+/, '')
+      .replace(/\/[A-Za-z0-9]+\s+\d+\.?\d*\s+Tf/g, '') // Remove font commands
+      .replace(/\d+\.?\d*\s+\d+\.?\d*\s+Td/g, ' ') // Remove text positioning
+      .replace(/\d+\.?\d*\s+TL/g, '') // Remove leading commands
+      .replace(/[<>]/g, '') // Remove hex string markers
+      .replace(/\[|\]/g, '') // Remove array markers
+      .replace(/\s{2,}/g, ' ')
       .trim();
   }
   
-  // Method 2: Look for text objects if streams didn't work
-  if (!extractedText || extractedText.length < 50) {
-    const textMatches = text.match(/\(([^)]+)\)\s*Tj/g);
-    if (textMatches && textMatches.length > 0) {
+  // Method 2: Look for text objects with improved pattern
+  if (!extractedText || extractedText.length < 100) {
+    const textPattern = /\(([^)]+)\)\s*?(?:Tj|TJ|'|")/gi;
+    const textMatches = [...text.matchAll(textPattern)];
+    
+    if (textMatches.length > 0) {
       extractedText = textMatches
-        .map(match => match.replace(/^\(|\)\s*Tj$/g, ''))
+        .map(match => match[1])
         .join(' ')
-        .replace(/\\[rnt]/g, ' ')
+        .replace(/\\[nrt]/g, ' ')
+        .replace(/\\\(/g, '(')
+        .replace(/\\\)/g, ')')
+        .replace(/\\\\/g, '\\')
         .replace(/\s+/g, ' ')
         .trim();
     }
   }
   
-  if (!extractedText || extractedText.length < 50) {
-    throw new Error('Could not extract readable text from PDF. Consider using OCR for scanned documents.');
+  // Method 3: Look for readable text in the raw PDF (fallback)
+  if (!extractedText || extractedText.length < 100) {
+    // Extract readable ASCII text
+    const readableText = text
+      .replace(/[\x00-\x1F\x7F-\xFF]/g, ' ') // Remove non-printable chars
+      .replace(/\s+/g, ' ')
+      .split(' ')
+      .filter(word => word.length > 1 && /[a-zA-Z]/.test(word))
+      .join(' ')
+      .trim();
+      
+    if (readableText.length > 100) {
+      extractedText = readableText;
+    }
   }
   
+  if (!extractedText || extractedText.length < 100) {
+    throw new Error('Could not extract sufficient text from PDF. The PDF may be scanned or have complex formatting. Try converting to text format or use a different PDF.');
+  }
+  
+  console.log(`Extracted ${extractedText.length} characters from PDF`);
   return extractedText;
 }
 
@@ -551,15 +581,46 @@ serve(async (req) => {
     const results: { companies: any[]; roles: any[]; experiences: any[] } = { companies: [], roles: [], experiences: [] };
 
     try {
-      // Insert companies
+      // Calculate proper company dates from roles
+      const companyDateMap = new Map<string, { start_date: string; end_date: string | null; is_current: boolean }>();
+      
+      for (const role of parsedData.roles) {
+        const companyName = role.company_name.trim();
+        const existing = companyDateMap.get(companyName);
+        
+        if (!existing) {
+          companyDateMap.set(companyName, {
+            start_date: role.start_date,
+            end_date: role.end_date,
+            is_current: role.is_current
+          });
+        } else {
+          // Update with earliest start date and latest end date
+          if (role.start_date < existing.start_date) {
+            existing.start_date = role.start_date;
+          }
+          
+          if (role.is_current) {
+            existing.is_current = true;
+            existing.end_date = null;
+          } else if (!existing.is_current && role.end_date && (!existing.end_date || role.end_date > existing.end_date)) {
+            existing.end_date = role.end_date;
+          }
+        }
+      }
+
+      // Insert companies with corrected dates
       if (parsedData.companies.length > 0) {
-        const companyInserts = parsedData.companies.map(company => ({
-          user_id: user.id,
-          name: company.name.trim(),
-          start_date: company.start_date,
-          end_date: company.end_date,
-          is_current: company.is_current
-        }));
+        const companyInserts = parsedData.companies.map(company => {
+          const correctedDates = companyDateMap.get(company.name.trim());
+          return {
+            user_id: user.id,
+            name: company.name.trim(),
+            start_date: correctedDates?.start_date || company.start_date,
+            end_date: correctedDates?.end_date || company.end_date,
+            is_current: correctedDates?.is_current || company.is_current
+          };
+        });
         
         results.companies = await batchInsert(supabase, 'companies', companyInserts);
       }

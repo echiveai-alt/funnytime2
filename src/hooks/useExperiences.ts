@@ -667,6 +667,66 @@ export const useExperiences = () => {
     return roles.filter(role => role.company_id === companyId);
   };
 
+  // Add refresh function for post-import data loading
+  const refreshAndSelectLatest = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Load companies
+      const { data: companiesData, error: companiesError } = await supabase
+        .from("companies")
+        .select("*")
+        .order("is_current", { ascending: false })
+        .order("end_date", { ascending: false, nullsFirst: true });
+
+      if (companiesError) throw companiesError;
+      setCompanies(companiesData || []);
+
+      // Load roles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("roles")
+        .select("*")
+        .order("is_current", { ascending: false })
+        .order("end_date", { ascending: false, nullsFirst: true });
+
+      if (rolesError) throw rolesError;
+      setRoles(rolesData || []);
+
+      // Auto-select the most recent company and role
+      if (companiesData && companiesData.length > 0) {
+        // Find the most current company (either is_current=true or latest end_date)
+        const currentCompany = companiesData.find(c => c.is_current) || companiesData[0];
+        setSelectedCompany(currentCompany);
+        
+        if (rolesData && currentCompany) {
+          // Find the most current role for this company
+          const companyRoles = rolesData.filter(role => role.company_id === currentCompany.id);
+          const currentRole = companyRoles.find(role => role.is_current) || companyRoles[0];
+          
+          if (currentRole) {
+            setSelectedRole(currentRole);
+            
+            // Load experiences for the selected role
+            const { data: experiencesData } = await supabase
+              .from("experiences")
+              .select("*")
+              .eq("role_id", currentRole.id)
+              .order("created_at", { ascending: false });
+
+            if (experiencesData && experiencesData.length > 0) {
+              setExperiences(experiencesData);
+              setSelectedExperience(experiencesData[0]); // Select newest experience
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     // Data
     companies,
@@ -693,5 +753,6 @@ export const useExperiences = () => {
     deleteRole,
     getFilteredRoles,
     loadData,
+    refreshAndSelectLatest,
   };
 };

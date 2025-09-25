@@ -44,6 +44,7 @@ const Experiences = () => {
     deleteCompany,
     deleteRole,
     getFilteredRoles,
+    refreshAndSelectLatest,
   } = useExperiences();
 
   // Show onboarding resume modal if coming from education and user has no companies
@@ -230,9 +231,11 @@ const Experiences = () => {
         onImportComplete={async (data) => {
           console.log('Resume import completed:', data);
           setShowOnboardingResumeModal(false);
-          // TODO: Process the imported resume data
-          // Create companies, roles, and experiences based on the parsed data
-          // Skip company modal since resume was imported successfully
+          
+          // Refresh the experiences data and auto-select the latest role
+          setTimeout(async () => {
+            await refreshAndSelectLatest();
+          }, 1000);
         }}
       />
     </>
