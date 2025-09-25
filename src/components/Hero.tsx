@@ -19,7 +19,7 @@ const Hero = () => {
           
           <h1 className="text-6xl md:text-7xl font-bold text-primary-foreground mb-6 leading-tight">
             Connect Your Journey Through
-            <span className="bg-gradient-to-r from-accent to-white bg-clip-text text-transparent block">Key Steps</span>
+            <span className="bg-gradient-to-r from-white to-accent bg-clip-text text-transparent block leading-relaxed">Key Steps</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-primary-foreground/90 mb-12 max-w-4xl mx-auto leading-relaxed">Create targeted resume bullet points from a library of your professional experiences. Let AI craft compelling bullets that match any job description with precision.</p>
