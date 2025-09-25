@@ -6,7 +6,7 @@ import { useExperiences } from "@/hooks/useExperiences";
 import { useJobAnalysis } from "@/hooks/useJobAnalysis";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { ResumeImportModal } from "@/components/experiences/ResumeImportModal";
+import { OnboardingResumeModal } from "@/components/experiences/OnboardingResumeModal";
 
 const MainTabs = () => {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ const MainTabs = () => {
   const { experiences, companies, roles, createCompany, createRole, createExperience, updateExperience, setSelectedRole, loadData, refreshAndSelectLatest } = useExperiences();
   const { analyzeJobFit, isAnalyzing } = useJobAnalysis();
   const { toast } = useToast();
-  const [showResumeImportModal, setShowResumeImportModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
   const handleResumeImport = async (parsedData: any) => {
     console.log('Resume import completed:', parsedData);
@@ -133,26 +133,26 @@ const MainTabs = () => {
               </Button>
             </div>
             
-            {/* Import Resume button - only show on Experiences page */}
+            {/* Import Experiences button - only show on Experiences page */}
             {location.pathname === "/app/experiences" && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowResumeImportModal(true)}
+                onClick={() => setShowOnboardingModal(true)}
                 className="flex items-center gap-2 whitespace-nowrap"
               >
                 <Upload className="w-4 h-4" />
-                Import Resume
+                Import Experiences
               </Button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Resume Import Modal */}
-      <ResumeImportModal
-        isOpen={showResumeImportModal}
-        onClose={() => setShowResumeImportModal(false)}
+      {/* Onboarding Resume Modal */}
+      <OnboardingResumeModal
+        isOpen={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
         onImportComplete={handleResumeImport}
       />
     </>
