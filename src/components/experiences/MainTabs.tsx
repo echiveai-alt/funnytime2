@@ -52,8 +52,9 @@ const MainTabs = () => {
   };
 
   // Check if job analysis result exists and analysis is not running
+  // Priority: disable when analyzing, then check if results exist
   const hasJobAnalysisResult = !!localStorage.getItem('jobAnalysisResult');
-  const isResultsTabDisabled = !hasJobAnalysisResult || isAnalyzing;
+  const isResultsTabDisabled = isAnalyzing || !hasJobAnalysisResult;
 
   return (
     <div className="bg-background/95 backdrop-blur-lg border-b border-border/50">
