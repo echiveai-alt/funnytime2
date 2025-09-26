@@ -114,13 +114,23 @@ function calculateJobFitScore(
   return { score: finalScore, breakdown, weakExperiences };
 }
 
-// Create a deterministic hash for consistent results
+// Create a deterministic hash for consistent results using Deno APIs
 function createConsistentHash(jobDescription: string, experiences: any[]): string {
   const experienceString = experiences.map(exp => 
     `${exp.company}-${exp.role}-${exp.title}-${exp.action}-${exp.result}`
   ).sort().join('|');
   
-  return Buffer.from(jobDescription + experienceString).toString('base64').slice(0, 16);
+  const combinedString = jobDescription + experienceString;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(combinedString);
+  
+  // Simple hash function for consistency
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    hash = ((hash << 5) - hash + data[i]) & 0xffffffff;
+  }
+  
+  return Math.abs(hash).toString(36).slice(0, 16);
 }
 
 // Enhanced prompt with explicit consistency requirements
