@@ -13,7 +13,7 @@ import Experiences from "./pages/Experiences";
 import JobDescription from "./pages/JobDescription";
 import ResumeBulletPoints from "./pages/ResumeBulletPoints";
 import { JobAnalysisResult } from "./pages/JobAnalysisResult";
-import ApiKeyTestPage from "./pages/ApiKeyTest";
+
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "@/components/AppLayout";
 
@@ -35,7 +35,7 @@ const App = () => {
             <Route path="/app/job-description" element={<AppLayout><JobDescription /></AppLayout>} />
             <Route path="/app/job-analysis-result" element={<AppLayout><JobAnalysisResult /></AppLayout>} />
             <Route path="/app/resume-bullets" element={<AppLayout><ResumeBulletPoints /></AppLayout>} />
-            <Route path="/app/api-test" element={<AppLayout><ApiKeyTestPage /></AppLayout>} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />
