@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Brain } from "lucide-react";
+import { Brain, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { MainTabs } from "@/components/experiences/MainTabs";
+import { AccountSettings } from "@/components/AccountSettings";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ interface AppLayoutProps {
 const AppLayout = ({ children }: AppLayoutProps) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -67,9 +69,18 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </div>
               <span className="text-2xl font-bold text-foreground">keystep.ai</span>
             </div>
-            <Button variant="ghost" onClick={handleSignOut}>
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowAccountSettings(true)}
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" onClick={handleSignOut}>
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -79,6 +90,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* Page Content */}
       {children}
+      
+      {/* Account Settings Modal */}
+      <AccountSettings 
+        isOpen={showAccountSettings}
+        onClose={() => setShowAccountSettings(false)}
+      />
     </div>
   );
 };
