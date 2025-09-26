@@ -235,19 +235,26 @@ const Experiences = () => {
           setOpenModal(null); // back to page
         }}
         onSave={async (data, _roleTitle) => {
-          // If editing, update; else create. After save, ensure selection is current,
-          // then go to Role modal (requirement 3).
-          if (editingCompany) {
-            await updateCompany(editingCompany.id, data);
-            setEditingCompany(null);
-            await refreshAndSelectLatest(); // ensure selectedCompany is the updated one
-            setOpenModal(null); // close company modal when editing
-          } else {
-            // When creating a new company, don't create an empty role automatically
-            await createCompany(data); // Remove the undefined parameter
-            setEditingCompany(null);
-            await refreshAndSelectLatest(); // ensure selectedCompany is the newly created one
-            setOpenModal("role"); // open Role modal for new company
+          try {
+            if (editingCompany) {
+              // Editing existing company - just update and close
+              await updateCompany(editingCompany.id, data);
+              setEditingCompany(null);
+              await refreshAndSelectLatest();
+              setOpenModal(null);
+            } else {
+              // Creating new company - create it, then open role modal
+              await createCompany(data);
+              setEditingCompany(null);
+              await refreshAndSelectLatest();
+              
+              // Clear any auto-selected role and open the role modal
+              setSelectedRole(null);
+              setEditingRole(null);
+              setOpenModal("role");
+            }
+          } catch (error) {
+            console.error("Failed to save company:", error);
           }
         }}
         onDelete={editingCompany ? deleteCompany : undefined}
