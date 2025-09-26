@@ -6,6 +6,7 @@ import { ArrowLeft, Copy, Check, AlertTriangle, TrendingUp, Target, Info, Key, T
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { getStoredJobKeyPhrases, getStoredJobDescription } from "@/utils/jobAnalysis";
+import { useJobAnalysis } from "@/hooks/useJobAnalysis";
 
 // Updated interface to match the improved edge function response
 interface AnalysisResult {
@@ -115,8 +116,15 @@ export const JobAnalysisResult = () => {
   const [showLegend, setShowLegend] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAnalyzing } = useJobAnalysis();
 
   useEffect(() => {
+    // Redirect to job description page if analysis is currently running
+    if (isAnalyzing) {
+      navigate('/app/job-description');
+      return;
+    }
+
     // Load stored analysis result from localStorage
     const stored = localStorage.getItem('jobAnalysisResult');
     if (stored) {
@@ -132,7 +140,7 @@ export const JobAnalysisResult = () => {
     // Load stored key phrases and job description
     setKeyPhrases(getStoredJobKeyPhrases());
     setJobDescription(getStoredJobDescription());
-  }, []);
+  }, [isAnalyzing, navigate]);
 
   const copyToClipboard = (text: string, section: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -527,7 +535,7 @@ export const JobAnalysisResult = () => {
                       <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
                         {match.jobRequirement}
                       </Badge>
-                      <Badge className={getTypeColor(match.type)} variant="outline" className="text-xs">
+                      <Badge className={`${getTypeColor(match.type)} text-xs`} variant="outline">
                         {match.type}
                       </Badge>
                     </div>
