@@ -107,7 +107,7 @@ export const RoleModal = ({
         end_date: endDate,
         is_current: formData.is_current,
       });
-      onClose();
+      // Don't call onClose() here - let parent handle modal closing
       // Reset form
       setFormData({
         title: "",

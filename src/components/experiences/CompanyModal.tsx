@@ -106,7 +106,7 @@ export const CompanyModal = ({
         end_date: endDate,
         is_current: formData.is_current,
       }, formData.role_title, formData.role_specialty);
-      onClose();
+      // Don't call onClose() here - let parent handle modal closing
       // Reset form
       setFormData({
         name: "",
