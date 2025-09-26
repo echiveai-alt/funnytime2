@@ -234,7 +234,7 @@ const Experiences = () => {
           setEditingCompany(null);
           setOpenModal(null); // back to page
         }}
-        onSave={async (data, roleTitle) => {
+        onSave={async (data, _roleTitle) => {
           try {
             if (editingCompany) {
               // Editing existing company - just update and close
@@ -243,16 +243,20 @@ const Experiences = () => {
               await refreshAndSelectLatest();
               setOpenModal(null);
             } else {
-              // Creating new company - use the roleTitle from the form
-              await createCompany(data, roleTitle);
+              // Creating new company - create it, then open role modal
+              await createCompany(data);
               setEditingCompany(null);
               await refreshAndSelectLatest();
-              setOpenModal(null); // Close modal since company was created with role
+              
+              // Clear any auto-selected role and open the role modal
+              setSelectedRole(null);
+              setEditingRole(null);
+              setOpenModal("role");
             }
           } catch (error) {
             console.error("Failed to save company:", error);
           }
-        }
+        }}
         onDelete={editingCompany ? deleteCompany : undefined}
         company={editingCompany}
         isLoading={experiencesLoading}
