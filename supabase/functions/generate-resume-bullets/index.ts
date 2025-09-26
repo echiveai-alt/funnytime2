@@ -1,11 +1,14 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Visual width scoring constants
+const VISUAL_WIDTH_LIMIT = 179;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -48,7 +51,8 @@ serve(async (req) => {
     const { 
       experienceIdsByRole, 
       bulletKeywords, 
-      jobRequirements, // Use jobRequirements instead of extractedJobPhrases
+      jobRequirements,
+      overallScore, // Add score validation
       keywordMatchType = 'exact'
     } = requestBody;
 
@@ -56,11 +60,16 @@ serve(async (req) => {
     console.log('experienceIdsByRole type:', typeof experienceIdsByRole);
     console.log('bulletKeywords type:', typeof bulletKeywords);
     console.log('jobRequirements type:', typeof jobRequirements);
+    console.log('overallScore:', overallScore);
     console.log('keywordMatchType:', keywordMatchType);
 
-    // Enhanced validation with detailed error messages
+    // Enhanced validation with score threshold enforcement
+    if (overallScore && overallScore < 85) {
+      throw new Error(`Job fit score of ${overallScore}% is below the 85% threshold required for bullet generation. Please improve your job fit first.`);
+    }
+
     if (!experienceIdsByRole) {
-      throw new Error('Missing experienceIdsByRole from job fit analysis. Ensure job fit score >= 85% before generating bullets.');
+      throw new Error('Missing experienceIdsByRole from job fit analysis. Ensure job fit analysis has been completed first.');
     }
     
     if (!bulletKeywords) {
@@ -190,6 +199,27 @@ serve(async (req) => {
       return score;
     };
 
+    // Function to optimize bullets that exceed width limits
+    const optimizeBulletLength = (bullet: string): string => {
+      const visualWidth = calculateVisualWidth(bullet);
+      if (visualWidth <= VISUAL_WIDTH_LIMIT) return bullet;
+      
+      // Simple optimization: trim by removing less critical words
+      const words = bullet.split(' ');
+      const criticalWords = ['developed', 'implemented', 'created', 'managed', 'led', 'increased', 'decreased', 'improved'];
+      
+      // Keep critical action words and numbers, remove filler words
+      const optimized = words.filter((word, index) => {
+        if (index === 0) return true; // Keep first word (action verb)
+        if (/\d/.test(word)) return true; // Keep words with numbers
+        if (criticalWords.some(cw => word.toLowerCase().includes(cw))) return true;
+        if (word.length > 8) return true; // Keep longer, more specific words
+        return words.length - words.filter(w => w.length <= 3).length < 10; // Keep if not too many short words
+      }).join(' ');
+      
+      return optimized;
+    };
+
     // Create optimized prompt using extracted keywords and job requirements
     const createBulletPrompt = () => {
       const keywordMatchInstructions = keywordMatchType === 'exact' 
@@ -203,7 +233,8 @@ serve(async (req) => {
         technical: jobRequirements?.filter((req: any) => req.category === 'technical') || [],
         experience_level: jobRequirements?.filter((req: any) => req.category === 'experience_level') || [],
         domain_industry: jobRequirements?.filter((req: any) => req.category === 'domain_industry') || [],
-        behavioral_fit: jobRequirements?.filter((req: any) => req.category === 'behavioral_fit') || []
+        leadership_impact: jobRequirements?.filter((req: any) => req.category === 'leadership_impact') || [],
+        cultural_soft: jobRequirements?.filter((req: any) => req.category === 'cultural_soft') || []
       };
 
       const criticalReqs = jobRequirements?.filter((req: any) => req.importance === 'critical') || [];
@@ -238,8 +269,11 @@ ${reqsByCategory.experience_level.map((req: any) => `• ${req.requirement} (${r
 ${reqsByCategory.domain_industry.length > 0 ? `Domain/Industry Knowledge:
 ${reqsByCategory.domain_industry.map((req: any) => `• ${req.requirement} (${req.importance} importance)`).join('\n')}` : ''}
 
-${reqsByCategory.behavioral_fit.length > 0 ? `Behavioral Requirements:
-${reqsByCategory.behavioral_fit.map((req: any) => `• ${req.requirement} (${req.importance} importance)`).join('\n')}` : ''}
+${reqsByCategory.leadership_impact.length > 0 ? `Leadership/Impact Requirements:
+${reqsByCategory.leadership_impact.map((req: any) => `• ${req.requirement} (${req.importance} importance)`).join('\n')}` : ''}
+
+${reqsByCategory.cultural_soft.length > 0 ? `Cultural/Soft Skills Requirements:
+${reqsByCategory.cultural_soft.map((req: any) => `• ${req.requirement} (${req.importance} importance)`).join('\n')}` : ''}
 
 CRITICAL RULES:
 1. Use ONLY information from user's experiences - never invent details
@@ -248,9 +282,10 @@ CRITICAL RULES:
 4. Follow ${keywordMatchType} matching rules for keywords
 5. Structure: "Strong action verb + context + quantified result when possible"
 6. No abbreviations, em-dashes, colons, semicolons
-7. Each bullet MUST be under 179 visual width score
+7. Each bullet MUST be under ${VISUAL_WIDTH_LIMIT} visual width score
 8. Maximum 6 bullets per role
 9. Handle null situation/task fields gracefully - focus on action/result
+10. Keep bullets concise and impactful
 
 USER EXPERIENCES BY ROLE:
 ${Object.entries(formattedExperiencesByRole).map(([roleKey, roleData]: [string, any]) => `
@@ -362,19 +397,31 @@ Return ONLY JSON (no markdown formatting):
       throw new Error(`Failed to parse bullet points: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
     }
 
-    // Validate and calculate visual width for each bullet point
+    // Validate and calculate visual width for each bullet point with optimization
     const validatedBullets = {
       companies: bulletData.companies?.map((company: any) => ({
         name: company.name,
         roles: company.roles?.map((role: any) => ({
           title: role.title,
           bulletPoints: role.bulletPoints?.map((bullet: string) => {
-            const visualWidth = calculateVisualWidth(bullet);
-            console.log(`Bullet: "${bullet.substring(0, 50)}..." - Visual Width: ${visualWidth}`);
+            const originalWidth = calculateVisualWidth(bullet);
+            let optimizedBullet = bullet;
+            let finalWidth = originalWidth;
+            
+            // Optimize if bullet exceeds width limit
+            if (originalWidth > VISUAL_WIDTH_LIMIT) {
+              optimizedBullet = optimizeBulletLength(bullet);
+              finalWidth = calculateVisualWidth(optimizedBullet);
+              console.log(`Optimized bullet: ${originalWidth} → ${finalWidth} chars: "${optimizedBullet.substring(0, 50)}..."`);
+            } else {
+              console.log(`Bullet within limits: ${finalWidth} chars: "${bullet.substring(0, 50)}..."`);
+            }
+            
             return {
-              text: bullet,
-              visualWidth,
-              exceedsWidth: visualWidth > 179
+              text: optimizedBullet,
+              visualWidth: finalWidth,
+              exceedsWidth: finalWidth > VISUAL_WIDTH_LIMIT,
+              wasOptimized: originalWidth > VISUAL_WIDTH_LIMIT
             };
           }) || []
         })) || []
@@ -388,7 +435,8 @@ Return ONLY JSON (no markdown formatting):
         rolesProcessed: Object.keys(experienceIdsByRole).length,
         keywordCategories: Object.keys(bulletKeywords).length,
         totalRequirements: jobRequirements.length,
-        keywordMatchType: keywordMatchType
+        keywordMatchType: keywordMatchType,
+        scoreThreshold: overallScore || 'not provided'
       }
     };
 
