@@ -531,8 +531,8 @@ serve(async (req) => {
           analysis.fitAssessment.scoreBreakdown = breakdown;
         }
 
-        // Add weak evidence experiences if score is below 85%
-        if (recalculatedScore < 85 && weakExperiences.length > 0) {
+        // Add weak evidence experiences if score is below 80%
+        if (recalculatedScore < 80 && weakExperiences.length > 0) {
           // Map weak experiences to company-role-title format
           const experienceMap = new Map();
           analysis.relevantExperiences?.forEach((exp: any) => {
@@ -639,7 +639,7 @@ serve(async (req) => {
           criticalGaps: criticalGaps.map((gap: any) => gap.requirement),
           suggestedActions: analysis.recommendations?.forCandidate || [],
           readyForApplication: false,
-          readyForBulletGeneration: score >= 85 // Add explicit flag for bullet generation
+          readyForBulletGeneration: score >= 80 // Add explicit flag for bullet generation
         };
       } else {
         analysis.actionPlan = {
