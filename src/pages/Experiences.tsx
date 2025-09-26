@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Brain } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { CompanyTabs } from "@/components/experiences/CompanyTabs";
 import { RoleTabs } from "@/components/experiences/RoleTabs";
 import { ExperiencesList } from "@/components/experiences/ExperiencesList";
@@ -14,19 +15,20 @@ type Modal = null | "resume" | "company" | "role";
 const SESSION_FLAG = "exp_onboarding_shown";
 
 const Experiences = () => {
-  console.log("Experiences component loading...");
-
-  // Single source of truth for which modal is open
+  // Which modal is open now
   const [openModal, setOpenModal] = useState<Modal>(null);
 
-  // Session-scoped “has auto-shown resume modal” flag
+  // Session-scoped flag: did we already auto-show onboarding this session?
   const [hasAutoShownThisSession, setHasAutoShownThisSession] = useState<boolean>(() => {
     return sessionStorage.getItem(SESSION_FLAG) === "1";
   });
 
-  // Editing payloads (kept separate)
+  // For editing flows
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [editingRole, setEditingRole] = useState<any>(null);
+
+  // Which company the Role modal should attach to
+  const [roleCompanyId, setRoleCompanyId] = useState<string>("");
 
   const {
     companies,
@@ -55,10 +57,7 @@ const Experiences = () => {
 
   const noCompanies = companies.length === 0;
 
-  /**
-   * 1) First visit this session + no companies => auto-open Resume (once per session).
-   *    Won’t trigger if any modal is already open.
-   */
+  // 1) First visit this session + no companies ⇒ open Resume modal once (per session)
   useEffect(() => {
     if (experiencesLoading) return;
     if (!hasAutoShownThisSession && noCompanies && openModal === null) {
@@ -68,9 +67,7 @@ const Experiences = () => {
     }
   }, [experiencesLoading, hasAutoShownThisSession, noCompanies, openModal]);
 
-  /**
-   * Experience actions
-   */
+  // Actions for Experience list
   const handleAddExperience = async () => {
     try {
       await createExperience();
@@ -89,9 +86,7 @@ const Experiences = () => {
     await deleteExperience(selectedExperience.id);
   };
 
-  /**
-   * Button handlers (openers)
-   */
+  // Openers (buttons)
   const openImportResume = () => setOpenModal("resume");
 
   const openAddCompany = () => {
@@ -105,48 +100,53 @@ const Experiences = () => {
   };
 
   const openAddRole = () => {
+    // Ensure role modal has a target company
+    if (selectedCompany?.id) setRoleCompanyId(selectedCompany.id);
     setEditingRole(null);
     setOpenModal("role");
   };
 
   const openEditRole = (role: any) => {
+    // For edit, we’ll prefer selectedCompany as the target
+    if (selectedCompany?.id) setRoleCompanyId(selectedCompany.id);
     setEditingRole(role);
     setOpenModal("role");
   };
 
-  /**
-   * Modal close helpers
-   */
-  const closeAllModals = () => setOpenModal(null);
-
   return (
     <>
-      {/* Sticky Navigation Tabs */}
+      {/* Sticky top bar */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-6">
-          {/* Company Tabs */}
-          <CompanyTabs
-            companies={companies}
-            selectedCompany={selectedCompany}
-            onSelectCompany={setSelectedCompany}
-            onAddCompany={openAddCompany}
-            onEditCompany={openEditCompany}
-            isLoading={experiencesLoading}
-            // If you have an "Import Experiences" button up here, wire it to:
-            // onImportExperiences={openImportResume}
-          />
-
-          {/* Role Tabs */}
-          {selectedCompany && (
-            <RoleTabs
-              roles={getFilteredRoles(selectedCompany.id)}
-              selectedRole={selectedRole}
-              onSelectRole={setSelectedRole}
-              onAddRole={openAddRole}
-              onEditRole={openEditRole}
+        <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            {/* Company Tabs */}
+            <CompanyTabs
+              companies={companies}
+              selectedCompany={selectedCompany}
+              onSelectCompany={setSelectedCompany}
+              onAddCompany={openAddCompany}
+              onEditCompany={openEditCompany}
               isLoading={experiencesLoading}
             />
-          )}
+            {/* Role Tabs */}
+            {selectedCompany && (
+              <RoleTabs
+                roles={getFilteredRoles(selectedCompany.id)}
+                selectedRole={selectedRole}
+                onSelectRole={setSelectedRole}
+                onAddRole={openAddRole}
+                onEditRole={openEditRole}
+                isLoading={experiencesLoading}
+              />
+            )}
+          </div>
+
+          {/* Spec (2): explicit Import Experiences button */}
+          <div className="shrink-0">
+            <Button variant="secondary" onClick={openImportResume}>
+              Import Experiences
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -206,19 +206,19 @@ const Experiences = () => {
 
       {/* Modals */}
 
-      {/* 2) Resume (Onboarding) Modal */}
+      {/* (1, 1a, 1b, 2) Resume / Onboarding Modal */}
       <OnboardingResumeModal
         isOpen={openModal === "resume"}
-        // 1a) Parse success: refresh/select latest role, then close
         onImportComplete={async (_data) => {
+          // Parse success: refresh, auto-select most recent role, close modal.
           try {
-            await refreshAndSelectLatest(); // ensures "most recent role is active"
+            await refreshAndSelectLatest();
           } finally {
-            setOpenModal(null); // close resume modal
+            setOpenModal(null);
           }
         }}
-        // 1b/2) Cancel/Skip: if still no companies, open Company; else just close
         onClose={() => {
+          // Cancel/Skip: if still no companies, go to Company; else just close.
           if (noCompanies) {
             setOpenModal("company");
           } else {
@@ -227,23 +227,34 @@ const Experiences = () => {
         }}
       />
 
-      {/* 3) Company Modal */}
+      {/* (3) Company Modal */}
       <CompanyModal
         isOpen={openModal === "company"}
         onClose={() => {
           setEditingCompany(null);
-          setOpenModal(null); // back to page
+          setOpenModal(null); // back to page without changes
         }}
         onSave={async (data, _roleTitle) => {
-          // If editing, update; else create. After save, ensure selection is current,
-          // then go to Role modal (requirement 3).
+          // If editing, update; else create. After save, refresh selection and open Role modal.
+          let savedCompany: any = null;
+
           if (editingCompany) {
-            await updateCompany(editingCompany.id, data);
+            savedCompany = await updateCompany(editingCompany.id, data);
           } else {
-            await createCompany(data, undefined);
+            savedCompany = await createCompany(data, undefined);
           }
+
           setEditingCompany(null);
-          await refreshAndSelectLatest(); // ensure selectedCompany is the newly added/updated one
+          await refreshAndSelectLatest();
+
+          // Resolve the correct companyId for the upcoming Role modal
+          const resolvedCompanyId =
+            savedCompany?.id ||
+            selectedCompany?.id ||
+            companies[companies.length - 1]?.id ||
+            "";
+
+          setRoleCompanyId(resolvedCompanyId);
           setOpenModal("role"); // open Role modal next
         }}
         onDelete={editingCompany ? deleteCompany : undefined}
@@ -251,11 +262,12 @@ const Experiences = () => {
         isLoading={experiencesLoading}
       />
 
-      {/* 4) Role Modal */}
+      {/* (4) Role Modal */}
       <RoleModal
         isOpen={openModal === "role"}
         onClose={() => {
           setEditingRole(null);
+          setRoleCompanyId("");
           setOpenModal(null); // back to page
         }}
         onSave={async (data) => {
@@ -265,12 +277,13 @@ const Experiences = () => {
             await createRole(data);
           }
           setEditingRole(null);
-          await refreshAndSelectLatest(); // keep selection fresh
+          await refreshAndSelectLatest();
+          setRoleCompanyId("");
           setOpenModal(null); // close role modal
         }}
         onDelete={editingRole ? deleteRole : undefined}
         role={editingRole}
-        companyId={selectedCompany?.id || ""}
+        companyId={roleCompanyId || selectedCompany?.id || ""}
         isLoading={experiencesLoading}
       />
     </>
