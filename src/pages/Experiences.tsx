@@ -119,6 +119,37 @@ const Experiences = () => {
    */
   const closeAllModals = () => setOpenModal(null);
 
+  /**
+   * Unified resume import handler - works for both auto-opened and manual modals
+   */
+  const handleResumeImportComplete = async (parsedData: any) => {
+    console.log('Resume import completed in Experiences component:', parsedData);
+    
+    try {
+      // Always refresh and select latest when resume import completes
+      await refreshAndSelectLatest();
+      console.log('Successfully refreshed data after resume import');
+    } catch (error) {
+      console.error('Failed to refresh data after resume import:', error);
+    } finally {
+      // Always close the modal after handling the import
+      setOpenModal(null);
+    }
+  };
+
+  /**
+   * Unified resume modal close handler
+   */
+  const handleResumeModalClose = () => {
+    // If no companies exist after closing, open company modal
+    // This handles the case where user cancels/skips during onboarding
+    if (noCompanies) {
+      setOpenModal("company");
+    } else {
+      setOpenModal(null);
+    }
+  };
+
   return (
     <>
       {/* Sticky Navigation Tabs */}
@@ -132,8 +163,8 @@ const Experiences = () => {
             onAddCompany={openAddCompany}
             onEditCompany={openEditCompany}
             isLoading={experiencesLoading}
-            // If you have an "Import Experiences" button up here, wire it to:
-            // onImportExperiences={openImportResume}
+            // Wire up the import resume functionality to the CompanyTabs if it has that button
+            onImportExperiences={openImportResume}
           />
 
           {/* Role Tabs */}
@@ -206,28 +237,16 @@ const Experiences = () => {
 
       {/* Modals */}
 
-      {/* 2) Resume (Onboarding) Modal */}
+      {/* Resume (Onboarding) Modal - Unified handler for both auto-open and manual open */}
       <OnboardingResumeModal
         isOpen={openModal === "resume"}
-        // 1a) Parse success: refresh/select latest role, then close
-        onImportComplete={async (_data) => {
-          try {
-            await refreshAndSelectLatest(); // ensures "most recent role is active"
-          } finally {
-            setOpenModal(null); // close resume modal
-          }
-        }}
-        // 1b/2) Cancel/Skip: if still no companies, open Company; else just close
-        onClose={() => {
-          if (noCompanies) {
-            setOpenModal("company");
-          } else {
-            setOpenModal(null);
-          }
-        }}
+        // Unified import complete handler - always refreshes data and closes modal
+        onImportComplete={handleResumeImportComplete}
+        // Unified close handler - handles the onboarding flow properly
+        onClose={handleResumeModalClose}
       />
 
-      {/* 3) Company Modal */}
+      {/* Company Modal */}
       <CompanyModal
         isOpen={openModal === "company"}
         onClose={() => {
@@ -260,7 +279,7 @@ const Experiences = () => {
         isLoading={experiencesLoading}
       />
 
-      {/* 4) Role Modal */}
+      {/* Role Modal */}
       <RoleModal
         isOpen={openModal === "role"}
         onClose={() => {
