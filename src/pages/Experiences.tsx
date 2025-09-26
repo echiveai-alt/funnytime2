@@ -19,7 +19,7 @@ const Experiences = () => {
   // Single source of truth for which modal is open
   const [openModal, setOpenModal] = useState<Modal>(null);
 
-  // Session-scoped “has auto-shown resume modal” flag
+  // Session-scoped "has auto-shown resume modal" flag
   const [hasAutoShownThisSession, setHasAutoShownThisSession] = useState<boolean>(() => {
     return sessionStorage.getItem(SESSION_FLAG) === "1";
   });
@@ -57,7 +57,7 @@ const Experiences = () => {
 
   /**
    * 1) First visit this session + no companies => auto-open Resume (once per session).
-   *    Won’t trigger if any modal is already open.
+   *    Won't trigger if any modal is already open.
    */
   useEffect(() => {
     if (experiencesLoading) return;
@@ -239,12 +239,16 @@ const Experiences = () => {
           // then go to Role modal (requirement 3).
           if (editingCompany) {
             await updateCompany(editingCompany.id, data);
+            setEditingCompany(null);
+            await refreshAndSelectLatest(); // ensure selectedCompany is the updated one
+            setOpenModal(null); // close company modal when editing
           } else {
-            await createCompany(data, undefined);
+            // When creating a new company, don't create an empty role automatically
+            await createCompany(data); // Remove the undefined parameter
+            setEditingCompany(null);
+            await refreshAndSelectLatest(); // ensure selectedCompany is the newly created one
+            setOpenModal("role"); // open Role modal for new company
           }
-          setEditingCompany(null);
-          await refreshAndSelectLatest(); // ensure selectedCompany is the newly added/updated one
-          setOpenModal("role"); // open Role modal next
         }}
         onDelete={editingCompany ? deleteCompany : undefined}
         company={editingCompany}
