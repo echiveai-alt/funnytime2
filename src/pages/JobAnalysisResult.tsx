@@ -2,19 +2,34 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy, Check, AlertTriangle, TrendingUp, Target } from "lucide-react";
+import { ArrowLeft, Copy, Check, AlertTriangle, TrendingUp, Target, Info, Key, Tag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { getStoredJobKeyPhrases, getStoredJobDescription } from "@/utils/jobAnalysis";
 
-// Updated interface to match the edge function response
+// Updated interface to match the improved edge function response
 interface AnalysisResult {
   jobRequirements?: Array<{
     requirement: string;
+    type: "requirement" | "responsibility";
     category: string;
     importance: string;
     context?: string;
   }>;
+  extractedKeywords?: {
+    requirements: {
+      technical: string[];
+      experience: string[];
+      education: string[];
+      industry: string[];
+      soft_skills: string[];
+    };
+    responsibilities: {
+      daily_tasks: string[];
+      outcomes: string[];
+      management: string[];
+    };
+  };
   bulletKeywords?: {
     technical: string[];
     actionVerbs: string[];
@@ -25,6 +40,7 @@ interface AnalysisResult {
   };
   matchedRequirements?: Array<{
     jobRequirement: string;
+    type: "requirement" | "responsibility";
     experienceEvidence: string;
     experienceContext: string;
     matchType: string;
@@ -32,6 +48,7 @@ interface AnalysisResult {
   }>;
   unmatchedRequirements?: Array<{
     requirement: string;
+    type: "requirement" | "responsibility";
     category: string;
     importance: string;
     suggestionToImprove: string;
@@ -95,6 +112,7 @@ export const JobAnalysisResult = () => {
   const [keyPhrases, setKeyPhrases] = useState<any[]>([]);
   const [jobDescription, setJobDescription] = useState<string>("");
   const [copiedSection, setCopiedSection] = useState<string>("");
+  const [showLegend, setShowLegend] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -185,6 +203,16 @@ export const JobAnalysisResult = () => {
     }
   };
 
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'requirement': return "bg-red-50 text-red-700 border-red-200";
+      case 'responsibility': return "bg-blue-50 text-blue-700 border-blue-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const currentScore = analysisResult.fitAssessment?.overallScore || 0;
+
   return (
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center gap-4">
@@ -193,7 +221,64 @@ export const JobAnalysisResult = () => {
           Back
         </Button>
         <h1 className="text-3xl font-bold">Job Fit Analysis Results</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowLegend(!showLegend)}
+        >
+          <Info className="w-4 h-4 mr-2" />
+          Legend
+        </Button>
       </div>
+
+      {/* Legend */}
+      {showLegend && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5" />
+              Color Legend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h4 className="font-semibold mb-2">Categories</h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-blue-100 text-blue-800 border-blue-200" variant="secondary">Technical Skills</Badge>
+                <Badge className="bg-purple-100 text-purple-800 border-purple-200" variant="secondary">Experience Level</Badge>
+                <Badge className="bg-green-100 text-green-800 border-green-200" variant="secondary">Domain/Industry</Badge>
+                <Badge className="bg-orange-100 text-orange-800 border-orange-200" variant="secondary">Leadership/Impact</Badge>
+                <Badge className="bg-pink-100 text-pink-800 border-pink-200" variant="secondary">Cultural/Soft Skills</Badge>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Importance Levels</h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-red-100 text-red-800 border-red-200" variant="secondary">Critical (Deal-breaker)</Badge>
+                <Badge className="bg-orange-100 text-orange-800 border-orange-200" variant="secondary">High (Strongly preferred)</Badge>
+                <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200" variant="secondary">Medium (Nice to have)</Badge>
+                <Badge className="bg-green-100 text-green-800 border-green-200" variant="secondary">Low (Bonus)</Badge>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Evidence Strength</h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-green-100 text-green-800 border-green-200" variant="secondary">Quantified (Has metrics)</Badge>
+                <Badge className="bg-blue-100 text-blue-800 border-blue-200" variant="secondary">Demonstrated (Clear examples)</Badge>
+                <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200" variant="secondary">Mentioned (Basic indication)</Badge>
+                <Badge className="bg-gray-100 text-gray-800 border-gray-200" variant="secondary">Implied (Inferred)</Badge>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Requirement Types</h4>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-red-50 text-red-700 border-red-200" variant="secondary">Requirement (Must-have)</Badge>
+                <Badge className="bg-blue-50 text-blue-700 border-blue-200" variant="secondary">Responsibility (Nice-to-have)</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Overall Score */}
       <Card>
@@ -205,8 +290,8 @@ export const JobAnalysisResult = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4 mb-4">
-            <div className={`text-4xl font-bold ${getScoreColor(analysisResult.fitAssessment?.overallScore || 0)}`}>
-              {analysisResult.fitAssessment?.overallScore || 0}%
+            <div className={`text-4xl font-bold ${getScoreColor(currentScore)}`}>
+              {currentScore}%
             </div>
             <div>
               <div className="text-lg font-semibold">{analysisResult.fitAssessment?.fitLevel || 'Unknown'} Match</div>
@@ -214,25 +299,23 @@ export const JobAnalysisResult = () => {
             </div>
           </div>
           
-          {/* Action Plan Status */}
-          {analysisResult.actionPlan && (
-            <div className={`border rounded-lg p-3 mb-4 ${
-              analysisResult.actionPlan.readyForBulletGeneration 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-amber-50 border-amber-200'
+          {/* Fixed Action Plan Status - Correct logic for bullet generation readiness */}
+          <div className={`border rounded-lg p-3 mb-4 ${
+            currentScore >= 80 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-amber-50 border-amber-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              currentScore >= 80
+                ? 'text-green-800' 
+                : 'text-amber-800'
             }`}>
-              <p className={`text-sm font-medium ${
-                analysisResult.actionPlan.readyForBulletGeneration 
-                  ? 'text-green-800' 
-                  : 'text-amber-800'
-              }`}>
-                {analysisResult.actionPlan.readyForBulletGeneration 
-                  ? '✓ Ready for resume bullet generation'
-                  : '⚠ Score needs improvement for optimal results'
-                }
-              </p>
-            </div>
-          )}
+              {currentScore >= 80
+                ? '✓ Ready for resume bullet generation'
+                : 'Resume points will only be generated for scores 80% and higher. Please provide more details on experiences if you believe you are a good fit.'
+              }
+            </p>
+          </div>
 
           {analysisResult.summary && (
             <p className="text-muted-foreground">{analysisResult.summary}</p>
@@ -268,12 +351,64 @@ export const JobAnalysisResult = () => {
         </Card>
       )}
 
-      {/* Job Requirements */}
+      {/* Extracted Keywords - NEW SECTION */}
+      {analysisResult.extractedKeywords && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Tag className="w-5 h-5" />
+              Extracted Keywords
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h4 className="font-semibold mb-2 text-red-700">Requirements (Must-haves)</h4>
+              <div className="space-y-2">
+                {Object.entries(analysisResult.extractedKeywords.requirements).map(([category, keywords]) => (
+                  <div key={category}>
+                    <p className="text-sm font-medium text-muted-foreground mb-1 capitalize">
+                      {category.replace('_', ' ')}:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {keywords.map((keyword: string, index: number) => (
+                        <Badge key={index} className="bg-red-50 text-red-700 border-red-200 text-xs" variant="secondary">
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2 text-blue-700">Responsibilities (Nice-to-haves)</h4>
+              <div className="space-y-2">
+                {Object.entries(analysisResult.extractedKeywords.responsibilities).map(([category, keywords]) => (
+                  <div key={category}>
+                    <p className="text-sm font-medium text-muted-foreground mb-1 capitalize">
+                      {category.replace('_', ' ')}:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {keywords.map((keyword: string, index: number) => (
+                        <Badge key={index} className="bg-blue-50 text-blue-700 border-blue-200 text-xs" variant="secondary">
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Job Requirements with Type Differentiation */}
       {analysisResult.jobRequirements && analysisResult.jobRequirements.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Key Requirements from Job Description
+              Key Requirements & Responsibilities from Job Description
               <Button
                 variant="outline"
                 size="sm"
@@ -292,23 +427,48 @@ export const JobAnalysisResult = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {analysisResult.jobRequirements.map((req: any, index: number) => (
-                <div key={index} className="flex items-center gap-1">
-                  <Badge className={getCategoryColor(req.category)} variant="secondary">
-                    {req.requirement}
-                  </Badge>
-                  <Badge className={`${getImportanceColor(req.importance)} text-xs`} variant="outline">
-                    {req.importance}
-                  </Badge>
+            <div className="space-y-4">
+              {/* Separate Requirements and Responsibilities */}
+              <div>
+                <h4 className="font-semibold mb-2 text-red-700">Requirements (Must-haves)</h4>
+                <div className="flex flex-wrap gap-2">
+                  {analysisResult.jobRequirements
+                    .filter(req => req.type === 'requirement')
+                    .map((req: any, index: number) => (
+                    <div key={index} className="flex items-center gap-1">
+                      <Badge className={getCategoryColor(req.category)} variant="secondary">
+                        {req.requirement}
+                      </Badge>
+                      <Badge className={`${getImportanceColor(req.importance)} text-xs`} variant="outline">
+                        {req.importance}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2 text-blue-700">Responsibilities (Nice-to-haves)</h4>
+                <div className="flex flex-wrap gap-2">
+                  {analysisResult.jobRequirements
+                    .filter(req => req.type === 'responsibility')
+                    .map((req: any, index: number) => (
+                    <div key={index} className="flex items-center gap-1">
+                      <Badge className={getCategoryColor(req.category)} variant="secondary">
+                        {req.requirement}
+                      </Badge>
+                      <Badge className={`${getImportanceColor(req.importance)} text-xs`} variant="outline">
+                        {req.importance}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Weak Evidence Experiences - NEW SECTION */}
+      {/* Weak Evidence Experiences - FIXED SECTION */}
       {analysisResult.weakEvidenceExperiences && analysisResult.weakEvidenceExperiences.experiences.length > 0 && (
         <Card>
           <CardHeader>
@@ -363,9 +523,14 @@ export const JobAnalysisResult = () => {
               {analysisResult.matchedRequirements.map((match, index) => (
                 <div key={index} className="border border-green-200 rounded-lg p-3 bg-green-50">
                   <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-                      {match.jobRequirement}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                        {match.jobRequirement}
+                      </Badge>
+                      <Badge className={getTypeColor(match.type)} variant="outline" className="text-xs">
+                        {match.type}
+                      </Badge>
+                    </div>
                     <div className="flex gap-2">
                       <Badge variant="secondary" className="text-xs">
                         {match.matchType}
@@ -392,23 +557,103 @@ export const JobAnalysisResult = () => {
             <CardTitle className="text-red-600">Missing Requirements</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {analysisResult.unmatchedRequirements.map((unmatched, index) => (
-                <div key={index} className="border border-red-200 rounded-lg p-3 bg-red-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
-                      {unmatched.requirement}
-                    </Badge>
-                    <div className="flex gap-2">
-                      <Badge className={getCategoryColor(unmatched.category)} variant="secondary">
-                        {unmatched.category}
-                      </Badge>
-                      <Badge className={`${getImportanceColor(unmatched.importance)} text-xs`} variant="secondary">
-                        {unmatched.importance}
-                      </Badge>
+            <div className="space-y-4">
+              {/* Separate unmatched requirements and responsibilities */}
+              <div>
+                <h4 className="font-semibold mb-2 text-red-700">Missing Requirements (Critical)</h4>
+                <div className="space-y-3">
+                  {analysisResult.unmatchedRequirements
+                    .filter(req => req.type === 'requirement')
+                    .map((unmatched, index) => (
+                    <div key={index} className="border border-red-200 rounded-lg p-3 bg-red-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
+                          {unmatched.requirement}
+                        </Badge>
+                        <div className="flex gap-2">
+                          <Badge className={getCategoryColor(unmatched.category)} variant="secondary">
+                            {unmatched.category}
+                          </Badge>
+                          <Badge className={`${getImportanceColor(unmatched.importance)} text-xs`} variant="secondary">
+                            {unmatched.importance}
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-sm text-red-800">{unmatched.suggestionToImprove}</p>
                     </div>
+                  ))}
+                </div>
+              </div>
+              
+              {analysisResult.unmatchedRequirements.some(req => req.type === 'responsibility') && (
+                <div>
+                  <h4 className="font-semibold mb-2 text-blue-700">Missing Responsibilities (Nice-to-have)</h4>
+                  <div className="space-y-3">
+                    {analysisResult.unmatchedRequirements
+                      .filter(req => req.type === 'responsibility')
+                      .map((unmatched, index) => (
+                      <div key={index} className="border border-blue-200 rounded-lg p-3 bg-blue-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                            {unmatched.requirement}
+                          </Badge>
+                          <div className="flex gap-2">
+                            <Badge className={getCategoryColor(unmatched.category)} variant="secondary">
+                              {unmatched.category}
+                            </Badge>
+                            <Badge className={`${getImportanceColor(unmatched.importance)} text-xs`} variant="secondary">
+                              {unmatched.importance}
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="text-sm text-blue-800">{unmatched.suggestionToImprove}</p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-sm text-red-800">{unmatched.suggestionToImprove}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bullet Keywords for Resume Generation */}
+      {analysisResult.bulletKeywords && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              Resume Keywords & Phrases
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(
+                  Object.values(analysisResult.bulletKeywords || {}).flat().join(', '),
+                  'bulletKeywords'
+                )}
+              >
+                {copiedSection === 'bulletKeywords' ? (
+                  <Check className="w-4 h-4 mr-2" />
+                ) : (
+                  <Copy className="w-4 h-4 mr-2" />
+                )}
+                Copy All
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(analysisResult.bulletKeywords).map(([category, keywords]) => (
+                <div key={category}>
+                  <p className="text-sm font-medium text-muted-foreground mb-2 capitalize">
+                    {category.replace(/([A-Z])/g, ' $1').toLowerCase()}:
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {(keywords as string[]).map((keyword: string, index: number) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {keyword}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -433,7 +678,7 @@ export const JobAnalysisResult = () => {
                     <div>
                       <h4 className="font-medium">{exp.title}</h4>
                       <p className="text-sm text-muted-foreground">
-                        {exp.roleTitle} at {exp.companyName}
+                        {exp.companyName} - {exp.roleTitle} - {exp.title}
                       </p>
                     </div>
                     <div className="flex gap-2">
