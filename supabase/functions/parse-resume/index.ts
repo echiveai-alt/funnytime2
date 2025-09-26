@@ -560,7 +560,7 @@ serve(async (req) => {
     // AI parsing with retry logic for better reliability
     let parsedData: ParsedResumeData | null = null;
     const maxAttempts = 3;
-    const models = ['gpt-4o-mini']; // Use only the most reliable model for now
+    const models = ['gpt-4o-mini-2024-07-18']; // Use only the most reliable model for now
     let currentModelIndex = 0;
     
     for (let attempts = 1; attempts <= maxAttempts; attempts++) {
