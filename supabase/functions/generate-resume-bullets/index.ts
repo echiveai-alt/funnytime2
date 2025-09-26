@@ -48,13 +48,14 @@ serve(async (req) => {
     const { 
       experienceIdsByRole, 
       bulletKeywords, 
-      jobRequirements,
+      jobRequirements, // Use jobRequirements instead of extractedJobPhrases
       keywordMatchType = 'exact'
     } = requestBody;
 
     console.log('Request body keys:', Object.keys(requestBody));
     console.log('experienceIdsByRole type:', typeof experienceIdsByRole);
     console.log('bulletKeywords type:', typeof bulletKeywords);
+    console.log('jobRequirements type:', typeof jobRequirements);
     console.log('keywordMatchType:', keywordMatchType);
 
     // Enhanced validation with detailed error messages
@@ -65,6 +66,10 @@ serve(async (req) => {
     if (!bulletKeywords) {
       throw new Error('Missing bulletKeywords from job fit analysis. Please run job fit analysis first.');
     }
+
+    if (!jobRequirements) {
+      throw new Error('Missing jobRequirements from job fit analysis. Please run job fit analysis first.');
+    }
     
     if (typeof experienceIdsByRole !== 'object' || Object.keys(experienceIdsByRole).length === 0) {
       throw new Error('experienceIdsByRole must be a non-empty object with role keys.');
@@ -74,9 +79,14 @@ serve(async (req) => {
       throw new Error('bulletKeywords must be an object with keyword categories.');
     }
 
+    if (!Array.isArray(jobRequirements)) {
+      throw new Error('jobRequirements must be an array.');
+    }
+
     console.log('Generating resume bullets for user:', user.id);
     console.log('Experience IDs by role:', Object.keys(experienceIdsByRole));
     console.log('Bullet keywords:', bulletKeywords);
+    console.log('Job requirements count:', jobRequirements.length);
 
     // Fetch the actual experience data using the IDs from job fit analysis
     const allExperienceIds = Object.values(experienceIdsByRole)
@@ -99,6 +109,7 @@ serve(async (req) => {
         *,
         roles!inner(
           title,
+          specialty,
           companies!inner(name)
         )
       `)
@@ -131,7 +142,7 @@ serve(async (req) => {
           return roleData.experienceIds.includes(exp.id);
         })
         .map(exp => {
-          // Validate experience structure
+          // Validate experience structure and handle null values
           if (!exp.roles?.companies?.name || !exp.roles?.title) {
             console.warn('Experience missing role/company data:', exp);
           }
@@ -140,11 +151,12 @@ serve(async (req) => {
             id: exp.id,
             company: exp.roles?.companies?.name || 'Unknown Company',
             role: exp.roles?.title || 'Unknown Role',
+            specialty: exp.roles?.specialty || null, // Handle null specialty
             title: exp.title || 'Untitled Experience',
-            situation: exp.situation || '',
-            task: exp.task || '',
-            action: exp.action || '',
-            result: exp.result || '',
+            situation: exp.situation || null, // Handle null situation
+            task: exp.task || null, // Handle null task
+            action: exp.action || 'No action details provided',
+            result: exp.result || 'No results specified',
             tags: exp.tags || []
           };
         });
@@ -156,6 +168,7 @@ serve(async (req) => {
       formattedExperiencesByRole[roleKey] = {
         companyName: roleData.company || 'Unknown Company',
         roleTitle: roleData.roleTitle || 'Unknown Role',
+        specialty: roleData.specialty || null, // Handle null specialty
         experiences: roleExperiences
       };
     });
@@ -177,20 +190,24 @@ serve(async (req) => {
       return score;
     };
 
-    // Create optimized prompt using extracted keywords instead of full job description
+    // Create optimized prompt using extracted keywords and job requirements
     const createBulletPrompt = () => {
       const keywordMatchInstructions = keywordMatchType === 'exact' 
         ? 'Use keywords exactly as listed - do not modify the form or tense'
-        : 'Use keywords and their variations - you can modify tense, add suffixes (ing, ed, er, etc.), or use related forms';
+        : keywordMatchType === 'word-stem'
+        ? 'Use keywords and their variations - you can modify tense, add suffixes (ing, ed, er, etc.), or use related forms'
+        : 'Use keywords flexibly - match the meaning and context even if exact words differ';
 
-      // Group job requirements by category for better organization
+      // Group job requirements by category and importance for better organization
       const reqsByCategory = {
         technical: jobRequirements?.filter((req: any) => req.category === 'technical') || [],
-        soft_skill: jobRequirements?.filter((req: any) => req.category === 'soft_skill') || [],
-        industry: jobRequirements?.filter((req: any) => req.category === 'industry') || [],
-        qualification: jobRequirements?.filter((req: any) => req.category === 'qualification') || [],
-        function: jobRequirements?.filter((req: any) => req.category === 'function') || []
+        experience_level: jobRequirements?.filter((req: any) => req.category === 'experience_level') || [],
+        domain_industry: jobRequirements?.filter((req: any) => req.category === 'domain_industry') || [],
+        behavioral_fit: jobRequirements?.filter((req: any) => req.category === 'behavioral_fit') || []
       };
+
+      const criticalReqs = jobRequirements?.filter((req: any) => req.importance === 'critical') || [];
+      const highReqs = jobRequirements?.filter((req: any) => req.importance === 'high') || [];
       
       return `You are a professional resume writer. Create up to 6 impactful resume bullet points for each role using ONLY the user's provided experiences.
 
@@ -202,42 +219,50 @@ Technical Skills: ${bulletKeywords.technical?.join(', ') || 'None'}
 Action Verbs: ${bulletKeywords.actionVerbs?.join(', ') || 'None'}  
 Industry Terms: ${bulletKeywords.industry?.join(', ') || 'None'}
 Metrics/Measurements: ${bulletKeywords.metrics?.join(', ') || 'None'}
-Key Responsibilities: ${bulletKeywords.responsibilities?.join(', ') || 'None'}
+Behavioral Terms: ${bulletKeywords.behavioral?.join(', ') || 'None'}
 Qualifications: ${bulletKeywords.qualifications?.join(', ') || 'None'}
-Culture/Values: ${bulletKeywords.culture?.join(', ') || 'None'}
 
-JOB REQUIREMENTS BY IMPORTANCE (integrate high importance first):
+CRITICAL REQUIREMENTS (must integrate if experience supports):
+${criticalReqs.map((req: any) => `• ${req.requirement}`).join('\n') || '• None'}
+
+HIGH PRIORITY REQUIREMENTS (strongly preferred):
+${highReqs.map((req: any) => `• ${req.requirement}`).join('\n') || '• None'}
+
+JOB REQUIREMENTS BY CATEGORY:
 ${reqsByCategory.technical.length > 0 ? `Technical Requirements:
-${reqsByCategory.technical.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
-${reqsByCategory.soft_skill.length > 0 ? `Soft Skills:
-${reqsByCategory.soft_skill.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
-${reqsByCategory.industry.length > 0 ? `Industry Knowledge:
-${reqsByCategory.industry.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
-${reqsByCategory.qualification.length > 0 ? `Qualifications:
-${reqsByCategory.qualification.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
-${reqsByCategory.function.length > 0 ? `Functions/Roles:
-${reqsByCategory.function.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
+${reqsByCategory.technical.map((req: any) => `• ${req.requirement} (${req.importance} importance)`).join('\n')}` : ''}
+
+${reqsByCategory.experience_level.length > 0 ? `Experience Level:
+${reqsByCategory.experience_level.map((req: any) => `• ${req.requirement} (${req.importance} importance)`).join('\n')}` : ''}
+
+${reqsByCategory.domain_industry.length > 0 ? `Domain/Industry Knowledge:
+${reqsByCategory.domain_industry.map((req: any) => `• ${req.requirement} (${req.importance} importance)`).join('\n')}` : ''}
+
+${reqsByCategory.behavioral_fit.length > 0 ? `Behavioral Requirements:
+${reqsByCategory.behavioral_fit.map((req: any) => `• ${req.requirement} (${req.importance} importance)`).join('\n')}` : ''}
 
 CRITICAL RULES:
 1. Use ONLY information from user's experiences - never invent details
 2. Integrate keywords naturally where they match the actual experience
-3. Prioritize HIGH importance requirements over medium/low
+3. Prioritize CRITICAL and HIGH importance requirements over medium/low
 4. Follow ${keywordMatchType} matching rules for keywords
 5. Structure: "Strong action verb + context + quantified result when possible"
 6. No abbreviations, em-dashes, colons, semicolons
 7. Each bullet MUST be under 179 visual width score
 8. Maximum 6 bullets per role
+9. Handle null situation/task fields gracefully - focus on action/result
 
 USER EXPERIENCES BY ROLE:
 ${Object.entries(formattedExperiencesByRole).map(([roleKey, roleData]: [string, any]) => `
 Company: ${roleData.companyName}
 Role: ${roleData.roleTitle}
+${roleData.specialty ? `Specialty: ${roleData.specialty}` : ''}
 
 Experiences:
 ${roleData.experiences.map((exp: any, idx: number) => `
 ${idx + 1}. Title: ${exp.title}
-   Situation: ${exp.situation}
-   Task: ${exp.task}
+   Situation: ${exp.situation || 'Not specified'}
+   Task: ${exp.task || 'Not specified'}
    Action: ${exp.action}
    Result: ${exp.result}
    Tags: ${exp.tags?.join(', ') || 'None'}
@@ -259,11 +284,16 @@ Return ONLY JSON (no markdown formatting):
   ],
   "keywordsUsed": ["keywords successfully integrated with ${keywordMatchType} matching"],
   "keywordsNotUsed": ["keywords that didn't fit naturally into experiences"],
-  "matchingType": "${keywordMatchType}"
+  "requirementsMatched": ["job requirements successfully addressed in bullets"],
+  "matchingType": "${keywordMatchType}",
+  "totalRequirements": ${jobRequirements.length},
+  "criticalRequirementsAddressed": ["critical requirements that were integrated"]
 }`;
     };
 
     const prompt = createBulletPrompt();
+
+    console.log('Prompt length:', prompt.length);
 
     // Call OpenAI API with optimized settings
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -273,11 +303,12 @@ Return ONLY JSON (no markdown formatting):
         'Authorization': `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-5-nano-2025-08-07',
+        model: 'gpt-4o-mini-2024-07-18', // Use consistent model
         messages: [
           { role: 'user', content: prompt }
         ],
-        max_completion_tokens: 2048
+        max_completion_tokens: 3072, // Increased for better bullet generation
+        temperature: 0.3 // Slightly higher for creativity in phrasing
       })
     });
 
@@ -350,16 +381,21 @@ Return ONLY JSON (no markdown formatting):
       })) || [],
       keywordsUsed: bulletData.keywordsUsed || [],
       keywordsNotUsed: bulletData.keywordsNotUsed || [],
+      requirementsMatched: bulletData.requirementsMatched || [],
+      criticalRequirementsAddressed: bulletData.criticalRequirementsAddressed || [],
       generatedFrom: {
         totalExperiences: allExperienceIds.length,
         rolesProcessed: Object.keys(experienceIdsByRole).length,
-        keywordCategories: Object.keys(bulletKeywords).length
+        keywordCategories: Object.keys(bulletKeywords).length,
+        totalRequirements: jobRequirements.length,
+        keywordMatchType: keywordMatchType
       }
     };
 
     console.log('Resume bullets generated successfully');
     console.log('Keywords used:', validatedBullets.keywordsUsed);
     console.log('Keywords not used:', validatedBullets.keywordsNotUsed);
+    console.log('Requirements matched:', validatedBullets.requirementsMatched);
     
     return new Response(JSON.stringify(validatedBullets), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
