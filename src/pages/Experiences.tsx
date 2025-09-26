@@ -10,7 +10,7 @@ import { RoleModal } from "@/components/experiences/RoleModal";
 import { OnboardingResumeModal } from "@/components/experiences/OnboardingResumeModal";
 import { useExperiences } from "@/hooks/useExperiences";
 
-type Modal = null | "resume" | "company" | "role";
+type Modal = null | "resume" | "company" | "role" | "edit-company" | "edit-role";
 const SESSION_FLAG = "exp_onboarding_shown";
 
 const Experiences = () => {
@@ -118,7 +118,7 @@ const Experiences = () => {
 
   const openEditCompany = (company: any) => {
     setEditingCompany(company);
-    setOpenModal("company");
+    setOpenModal("edit-company");
   };
 
   const openAddRole = () => {
@@ -128,7 +128,7 @@ const Experiences = () => {
 
   const openEditRole = (role: any) => {
     setEditingRole(role);
-    setOpenModal("role");
+    setOpenModal("edit-role");
   };
 
   /**
@@ -270,33 +270,27 @@ const Experiences = () => {
 
       {/* Company Modal */}
       <CompanyModal
-        isOpen={openModal === "company"}
+        isOpen={openModal === "company" || openModal === "edit-company"}
         onClose={() => {
           setEditingCompany(null);
-          setOpenModal(null); // back to page
+          setOpenModal(null);
         }}
         onSave={async (data, roleTitle) => {
           try {
-            console.log("Company save handler - before:", { openModal, editingCompany: !!editingCompany });
             if (editingCompany) {
               // Editing existing company - just update and close
               await updateCompany(editingCompany.id, data);
-              console.log("Company save handler - after update, before state changes");
-              // Update both states together to prevent flash
-              setEditingCompany(null);
-              setOpenModal(null);
               await refreshAndSelectLatest();
             } else {
               // Creating new company - pass the roleTitle to createCompany
               // The createCompany function will handle creating both company and role
               const roleToCreate = roleTitle?.trim() || "New Role";
               await createCompany(data, roleToCreate);
-              // Update both states together to prevent flash
-              setEditingCompany(null);
-              setOpenModal(null);
               await refreshAndSelectLatest();
             }
-            console.log("Company save handler - after all operations");
+            // Close modal after successful operation
+            setEditingCompany(null);
+            setOpenModal(null);
           } catch (error) {
             console.error("Failed to save company:", error);
           }
@@ -308,25 +302,22 @@ const Experiences = () => {
 
       {/* Role Modal */}
       <RoleModal
-        isOpen={openModal === "role"}
+        isOpen={openModal === "role" || openModal === "edit-role"}
         onClose={() => {
           setEditingRole(null);
-          setOpenModal(null); // back to page
+          setOpenModal(null);
         }}
         onSave={async (data) => {
           try {
-            console.log("Role save handler - before:", { openModal, editingRole: !!editingRole });
             if (editingRole) {
               await updateRole(editingRole.id, data);
             } else {
               await createRole(data);
             }
-            console.log("Role save handler - after operations, before state changes");
-            // Update both states together to prevent flash
+            await refreshAndSelectLatest();
+            // Close modal after successful operation
             setEditingRole(null);
             setOpenModal(null);
-            await refreshAndSelectLatest(); // keep selection fresh
-            console.log("Role save handler - after all operations");
           } catch (error) {
             console.error("Failed to save role:", error);
           }
