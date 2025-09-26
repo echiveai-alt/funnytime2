@@ -243,34 +243,13 @@ const Experiences = () => {
               await refreshAndSelectLatest();
               setOpenModal(null);
             } else {
-              // Creating new company - first create the company
-              await createCompany(data);
+              // Creating new company - pass the roleTitle to createCompany
+              // The createCompany function will handle creating both company and role
+              const roleToCreate = roleTitle?.trim() || "New Role";
+              await createCompany(data, roleToCreate);
               setEditingCompany(null);
               await refreshAndSelectLatest();
-              
-              // If a role title was provided, create the role and close
-              // Otherwise, open the role modal for manual entry
-              if (roleTitle && roleTitle.trim()) {
-                try {
-                  await createRole({ 
-                    title: roleTitle.trim(),
-                    company_id: selectedCompany?.id 
-                  });
-                  await refreshAndSelectLatest();
-                  setOpenModal(null);
-                } catch (roleError) {
-                  console.error("Failed to create role:", roleError);
-                  // Fall back to opening role modal
-                  setSelectedRole(null);
-                  setEditingRole(null);
-                  setOpenModal("role");
-                }
-              } else {
-                // No role title provided, open role modal
-                setSelectedRole(null);
-                setEditingRole(null);
-                setOpenModal("role");
-              }
+              setOpenModal(null); // Close since everything was created successfully
             }
           } catch (error) {
             console.error("Failed to save company:", error);
