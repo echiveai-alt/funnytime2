@@ -272,8 +272,8 @@ const Experiences = () => {
       <CompanyModal
         isOpen={openModal === "company" || openModal === "edit-company"}
         onClose={() => {
-          setEditingCompany(null);
           setOpenModal(null);
+          setEditingCompany(null);
         }}
         onSave={async (data, roleTitle) => {
           try {
@@ -304,8 +304,8 @@ const Experiences = () => {
       <RoleModal
         isOpen={openModal === "role" || openModal === "edit-role"}
         onClose={() => {
-          setEditingRole(null);
           setOpenModal(null);
+          setEditingRole(null);
         }}
         onSave={async (data) => {
           try {
