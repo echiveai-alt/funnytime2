@@ -14,13 +14,18 @@ serve(async (req) => {
   }
 
   try {
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const openaiApiKey = Deno.env.get('GENERATE_RESUME_BULLETS_OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing required environment variables');
+    if (!openaiApiKey) {
+      throw new Error('Missing GENERATE_RESUME_BULLETS_OPENAI_API_KEY environment variable');
     }
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing required Supabase environment variables');
+    }
+
+    console.log('generate-resume-bullets: Using dedicated OpenAI API key');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

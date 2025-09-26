@@ -47,3 +47,9 @@ verify_jwt = true
 
 [functions.parse-resume]
 verify_jwt = true
+
+[functions.generate-resume-bullets]
+verify_jwt = true
+
+[functions.test-api-keys]
+verify_jwt = false

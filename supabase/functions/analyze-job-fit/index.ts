@@ -142,14 +142,19 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    try {
+      const openaiApiKey = Deno.env.get('ANALYZE_JOB_FIT_OPENAI_API_KEY');
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing required environment variables');
-    }
+      if (!openaiApiKey) {
+        throw new Error('Missing ANALYZE_JOB_FIT_OPENAI_API_KEY environment variable');
+      }
+      if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Missing required Supabase environment variables');
+      }
+
+      console.log('analyze-job-fit: Using dedicated OpenAI API key');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
