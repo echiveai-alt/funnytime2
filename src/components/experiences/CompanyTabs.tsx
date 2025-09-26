@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Company } from "@/types/experience";
 import { cn } from "@/lib/utils";
-
 interface CompanyTabsProps {
   companies: Company[];
   selectedCompany: Company | null;
@@ -20,7 +19,6 @@ interface CompanyTabsProps {
   onDeleteCompany?: (company: Company) => void;
   isLoading?: boolean;
 }
-
 export const CompanyTabs = ({
   companies,
   selectedCompany,
@@ -31,7 +29,6 @@ export const CompanyTabs = ({
   isLoading = false,
 }: CompanyTabsProps) => {
   const [scrollPosition, setScrollPosition] = useState(0);
-
   const sortedCompanies = [...companies].sort((a, b) => {
     if (a.is_current && !b.is_current) return -1;
     if (!a.is_current && b.is_current) return 1;
@@ -42,7 +39,6 @@ export const CompanyTabs = ({
     if (!a.end_date && b.end_date) return -1;
     return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
   });
-
   return (
     <div className="border-b border-border/50">
       <div className="flex items-center gap-2 py-2">
@@ -58,15 +54,18 @@ export const CompanyTabs = ({
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative h-7",
                     isSelected
-                      ? "bg-primary text-primary-foreground border-primary shadow-soft"
-                      : "bg-background hover:bg-muted border-border hover:border-border/80"
+                      ? "bg-primary text-primary-foreground shadow-soft"
+                      : "bg-background hover:bg-muted",
+                    // Border colors always show based on company status
+                    company.is_current
+                      ? "border-green-500/70"
+                      : isSelected
+                      ? "border-primary"
+                      : "border-border hover:border-border/80"
                   )}
                 >
                   <Building2 className="w-4 h-4" />
                   <span className="font-semibold">{company.name}</span>
-                  {company.is_current && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
-                  )}
                 </button>
               );
             })}
