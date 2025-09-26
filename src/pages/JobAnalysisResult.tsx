@@ -19,6 +19,13 @@ interface AnalysisResult {
     category: string;
     importance: string;
   }>;
+  weakExperiences?: Array<{
+    jobPhrase: string;
+    experienceMatch: string;
+    experienceContext: string;
+    matchType: string;
+    evidenceStrength: string;
+  }>;
   matchedPhrases?: Array<{
     jobPhrase: string;
     experienceMatch: string;
@@ -170,6 +177,39 @@ export const JobAnalysisResult = () => {
                   {req.requirement}
                   <span className="ml-1 text-xs">({req.importance})</span>
                 </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Weak Evidence Experiences */}
+      {analysisResult.weakExperiences && analysisResult.weakExperiences.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-amber-600">Weak Evidence Experiences</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {analysisResult.weakExperiences.map((weak, index) => (
+                <div key={index} className="border rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline" className="bg-amber-50 text-amber-700">
+                      {weak.jobPhrase}
+                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {weak.matchType}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {weak.evidenceStrength}
+                      </Badge>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Found in {weak.experienceContext}:</span> {weak.experienceMatch}
+                  </p>
+                </div>
               ))}
             </div>
           </CardContent>
