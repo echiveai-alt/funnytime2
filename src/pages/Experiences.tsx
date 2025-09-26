@@ -189,8 +189,6 @@ const Experiences = () => {
             onAddCompany={openAddCompany}
             onEditCompany={openEditCompany}
             isLoading={experiencesLoading}
-            // Wire up the import resume functionality to the CompanyTabs if it has that button
-            onImportExperiences={openImportResume}
           />
 
           {/* Role Tabs */}
