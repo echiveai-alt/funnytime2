@@ -22,7 +22,7 @@ import { Company } from "@/types/experience";
 interface CompanyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (company: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">, roleTitle?: string) => Promise<void>;
+  onSave: (company: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">, roleTitle?: string, roleSpecialty?: string) => Promise<void>;
   onDelete?: (companyId: string) => Promise<void>;
   company?: Company | null;
   isLoading?: boolean;
@@ -44,6 +44,7 @@ export const CompanyModal = ({
     end_year: company?.end_date ? parseInt(company.end_date.split('-')[0]) : new Date().getFullYear(),
     is_current: company?.is_current || false,
     role_title: "", // For creating initial role
+    role_specialty: "", // For creating initial role specialty
   });
 
   const months = [
@@ -75,6 +76,7 @@ export const CompanyModal = ({
         end_year: company.end_date ? parseInt(company.end_date.split('-')[0]) : new Date().getFullYear(),
         is_current: company.is_current || false,
         role_title: "", // Keep empty for editing company
+        role_specialty: "", // Keep empty for editing company
       });
     } else {
       // Reset form for adding new company
@@ -86,6 +88,7 @@ export const CompanyModal = ({
         end_year: new Date().getFullYear(),
         is_current: false,
         role_title: "",
+        role_specialty: "",
       });
     }
   }, [company]);
@@ -102,7 +105,7 @@ export const CompanyModal = ({
         start_date: startDate,
         end_date: endDate,
         is_current: formData.is_current,
-      }, formData.role_title);
+      }, formData.role_title, formData.role_specialty);
       onClose();
       // Reset form
       setFormData({
@@ -113,6 +116,7 @@ export const CompanyModal = ({
         end_year: new Date().getFullYear(),
         is_current: false,
         role_title: "",
+        role_specialty: "",
       });
     } catch (error) {
       console.error("Failed to save company:", error);
@@ -143,15 +147,28 @@ export const CompanyModal = ({
           </div>
 
           {!company && (
-            <div className="space-y-2">
-              <Label htmlFor="role-title">Initial Role</Label>
-              <Input
-                id="role-title"
-                value={formData.role_title}
-                onChange={(e) => setFormData(prev => ({ ...prev, role_title: e.target.value }))}
-                placeholder="e.g., Product Manager"
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="role-title">Initial Role</Label>
+                <Input
+                  id="role-title"
+                  value={formData.role_title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, role_title: e.target.value }))}
+                  placeholder="e.g., Product Manager"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role-specialty">
+                  Specialty <span className="text-sm text-muted-foreground font-normal">(Domain, Industry, etc. should be recorded here. Comma-separate multiple entries. Example: B2C, Growth)</span>
+                </Label>
+                <Input
+                  id="role-specialty"
+                  value={formData.role_specialty}
+                  onChange={(e) => setFormData(prev => ({ ...prev, role_specialty: e.target.value }))}
+                  placeholder="e.g., B2C, Growth"
+                />
+              </div>
+            </>
           )}
 
           <div className="grid grid-cols-2 gap-4">

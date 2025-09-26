@@ -80,27 +80,31 @@ export const useExperiences = () => {
         .order("end_date", { ascending: false, nullsFirst: true });
 
       if (rolesError) throw rolesError;
-      setRoles(rolesData || []);
+      const mappedRoles = (rolesData || []).map(role => ({
+        ...role,
+        specialty: (role as any).specialty || null
+      }));
+      setRoles(mappedRoles);
 
       // Restore saved role if available
       const savedRoleData = localStorage.getItem('selectedRole');
-      if (savedRoleData && rolesData) {
-        const parsedRole = JSON.parse(savedRoleData);
-        const targetRole = rolesData.find(r => r.id === parsedRole.id);
-        if (targetRole) {
-          setSelectedRole(targetRole);
+        if (savedRoleData && mappedRoles) {
+          const parsedRole = JSON.parse(savedRoleData);
+          const targetRole = mappedRoles.find(r => r.id === parsedRole.id);
+          if (targetRole) {
+            setSelectedRole(targetRole);
+          }
         }
-      }
 
       // Restore saved role if available
       const savedRole = localStorage.getItem('selectedRole');
-      if (savedRole && rolesData) {
-        const parsedRole = JSON.parse(savedRole);
-        const targetRole = rolesData.find(r => r.id === parsedRole.id);
-        if (targetRole) {
-          setSelectedRole(targetRole);
+        if (savedRole && mappedRoles) {
+          const parsedRole = JSON.parse(savedRole);
+          const targetRole = mappedRoles.find(r => r.id === parsedRole.id);
+          if (targetRole) {
+            setSelectedRole(targetRole);
+          }
         }
-      }
 
       // Set initial selections - check localStorage first
       if (companiesData && companiesData.length > 0) {
@@ -158,7 +162,7 @@ export const useExperiences = () => {
     }
   };
 
-  const createCompany = async (companyData: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">, roleTitle: string = "New Role") => {
+  const createCompany = async (companyData: Omit<Company, "id" | "user_id" | "created_at" | "updated_at">, roleTitle: string = "New Role", roleSpecialty: string = "") => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
@@ -191,6 +195,7 @@ export const useExperiences = () => {
           user_id: user.id,
           company_id: company.id,
           title: roleTitle,
+          specialty: roleSpecialty,
           start_date: companyData.start_date,
           end_date: companyData.end_date,
           is_current: companyData.is_current,

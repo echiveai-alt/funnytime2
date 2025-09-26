@@ -40,6 +40,7 @@ export const RoleModal = ({
 }: RoleModalProps) => {
   const [formData, setFormData] = useState({
     title: role?.title || "",
+    specialty: role?.specialty || "",
     start_month: role?.start_date ? parseInt(role.start_date.split('-')[1]) : new Date().getMonth() + 1,
     start_year: role?.start_date ? parseInt(role.start_date.split('-')[0]) : new Date().getFullYear(),
     end_month: role?.end_date ? parseInt(role.end_date.split('-')[1]) : new Date().getMonth() + 1,
@@ -70,6 +71,7 @@ export const RoleModal = ({
     if (role) {
       setFormData({
         title: role.title || "",
+        specialty: role.specialty || "",
         start_month: role.start_date ? parseInt(role.start_date.split('-')[1]) : new Date().getMonth() + 1,
         start_year: role.start_date ? parseInt(role.start_date.split('-')[0]) : new Date().getFullYear(),
         end_month: role.end_date ? parseInt(role.end_date.split('-')[1]) : new Date().getMonth() + 1,
@@ -80,6 +82,7 @@ export const RoleModal = ({
       // Reset form for adding new role
       setFormData({
         title: "",
+        specialty: "",
         start_month: new Date().getMonth() + 1,
         start_year: new Date().getFullYear(),
         end_month: new Date().getMonth() + 1,
@@ -99,6 +102,7 @@ export const RoleModal = ({
       await onSave({
         company_id: companyId,
         title: formData.title,
+        specialty: formData.specialty,
         start_date: startDate,
         end_date: endDate,
         is_current: formData.is_current,
@@ -107,6 +111,7 @@ export const RoleModal = ({
       // Reset form
       setFormData({
         title: "",
+        specialty: "",
         start_month: new Date().getMonth() + 1,
         start_year: new Date().getFullYear(),
         end_month: new Date().getMonth() + 1,
@@ -138,6 +143,18 @@ export const RoleModal = ({
               value={formData.title}
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="e.g., Senior Product Manager"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="role-specialty">
+              Specialty <span className="text-sm text-muted-foreground font-normal">(Domain, Industry, etc. should be recorded here. Comma-separate multiple entries. Example: B2C, Growth)</span>
+            </Label>
+            <Input
+              id="role-specialty"
+              value={formData.specialty}
+              onChange={(e) => setFormData(prev => ({ ...prev, specialty: e.target.value }))}
+              placeholder="e.g., B2C, Growth"
             />
           </div>
 

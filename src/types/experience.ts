@@ -14,6 +14,7 @@ export interface Role {
   user_id: string;
   company_id: string;
   title: string;
+  specialty?: string | null;
   start_date: string;
   end_date: string | null;
   is_current: boolean;
