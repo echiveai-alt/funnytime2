@@ -34,7 +34,6 @@ const SCORING_CONFIG = {
   THRESHOLD: 85
 };
 
-
 // Helper function to calculate weighted scores
 function calculateWeightedScore(matches: any[], jobPhrases: any[]): number {
   let totalPossibleScore = 0;
@@ -142,19 +141,31 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-    try {
-      const openaiApiKey = Deno.env.get('ANALYZE_JOB_FIT_OPENAI_API_KEY');
-      const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  try {
+    const openaiApiKey = Deno.env.get('ANALYZE_JOB_FIT_OPENAI_API_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-      if (!openaiApiKey) {
-        throw new Error('Missing ANALYZE_JOB_FIT_OPENAI_API_KEY environment variable');
-      }
-      if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Error('Missing required Supabase environment variables');
-      }
+    console.log('Environment variables check:', {
+      hasOpenaiApiKey: !!openaiApiKey,
+      openaiKeyLength: openaiApiKey?.length || 0,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseServiceKey: !!supabaseServiceKey
+    });
 
-      console.log('analyze-job-fit: Using dedicated OpenAI API key');
+    if (!openaiApiKey) {
+      throw new Error('Missing ANALYZE_JOB_FIT_OPENAI_API_KEY environment variable');
+    }
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing required Supabase environment variables');
+    }
+
+    // Validate OpenAI API key format
+    if (!openaiApiKey.startsWith('sk-')) {
+      throw new Error('Invalid OpenAI API key format - should start with sk-');
+    }
+
+    console.log('analyze-job-fit: Using dedicated OpenAI API key');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -235,52 +246,113 @@ serve(async (req) => {
     // Create enhanced prompt
     const prompt = createAnalysisPrompt(jobDescription, formattedExperiences, formattedEducation);
 
-    // Call OpenAI API with retry logic
+    // Log prompt size for debugging
+    console.log('Prompt character count:', prompt.length);
+    if (prompt.length > 100000) {
+      console.warn('Prompt is very large, consider reducing data size');
+    }
+
+    // Call OpenAI API with enhanced error handling and retry logic
     let openaiResponse;
     let retryCount = 0;
     const maxRetries = 3;
+    let lastError: any = null;
 
     while (retryCount < maxRetries) {
       try {
+        console.log(`OpenAI API call attempt ${retryCount + 1}/${maxRetries}`);
+        
+        const requestBody = {
+          model: 'gpt-4o-mini-2024-07-18',
+          messages: [
+            { role: 'user', content: prompt }
+          ],
+          max_completion_tokens: 3072,
+          temperature: 0.1 // Make output more deterministic
+        };
+
+        console.log('Request body size:', JSON.stringify(requestBody).length, 'characters');
+
         openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${openaiApiKey}`
           },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini-2024-07-18',
-            messages: [
-              { role: 'user', content: prompt }
-            ],
-            max_completion_tokens: 3072
-          })
+          body: JSON.stringify(requestBody)
         });
+
+        console.log('OpenAI response status:', openaiResponse.status, openaiResponse.statusText);
         
-        if (openaiResponse.ok) break;
+        if (openaiResponse.ok) {
+          console.log('OpenAI API call successful');
+          break;
+        }
+
+        // Get error details from OpenAI
+        const errorText = await openaiResponse.text();
+        console.error('OpenAI API error response:', errorText);
         
+        let errorDetails;
+        try {
+          errorDetails = JSON.parse(errorText);
+        } catch {
+          errorDetails = { error: { message: errorText } };
+        }
+
+        lastError = new Error(`OpenAI API error (${openaiResponse.status}): ${errorDetails.error?.message || 'Unknown error'}`);
+
+        // Don't retry on certain errors
+        if (openaiResponse.status === 401) {
+          throw new Error('OpenAI API authentication failed - check your API key');
+        }
+        if (openaiResponse.status === 403) {
+          throw new Error('OpenAI API access forbidden - check your API key permissions');
+        }
+        if (openaiResponse.status === 400) {
+          throw new Error('OpenAI API bad request - check your request format: ' + errorDetails.error?.message);
+        }
+
         retryCount++;
         if (retryCount < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          const delay = 1000 * Math.pow(2, retryCount); // Exponential backoff
+          console.log(`Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       } catch (error) {
+        console.error('OpenAI API call error:', error);
+        lastError = error;
         retryCount++;
-        if (retryCount >= maxRetries) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        if (retryCount >= maxRetries) break;
+        
+        const delay = 1000 * Math.pow(2, retryCount);
+        console.log(`Retrying in ${delay}ms after error...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
     if (!openaiResponse?.ok) {
-      throw new Error('Failed to get response from OpenAI API');
+      throw lastError || new Error('Failed to get response from OpenAI API after all retries');
     }
 
     const openaiData = await openaiResponse.json();
     
+    console.log('OpenAI response structure:', {
+      hasChoices: !!openaiData.choices,
+      choicesLength: openaiData.choices?.length || 0,
+      hasMessage: !!openaiData.choices?.[0]?.message,
+      hasContent: !!openaiData.choices?.[0]?.message?.content,
+      usage: openaiData.usage
+    });
+
     if (!openaiData.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response structure from OpenAI API');
+      console.error('Invalid OpenAI response:', JSON.stringify(openaiData));
+      throw new Error('Invalid response structure from OpenAI API - no content returned');
     }
 
     const responseText = openaiData.choices[0].message.content;
+    console.log('OpenAI response text length:', responseText.length);
+    console.log('Response preview:', responseText.substring(0, 500) + '...');
     
     // Enhanced JSON parsing
     let analysis: any;
@@ -288,9 +360,11 @@ serve(async (req) => {
       // Try to find JSON block
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        console.error('No JSON found in response:', responseText);
         throw new Error('No JSON found in response');
       }
 
+      console.log('Extracted JSON length:', jsonMatch[0].length);
       analysis = JSON.parse(jsonMatch[0]);
       
       // Validate required fields including bulletKeywords
@@ -299,6 +373,8 @@ serve(async (req) => {
       
       for (const field of requiredFields) {
         if (!(field in analysis)) {
+          console.error('Missing required field:', field);
+          console.error('Available fields:', Object.keys(analysis));
           throw new Error(`Missing required field: ${field}`);
         }
       }
@@ -419,7 +495,8 @@ serve(async (req) => {
     console.error('Error in analyze-job-fit function:', error);
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'An unexpected error occurred',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      stack: error instanceof Error ? error.stack : undefined
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
