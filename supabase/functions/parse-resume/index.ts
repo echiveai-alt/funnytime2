@@ -38,6 +38,132 @@ interface ParsedResumeData {
   experiences: ParsedExperience[];
 }
 
+// New function to parse and normalize dates
+function parseDate(dateStr: string): { date: string | null; is_current: boolean } {
+  if (!dateStr || typeof dateStr !== 'string') {
+    return { date: null, is_current: false };
+  }
+  
+  const cleanDate = dateStr.trim().toLowerCase();
+  
+  // Check for current/present indicators
+  const currentIndicators = [
+    'present', 'current', 'now', 'ongoing', 'today', 
+    'currently', 'till date', 'to date', 'continuing',
+    'active', 'still working', 'still employed'
+  ];
+  
+  const isCurrent = currentIndicators.some(indicator => 
+    cleanDate.includes(indicator) || cleanDate === indicator
+  );
+  
+  if (isCurrent) {
+    return { date: null, is_current: true };
+  }
+  
+  // Try to parse various date formats
+  try {
+    // Handle common formats like "Nov 2023", "November 2023", "11/2023", "2023-11", etc.
+    
+    // Format: "Nov 2023", "November 2023"
+    const monthYearMatch = cleanDate.match(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)\s*(\d{4})$/i);
+    if (monthYearMatch) {
+      const monthMap: { [key: string]: string } = {
+        'jan': '01', 'january': '01',
+        'feb': '02', 'february': '02',
+        'mar': '03', 'march': '03',
+        'apr': '04', 'april': '04',
+        'may': '05',
+        'jun': '06', 'june': '06',
+        'jul': '07', 'july': '07',
+        'aug': '08', 'august': '08',
+        'sep': '09', 'september': '09',
+        'oct': '10', 'october': '10',
+        'nov': '11', 'november': '11',
+        'dec': '12', 'december': '12'
+      };
+      const month = monthMap[monthYearMatch[1].toLowerCase()];
+      const year = monthYearMatch[2];
+      return { date: `${year}-${month}-01`, is_current: false };
+    }
+    
+    // Format: "MM/YYYY" or "MM-YYYY"
+    const mmYearMatch = cleanDate.match(/^(\d{1,2})[\/-](\d{4})$/);
+    if (mmYearMatch) {
+      const month = mmYearMatch[1].padStart(2, '0');
+      const year = mmYearMatch[2];
+      return { date: `${year}-${month}-01`, is_current: false };
+    }
+    
+    // Format: "YYYY-MM" or "YYYY/MM"
+    const yearMmMatch = cleanDate.match(/^(\d{4})[\/-](\d{1,2})$/);
+    if (yearMmMatch) {
+      const year = yearMmMatch[1];
+      const month = yearMmMatch[2].padStart(2, '0');
+      return { date: `${year}-${month}-01`, is_current: false };
+    }
+    
+    // Format: Just year "2023"
+    const yearMatch = cleanDate.match(/^(\d{4})$/);
+    if (yearMatch) {
+      return { date: `${yearMatch[1]}-01-01`, is_current: false };
+    }
+    
+    // Format: Already in ISO format "YYYY-MM-DD"
+    const isoMatch = cleanDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      return { date: cleanDate, is_current: false };
+    }
+    
+    // Try to parse as a regular date
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+      return { date: parsed.toISOString().split('T')[0], is_current: false };
+    }
+    
+  } catch (error) {
+    console.log(`Could not parse date: "${dateStr}"`, error);
+  }
+  
+  // If we can't parse it, assume it's not current
+  return { date: null, is_current: false };
+}
+
+// Updated function to normalize parsed data with proper date handling
+function normalizeParsedData(data: any): ParsedResumeData {
+  // Normalize companies
+  const companies = (data.companies || []).map((company: any) => {
+    const startDateInfo = parseDate(company.start_date);
+    const endDateInfo = parseDate(company.end_date);
+    
+    return {
+      name: company.name,
+      start_date: startDateInfo.date || '1900-01-01', // Fallback date
+      end_date: endDateInfo.is_current ? null : endDateInfo.date,
+      is_current: endDateInfo.is_current || company.is_current === true
+    };
+  });
+  
+  // Normalize roles
+  const roles = (data.roles || []).map((role: any) => {
+    const startDateInfo = parseDate(role.start_date);
+    const endDateInfo = parseDate(role.end_date);
+    
+    return {
+      title: role.title,
+      start_date: startDateInfo.date || '1900-01-01', // Fallback date
+      end_date: endDateInfo.is_current ? null : endDateInfo.date,
+      is_current: endDateInfo.is_current || role.is_current === true,
+      company_name: role.company_name
+    };
+  });
+  
+  // Experiences don't need date normalization
+  const experiences = data.experiences || [];
+  
+  return { companies, roles, experiences };
+}
+
 // Improved validation function for parsed data
 function validateParsedData(data: any): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -203,7 +329,7 @@ function extractExperienceSection(text: string): string | null {
   return null;
 }
 
-// Create focused prompt for experience extraction
+// Updated prompt with better date handling instructions
 function createExperiencePrompt(resumeText: string): string {
   return `Extract work experience from this resume text and format as JSON.
 
@@ -211,6 +337,14 @@ TEXT:
 ${resumeText}
 
 IMPORTANT: Create ONE experience entry for EACH bullet point (•) or achievement line. Do not group multiple bullets into one experience.
+
+For dates, handle these formats properly:
+- "Nov 2023" → "2023-11-01" with is_current: false
+- "November 2023" → "2023-11-01" with is_current: false  
+- "Present" → end_date: null, is_current: true
+- "Current" → end_date: null, is_current: true
+- "11/2023" → "2023-11-01" with is_current: false
+- "2023" → "2023-01-01" with is_current: false
 
 Extract:
 1. All companies with start/end dates (avoid duplicates)
@@ -221,13 +355,14 @@ Example: If a role has 5 bullet points, create 5 separate experience entries.
 
 Return JSON in this exact format:
 {
-  "companies": [{"name": "Company Name", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "is_current": false}],
-  "roles": [{"title": "Job Title", "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD", "is_current": false, "company_name": "Company Name"}],
+  "companies": [{"name": "Company Name", "start_date": "YYYY-MM-DD or original format", "end_date": "YYYY-MM-DD or 'Present' or 'Current' or null", "is_current": false}],
+  "roles": [{"title": "Job Title", "start_date": "YYYY-MM-DD or original format", "end_date": "YYYY-MM-DD or 'Present' or 'Current' or null", "is_current": false, "company_name": "Company Name"}],
   "experiences": [{"title": "Achievement description", "situation": "Context or null", "task": "Task or null", "action": "What was done", "result": "Outcome", "role_title": "Job Title", "company_name": "Company Name"}]
 }
 
 Rules:
-- Use YYYY-MM-DD format. If only month/year, use YYYY-MM-01 for start, YYYY-MM-28 for end
+- Keep original date formats as provided (e.g., "Nov 2023", "Present", "Current")
+- Set is_current: true ONLY if end_date contains words like "Present", "Current", "Now", "Ongoing"
 - Create exactly ONE experience entry per bullet point or responsibility
 - Each bullet point becomes one separate experience object
 - Company names must be unique (no duplicates)
@@ -520,9 +655,25 @@ serve(async (req) => {
           continue;
         }
         
-        // Success!
-        parsedData = tempData as ParsedResumeData;
-        console.log(`✓ Successfully parsed data on attempt ${attempts}`);
+        // Normalize dates and current status
+        parsedData = normalizeParsedData(tempData);
+        console.log(`✓ Successfully parsed and normalized data on attempt ${attempts}`);
+        
+        // Log the normalized data for debugging
+        console.log('Normalized companies:', parsedData.companies.map(c => ({
+          name: c.name,
+          start_date: c.start_date,
+          end_date: c.end_date,
+          is_current: c.is_current
+        })));
+        console.log('Normalized roles:', parsedData.roles.map(r => ({
+          title: r.title,
+          company: r.company_name,
+          start_date: r.start_date,
+          end_date: r.end_date,
+          is_current: r.is_current
+        })));
+        
         break;
         
       } catch (attemptError) {
@@ -606,6 +757,11 @@ serve(async (req) => {
         
         results.companies = await batchInsert(supabase, 'companies', companyInserts);
         console.log(`✓ Inserted ${results.companies.length} unique companies`);
+        
+        // Log the inserted companies for debugging
+        results.companies.forEach(company => {
+          console.log(`Company: ${company.name}, Current: ${company.is_current}, End Date: ${company.end_date}`);
+        });
       }
 
       // Insert roles with enhanced matching (case-insensitive)
@@ -634,6 +790,12 @@ serve(async (req) => {
         
         results.roles = await batchInsert(supabase, 'roles', roleInserts);
         console.log(`✓ Inserted ${results.roles.length} roles`);
+        
+        // Log the inserted roles for debugging
+        results.roles.forEach(role => {
+          const company = results.companies.find(c => c.id === role.company_id);
+          console.log(`Role: ${role.title} at ${company?.name}, Current: ${role.is_current}, End Date: ${role.end_date}`);
+        });
       }
 
       // Insert experiences with enhanced matching (case-insensitive)
@@ -689,7 +851,7 @@ serve(async (req) => {
       throw new Error(`Database error: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
     }
 
-    // Success response
+    // Success response with better debugging info
     return new Response(JSON.stringify({ 
       success: true, 
       message: `Successfully extracted work experience data`,
@@ -703,9 +865,24 @@ serve(async (req) => {
         }
       },
       sample_data: {
-        companies: results.companies.slice(0, 2).map(c => c.name),
-        roles: results.roles.slice(0, 3).map(r => r.title),
+        companies: results.companies.slice(0, 2).map(c => ({
+          name: c.name,
+          is_current: c.is_current,
+          end_date: c.end_date
+        })),
+        roles: results.roles.slice(0, 3).map(r => ({
+          title: r.title,
+          is_current: r.is_current,
+          end_date: r.end_date
+        })),
         experience_titles: results.experiences.slice(0, 5).map(exp => exp.title)
+      },
+      debug_info: {
+        date_parsing_examples: [
+          "Nov 2023 → 2023-11-01 (is_current: false)",
+          "Present → null (is_current: true)", 
+          "Current → null (is_current: true)"
+        ]
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -739,14 +916,21 @@ serve(async (req) => {
           'Company names you worked for',
           'Job titles/roles you held',
           'Start and end dates (month/year is fine)',
+          'Use "Present", "Current", "Now" for ongoing roles',
           'Specific responsibilities and achievements',
           'Bullet points describing your work'
         ],
         format_examples: [
-          'Software Engineer at Google (Jan 2020 - Dec 2022)',
+          'Software Engineer at Google (Jan 2020 - Present)',
+          'Marketing Manager at Apple (Mar 2018 - Nov 2023)',
           '• Developed web applications using React and Node.js',
           '• Improved system performance by 30%',
           'OR just paste your entire resume - the system will find the experience section'
+        ],
+        date_formats_supported: [
+          '"Nov 2023", "November 2023" for ended roles',
+          '"Present", "Current", "Now", "Ongoing" for current roles',
+          '"11/2023", "2023-11", "2023" also supported'
         ]
       }
     }), {
