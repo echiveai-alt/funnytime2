@@ -18,14 +18,14 @@ const Experiences = () => {
 
   // Single source of truth for which modal is open
   const [openModal, setOpenModal] = useState<Modal>(null);
-  
-  // Track if resume import was successful to prevent unwanted modal opening
-  const [resumeImportSuccessful, setResumeImportSuccessful] = useState(false);
 
   // Session-scoped "has auto-shown resume modal" flag
   const [hasAutoShownThisSession, setHasAutoShownThisSession] = useState<boolean>(() => {
     return sessionStorage.getItem(SESSION_FLAG) === "1";
   });
+
+  // Track successful resume import to prevent company modal from auto-opening
+  const [resumeImportSuccessful, setResumeImportSuccessful] = useState(false);
 
   // Editing payloads (kept separate)
   const [editingCompany, setEditingCompany] = useState<any>(null);
@@ -75,7 +75,6 @@ const Experiences = () => {
   // Listen for custom event from MainTabs to open resume modal
   useEffect(() => {
     const handleOpenResumeModal = () => {
-      setResumeImportSuccessful(false); // Reset flag when opening manually
       setOpenModal("resume");
     };
 
@@ -110,10 +109,7 @@ const Experiences = () => {
   /**
    * Button handlers (openers)
    */
-  const openImportResume = () => {
-    setResumeImportSuccessful(false); // Reset flag when opening manually
-    setOpenModal("resume");
-  };
+  const openImportResume = () => setOpenModal("resume");
 
   const openAddCompany = () => {
     setEditingCompany(null);
@@ -147,35 +143,28 @@ const Experiences = () => {
     console.log('Resume import completed in Experiences component:', parsedData);
     
     try {
-      // Mark import as successful
+      // Mark import as successful BEFORE starting the refresh
       setResumeImportSuccessful(true);
-      
-      // Always refresh and select latest when resume import completes
       await refreshAndSelectLatest();
       console.log('Successfully refreshed data after resume import');
     } catch (error) {
       console.error('Failed to refresh data after resume import:', error);
-      // Even if refresh fails, mark as successful since the import itself worked
-      setResumeImportSuccessful(true);
-    } finally {
-      // Always close the modal after handling the import
-      setOpenModal(null);
+      setResumeImportSuccessful(false); // Reset on error
+      throw error; // Re-throw so the modal can handle the error
     }
+    // Don't close modal here - let the modal handle its own closing
   };
 
   /**
-   * Updated resume modal close handler - only opens company modal if import was NOT successful
+   * Unified resume modal close handler
    */
   const handleResumeModalClose = () => {
-    // Only open company modal if:
-    // 1. No companies exist AND
-    // 2. Resume import was NOT successful (meaning user cancelled/skipped)
-    if (noCompanies && !resumeImportSuccessful) {
+    // Only open company modal if this was NOT a successful import AND we have no companies
+    if (!resumeImportSuccessful && noCompanies) {
       setOpenModal("company");
     } else {
       setOpenModal(null);
     }
-    
     // Reset the flag for next time
     setResumeImportSuccessful(false);
   };
@@ -270,7 +259,7 @@ const Experiences = () => {
       {/* Resume (Onboarding) Modal - Unified handler for both auto-open and manual open */}
       <OnboardingResumeModal
         isOpen={openModal === "resume"}
-        // Unified import complete handler - always refreshes data and closes modal
+        // Unified import complete handler - always refreshes data and lets modal handle closing
         onImportComplete={handleResumeImportComplete}
         // Unified close handler - handles the onboarding flow properly
         onClose={handleResumeModalClose}
