@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useJobAnalysis } from "@/hooks/useJobAnalysis";
 
 const JobDescription = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,6 +26,7 @@ const JobDescription = () => {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { analyzeJobFit, isAnalyzing } = useJobAnalysis();
 
 
   const validateForm = () => {
@@ -59,23 +61,23 @@ const JobDescription = () => {
     setIsSubmitting(true);
     
     try {
-      // Here you would typically submit the data to your backend
-      // For now, we'll just simulate a successful submission
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Store the selected keyword matching type
+      localStorage.setItem('selectedKeywords', JSON.stringify([]));
+      localStorage.setItem('keywordMatchType', keywordMatchType);
       
-      toast({
-        title: "Success",
-        description: "Job description submitted successfully",
-      });
+      // Trigger the job analysis
+      const result = await analyzeJobFit(jobDescription);
       
-      // Navigate to resume bullet points page
-      navigate('/app/resume-bullets');
+      if (result) {
+        // Navigate to job analysis result page
+        navigate('/app/job-analysis-result');
+      }
       
     } catch (error) {
-      console.error("Submission error:", error);
+      console.error("Analysis error:", error);
       toast({
-        title: "Error",
-        description: "Failed to submit job description. Please try again.",
+        title: "Analysis Failed",
+        description: "Failed to analyze job description. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -177,10 +179,10 @@ const JobDescription = () => {
               <div className="flex justify-center pt-6">
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isAnalyzing}
                   size="lg"
                 >
-                  {isSubmitting ? "Processing..." : "Submit Job Description"}
+                  {isSubmitting || isAnalyzing ? "Analyzing..." : "Submit Job Description"}
                 </Button>
               </div>
             </form>
