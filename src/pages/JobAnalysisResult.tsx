@@ -8,6 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 import { getStoredJobKeyPhrases, getStoredJobDescription } from "@/utils/jobAnalysis";
 
 interface AnalysisResult {
+  jobRequirements?: Array<{
+    requirement: string;
+    category: string;
+    importance: string;
+    context?: string;
+  }>;
   extractedJobPhrases?: Array<{
     phrase: string;
     category: string;
@@ -137,16 +143,16 @@ export const JobAnalysisResult = () => {
         </CardContent>
       </Card>
 
-      {/* Extracted Key Phrases */}
-      {analysisResult.extractedJobPhrases && analysisResult.extractedJobPhrases.length > 0 && (
+      {/* Job Requirements */}
+      {analysisResult.jobRequirements && analysisResult.jobRequirements.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Key Phrases from Job Description
+              Key Requirements from Job Description
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => copyToClipboard(analysisResult.extractedJobPhrases?.map(p => p.phrase).join(', ') || '')}
+                onClick={() => copyToClipboard(analysisResult.jobRequirements?.map((req: any) => req.requirement).join(', ') || '')}
               >
                 <Copy className="w-4 h-4 mr-2" />
                 Copy All
@@ -155,14 +161,14 @@ export const JobAnalysisResult = () => {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {analysisResult.extractedJobPhrases.map((phrase, index) => (
+              {analysisResult.jobRequirements.map((req: any, index: number) => (
                 <Badge
                   key={index}
-                  className={getCategoryColor(phrase.category)}
+                  className={getCategoryColor(req.category)}
                   variant="secondary"
                 >
-                  {phrase.phrase}
-                  <span className="ml-1 text-xs">({phrase.importance})</span>
+                  {req.requirement}
+                  <span className="ml-1 text-xs">({req.importance})</span>
                 </Badge>
               ))}
             </div>
