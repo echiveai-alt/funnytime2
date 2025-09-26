@@ -137,7 +137,7 @@ const Experiences = () => {
   const closeAllModals = () => setOpenModal(null);
 
   /**
-   * Unified resume import handler - works for both auto-opened and manual modals
+   * Resume import handler - modified to handle modal closing properly
    */
   const handleResumeImportComplete = async (parsedData: any) => {
     console.log('Resume import completed in Experiences component:', parsedData);
@@ -147,19 +147,26 @@ const Experiences = () => {
       setResumeImportSuccessful(true);
       await refreshAndSelectLatest();
       console.log('Successfully refreshed data after resume import');
+      
+      // Close the modal after successful refresh with a small delay to ensure state is updated
+      setTimeout(() => {
+        setOpenModal(null);
+        // Reset the flag after modal is closed
+        setResumeImportSuccessful(false);
+      }, 100);
+      
     } catch (error) {
       console.error('Failed to refresh data after resume import:', error);
       setResumeImportSuccessful(false); // Reset on error
       throw error; // Re-throw so the modal can handle the error
     }
-    // Don't close modal here - let the modal handle its own closing
   };
 
   /**
-   * Unified resume modal close handler
+   * Resume modal close handler - only for manual closes (cancel/skip)
    */
   const handleResumeModalClose = () => {
-    // Only open company modal if this was NOT a successful import AND we have no companies
+    // Only handle manual closes - successful imports are handled in handleResumeImportComplete
     if (!resumeImportSuccessful && noCompanies) {
       setOpenModal("company");
     } else {
@@ -256,12 +263,10 @@ const Experiences = () => {
 
       {/* Modals */}
 
-      {/* Resume (Onboarding) Modal - Unified handler for both auto-open and manual open */}
+      {/* Resume (Onboarding) Modal - Modified to prevent double-closing */}
       <OnboardingResumeModal
         isOpen={openModal === "resume"}
-        // Unified import complete handler - always refreshes data and lets modal handle closing
         onImportComplete={handleResumeImportComplete}
-        // Unified close handler - handles the onboarding flow properly
         onClose={handleResumeModalClose}
       />
 
