@@ -57,26 +57,23 @@ export const RoleTabs = ({
                   key={role.id}
                   onClick={() => onSelectRole(role)}
                   disabled={isLoading}
-                   className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative h-6",
-                        isSelected
-                        ? "bg-primary/20 text-primary shadow-sm"
-                        : "bg-background/50 hover:bg-muted/50 text-muted-foreground hover:text-foreground",
-                    // Border colors based on role status
-                        isSelected
-                        ? "border-primary/30"
-                        : role.is_current
-                        ? "border-green-500/70"
-                        : showUnsavedDot
-                        ? "border-orange-500/70"
-                        : "border-border/50 hover:border-border/70"
+                  className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative h-6",
+                      isSelected
+                      ? "bg-primary/20 text-primary shadow-sm"
+                      : "bg-background/50 hover:bg-muted/50 text-muted-foreground hover:text-foreground",
+                      // Border colors always show based on role status
+                  role.is_current
+                      ? "border-green-500/70"
+                      : showUnsavedDot
+                      ? "border-orange-500/70"
+                      : isSelected
+                      ? "border-primary/30"
+                      : "border-border/50 hover:border-border/70"
                   )}
                 >
                   <User className="w-3 h-3" />
                   <span className="font-medium">{role.title}</span>
-                  {role.is_current && (
-                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
-                  )}
                 </button>
               );
             })}
