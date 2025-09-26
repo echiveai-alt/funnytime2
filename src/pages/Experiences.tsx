@@ -234,7 +234,7 @@ const Experiences = () => {
           setEditingCompany(null);
           setOpenModal(null); // back to page
         }}
-        onSave={async (data, roleTitle) => {
+        onSave={async (data, _roleTitle) => {
           try {
             if (editingCompany) {
               // Editing existing company - just update and close
@@ -243,39 +243,20 @@ const Experiences = () => {
               await refreshAndSelectLatest();
               setOpenModal(null);
             } else {
-              // Creating new company - first create the company
+              // Creating new company - create it, then open role modal
               await createCompany(data);
               setEditingCompany(null);
               await refreshAndSelectLatest();
               
-              // If a role title was provided, create the role and close
-              // Otherwise, open the role modal for manual entry
-              if (roleTitle && roleTitle.trim()) {
-                try {
-                  await createRole({ 
-                    title: roleTitle.trim(),
-                    company_id: selectedCompany?.id 
-                  });
-                  await refreshAndSelectLatest();
-                  setOpenModal(null);
-                } catch (roleError) {
-                  console.error("Failed to create role:", roleError);
-                  // Fall back to opening role modal
-                  setSelectedRole(null);
-                  setEditingRole(null);
-                  setOpenModal("role");
-                }
-              } else {
-                // No role title provided, open role modal
-                setSelectedRole(null);
-                setEditingRole(null);
-                setOpenModal("role");
-              }
+              // Clear any auto-selected role and open the role modal
+              setSelectedRole(null);
+              setEditingRole(null);
+              setOpenModal("role");
             }
           } catch (error) {
             console.error("Failed to save company:", error);
           }
-        }
+        }}
         onDelete={editingCompany ? deleteCompany : undefined}
         company={editingCompany}
         isLoading={experiencesLoading}
