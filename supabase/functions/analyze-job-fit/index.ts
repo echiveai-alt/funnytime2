@@ -629,17 +629,17 @@ serve(async (req) => {
       }
 
       // Focused action planning based on job fit assessment
-      const score = analysis.fitAssessment?.overallScore || 0;
+      const finalScore = analysis.fitAssessment?.overallScore || 0;
       const criticalGaps = analysis.unmatchedRequirements?.filter((req: any) => req.importance === 'critical') || [];
       
-      if (score < SCORING_CONFIG.FIT_THRESHOLDS.good || criticalGaps.length > 0) {
+      if (finalScore < SCORING_CONFIG.FIT_THRESHOLDS.good || criticalGaps.length > 0) {
         analysis.actionPlan = {
           priority: "improve_job_fit",
           focus: criticalGaps.length > 0 ? "critical_gaps" : "general_improvement",
           criticalGaps: criticalGaps.map((gap: any) => gap.requirement),
           suggestedActions: analysis.recommendations?.forCandidate || [],
           readyForApplication: false,
-          readyForBulletGeneration: score >= 80 // Add explicit flag for bullet generation
+          readyForBulletGeneration: finalScore >= 80 // Add explicit flag for bullet generation
         };
       } else {
         analysis.actionPlan = {

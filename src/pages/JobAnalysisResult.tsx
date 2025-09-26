@@ -124,6 +124,13 @@ export const JobAnalysisResult = () => {
               <div className="text-sm text-muted-foreground">Job Fit Level</div>
             </div>
           </div>
+          {(analysisResult.overallScore || 0) < 80 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-amber-800">
+                <strong>Note:</strong> Resume points will only be generated for scores 80% and higher. Please provide more details on experiences if you believe you are a good fit.
+              </p>
+            </div>
+          )}
           {analysisResult.summary && (
             <p className="text-muted-foreground">{analysisResult.summary}</p>
           )}
