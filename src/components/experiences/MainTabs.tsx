@@ -11,18 +11,16 @@ import { OnboardingResumeModal } from "@/components/experiences/OnboardingResume
 const MainTabs = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { experiences, companies, roles, createCompany, createRole, createExperience, updateExperience, setSelectedRole, loadData, refreshAndSelectLatest } = useExperiences();
+  const { experiences, companies, roles, createCompany, createRole, createExperience, updateExperience, setSelectedRole, loadData } = useExperiences();
   const { analyzeJobFit, isAnalyzing } = useJobAnalysis();
   const { toast } = useToast();
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
 
+  // Simplified handler - just close modal, let Experiences component handle refresh
   const handleResumeImport = async (parsedData: any) => {
     console.log('Resume import completed:', parsedData);
-    
-    // Refresh the experiences data and auto-select the latest role with longer delay
-    setTimeout(async () => {
-      await refreshAndSelectLatest();
-    }, 2500);
+    // Don't handle refresh here - the OnboardingResumeModal's onImportComplete 
+    // in the Experiences component will handle the refresh
   };
   
   const tabs = [
@@ -149,7 +147,7 @@ const MainTabs = () => {
         </div>
       </div>
 
-      {/* Onboarding Resume Modal */}
+      {/* Onboarding Resume Modal - Simplified to just handle modal state */}
       <OnboardingResumeModal
         isOpen={showOnboardingModal}
         onClose={() => setShowOnboardingModal(false)}
