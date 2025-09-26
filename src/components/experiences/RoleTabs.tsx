@@ -58,7 +58,7 @@ export const RoleTabs = ({
                   onClick={() => onSelectRole(role)}
                   disabled={isLoading}
                   className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-all whitespace-nowrap text-xs font-medium relative h-6",
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md border-2 transition-all whitespace-nowrap text-xs font-medium relative h-6",
                       isSelected
                       ? "bg-primary/20 text-primary shadow-sm"
                       : "bg-background/50 hover:bg-muted/50 text-muted-foreground hover:text-foreground",
