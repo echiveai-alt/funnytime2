@@ -249,7 +249,7 @@ serve(async (req) => {
             'Authorization': `Bearer ${openaiApiKey}`
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4o-mini-2024-07-18',
             messages: [
               { role: 'user', content: prompt }
             ],
