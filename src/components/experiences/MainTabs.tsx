@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useExperiences } from "@/hooks/useExperiences";
+import { useJobAnalysis } from "@/hooks/useJobAnalysis";
 
 const MainTabs = () => {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ const MainTabs = () => {
 
   // Only pull what we use to avoid TS/ESLint unused warnings
   const { experiences } = useExperiences();
+  const { isAnalyzing } = useJobAnalysis();
 
   // Create a custom event to trigger the resume modal in Experiences component
   const handleImportExperiencesClick = () => {
@@ -49,8 +51,9 @@ const MainTabs = () => {
     return savedJobDescription;
   };
 
-  // Check if job analysis result exists
+  // Check if job analysis result exists and analysis is not running
   const hasJobAnalysisResult = !!localStorage.getItem('jobAnalysisResult');
+  const isResultsTabDisabled = !hasJobAnalysisResult || isAnalyzing;
 
   return (
     <div className="bg-background/95 backdrop-blur-lg border-b border-border/50">
@@ -62,12 +65,12 @@ const MainTabs = () => {
                 key={tab.id}
                 variant="ghost"
                 onClick={() => navigate(tab.path)}
-                disabled={tab.id === "results" && !hasJobAnalysisResult}
+                disabled={tab.id === "results" && isResultsTabDisabled}
                 className={cn(
                   "px-6 py-2 h-auto text-base font-medium transition-colors rounded-lg",
                   isActiveTab(tab.path)
                     ? "bg-primary text-primary-foreground shadow-sm"
-                    : tab.id === "results" && !hasJobAnalysisResult
+                    : tab.id === "results" && isResultsTabDisabled
                     ? "text-muted-foreground/50 cursor-not-allowed"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}

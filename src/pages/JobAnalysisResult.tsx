@@ -298,7 +298,7 @@ export const JobAnalysisResult = () => {
                   <Badge className={getCategoryColor(req.category)} variant="secondary">
                     {req.requirement}
                   </Badge>
-                  <Badge className={getImportanceColor(req.importance)} variant="outline" className="text-xs">
+                  <Badge className={`${getImportanceColor(req.importance)} text-xs`} variant="outline">
                     {req.importance}
                   </Badge>
                 </div>
@@ -338,7 +338,7 @@ export const JobAnalysisResult = () => {
                         {weak.experienceIdentifier}
                       </div>
                     </div>
-                    <Badge className={getEvidenceColor(weak.evidenceStrength)} variant="secondary" className="text-xs">
+                    <Badge className={`${getEvidenceColor(weak.evidenceStrength)} text-xs`} variant="secondary">
                       {weak.evidenceStrength}
                     </Badge>
                   </div>
@@ -370,7 +370,7 @@ export const JobAnalysisResult = () => {
                       <Badge variant="secondary" className="text-xs">
                         {match.matchType}
                       </Badge>
-                      <Badge className={getEvidenceColor(match.evidenceStrength)} variant="secondary" className="text-xs">
+                      <Badge className={`${getEvidenceColor(match.evidenceStrength)} text-xs`} variant="secondary">
                         {match.evidenceStrength}
                       </Badge>
                     </div>
@@ -403,7 +403,7 @@ export const JobAnalysisResult = () => {
                       <Badge className={getCategoryColor(unmatched.category)} variant="secondary">
                         {unmatched.category}
                       </Badge>
-                      <Badge className={getImportanceColor(unmatched.importance)} variant="secondary" className="text-xs">
+                      <Badge className={`${getImportanceColor(unmatched.importance)} text-xs`} variant="secondary">
                         {unmatched.importance}
                       </Badge>
                     </div>
@@ -440,7 +440,7 @@ export const JobAnalysisResult = () => {
                       <Badge variant="secondary" className="text-xs">
                         {exp.relevanceScore}% relevance
                       </Badge>
-                      <Badge className={getEvidenceColor(exp.strengthOfEvidence)} variant="secondary" className="text-xs">
+                      <Badge className={`${getEvidenceColor(exp.strengthOfEvidence)} text-xs`} variant="secondary">
                         {exp.strengthOfEvidence}
                       </Badge>
                     </div>
