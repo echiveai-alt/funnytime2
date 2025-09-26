@@ -115,7 +115,7 @@ function calculateJobFitScore(
   return { score: finalScore, breakdown, weakExperiences };
 }
 
-// Focused analysis prompt for job fit assessment
+// Updated prompt for job fit analysis with requirements vs responsibilities distinction
 function createJobFitAnalysisPrompt(jobDescription: string, experiences: any[], education: any[]): string {
   return `
 You are an expert talent recruiter analyzing if a candidate's demonstrated experiences show they can perform the job requirements.
@@ -124,7 +124,19 @@ JOB DESCRIPTION:
 ${jobDescription}
 
 CANDIDATE EXPERIENCES:
-${JSON.stringify(experiences, null, 2)}
+${experiences.map((exp, index) => `
+Experience ${index + 1}:
+- ID: ${exp.id}
+- Company: ${exp.company}
+- Role: ${exp.role}
+- Specialty: ${exp.specialty || 'Not specified'}
+- Title: ${exp.title}
+- Situation: ${exp.situation || 'Not provided'}
+- Task: ${exp.task || 'Not provided'}
+- Action: ${exp.action}
+- Result: ${exp.result}
+- Tags: ${exp.tags.join(', ') || 'None'}
+`).join('')}
 
 EDUCATION: 
 ${education && education.length > 0 ? education.map((edu: any, index: number) => `
@@ -138,6 +150,17 @@ Education ${index + 1}:
 `).join('') : 'No education information provided'}
 
 JOB FIT ANALYSIS FRAMEWORK:
+
+**CRITICAL DISTINCTION - Requirements vs Responsibilities:**
+1. **REQUIREMENTS**: Must-have qualifications, skills, experience levels that are prerequisites
+   - Examples: "Bachelor's degree required", "5+ years Python experience", "Security clearance required"
+   - These are deal-breakers if missing and should be weighted heavily
+   
+2. **RESPONSIBILITIES**: Day-to-day tasks and duties the person would perform
+   - Examples: "Manage customer relationships", "Develop marketing campaigns", "Lead team meetings"
+   - These are valuable if candidate has done them but can be learned on the job
+
+**PRIORITIZE REQUIREMENTS over responsibilities in scoring and matching**
 
 Focus on 5 key areas that predict job performance:
 
@@ -164,10 +187,10 @@ Focus on 5 key areas that predict job performance:
    - Example: "coordinated with 3 departments" = collaboration evidence
 
 IMPORTANCE LEVELS (focus on what matters most):
-- **critical**: Must-have skills that can't be taught quickly
-- **high**: Strongly preferred, significant learning curve
-- **medium**: Nice to have, can be developed
-- **low**: Bonus skills
+- **critical**: Must-have requirements that are deal-breakers
+- **high**: Strongly preferred requirements with significant learning curve
+- **medium**: Nice to have requirements, can be developed
+- **low**: Bonus skills or responsibilities that add value
 
 MATCHING STRATEGY - Look for functional equivalence:
 - **exact**: Identical terms ("Python" = "Python")
@@ -182,13 +205,11 @@ EVIDENCE QUALITY - Rate the strength of proof:
 - **mentioned**: Stated but no details ("responsible for leadership")
 - **implied**: Inferred from title/situation ("Senior Engineer at startup")
 
-COMPREHENSIVE KEYWORD EXTRACTION for resume bullets:
-- **technical**: Specific technologies, tools, programming languages, frameworks
-- **actionVerbs**: Powerful action words from the job description
-- **industry**: Domain-specific terminology, business concepts
-- **metrics**: Numbers, measurements, performance indicators  
-- **behavioral**: Collaboration, problem-solving, communication evidence
-- **qualifications**: Required education, certifications, experience levels
+KEYWORD EXTRACTION RULES:
+- Keep phrases SHORT (1-3 words max): "Python", "team leadership", "AWS", not "experience with Python programming"
+- Extract SPECIFIC terms: "React", "SQL", "project management", "Agile"
+- Focus on SEARCHABLE keywords that would appear on resumes
+- Separate REQUIREMENTS (must-haves) from RESPONSIBILITIES (nice-to-haves)
 
 SEARCH ALL EXPERIENCE FIELDS (handle null values gracefully): 
 - situation (may be null), task (may be null), action, result, tags, role titles, company names
@@ -199,12 +220,27 @@ Return JSON:
 {
   "jobRequirements": [
     {
-      "requirement": "specific requirement text",
+      "requirement": "specific requirement text (1-3 words)",
+      "type": "requirement|responsibility",
       "category": "technical|experience_level|domain_industry|leadership_impact|cultural_soft",
       "importance": "critical|high|medium|low",
       "context": "why this requirement matters for success"
     }
   ],
+  "extractedKeywords": {
+    "requirements": {
+      "technical": ["Python", "React", "AWS"],
+      "experience": ["5+ years", "senior level", "startup experience"],
+      "education": ["Bachelor's degree", "Computer Science", "certification"],
+      "industry": ["fintech", "healthcare", "B2B SaaS"],
+      "soft_skills": ["leadership", "communication", "problem-solving"]
+    },
+    "responsibilities": {
+      "daily_tasks": ["code review", "sprint planning", "client meetings"],
+      "outcomes": ["increase conversion", "reduce latency", "improve UX"],
+      "management": ["team leadership", "project management", "stakeholder communication"]
+    }
+  },
   "bulletKeywords": {
     "technical": ["Python", "React", "AWS", "microservices"],
     "actionVerbs": ["developed", "optimized", "led", "implemented"],
@@ -216,15 +252,17 @@ Return JSON:
   "matchedRequirements": [
     {
       "jobRequirement": "requirement text",
+      "type": "requirement|responsibility",
       "experienceEvidence": "specific evidence from candidate experience",
-      "experienceContext": "which experience/field this evidence comes from",
+      "experienceContext": "Company - Role - Title format",
       "matchType": "exact|semantic|synonym|transferable|contextual",
       "evidenceStrength": "quantified|demonstrated|mentioned|implied"
     }
   ],
   "unmatchedRequirements": [
     {
-      "requirement": "requirement text", 
+      "requirement": "requirement text",
+      "type": "requirement|responsibility", 
       "category": "category",
       "importance": "importance level",
       "suggestionToImprove": "how candidate could develop or better demonstrate this"
@@ -319,18 +357,22 @@ serve(async (req) => {
       throw new Error('Job description is required');
     }
 
-    // Fetch data with role information (specialty included but not weighted)
+    // Fetch data with proper structure - handle nested relationships
     const [experiencesResult, educationResult] = await Promise.allSettled([
       supabase
         .from('experiences')
         .select(`
           *,
           roles!inner(
+            id,
             title,
             specialty,
             start_date,
             end_date,
-            companies!inner(name)
+            companies!inner(
+              id,
+              name
+            )
           )
         `)
         .eq('user_id', user.id)
@@ -358,21 +400,30 @@ serve(async (req) => {
       ? educationResult.value.data || []
       : [];
 
-    // Format data for job fit analysis (handle null values)
-    const formattedExperiences = experiences.map(exp => ({
-      id: exp.id,
-      company: exp.roles.companies.name || 'Unknown Company',
-      role: exp.roles.title || 'Unknown Role',
-      specialty: exp.roles.specialty || null, // Can be null
-      startDate: exp.roles.start_date || null,
-      endDate: exp.roles.end_date || null,
-      title: exp.title || 'Untitled Experience',
-      situation: exp.situation || null, // Can be null
-      task: exp.task || null, // Can be null
-      action: exp.action || 'No action details provided',
-      result: exp.result || 'No results specified',
-      tags: exp.tags || []
-    }));
+    // Improved data formatting for analysis
+    const formattedExperiences = experiences.map(exp => {
+      // Handle the nested structure properly
+      const role = exp.roles;
+      const company = role?.companies;
+      
+      return {
+        id: exp.id,
+        // Use consistent field names that match the AI prompt
+        company: company?.name || 'Unknown Company',
+        role: role?.title || 'Unknown Role',
+        specialty: role?.specialty || null,
+        startDate: role?.start_date || null,
+        endDate: role?.end_date || null,
+        
+        // Core experience fields - ensure these match database columns
+        title: exp.title || 'Untitled Experience',
+        situation: exp.situation || null,
+        task: exp.task || null, 
+        action: exp.action || 'No action details provided',
+        result: exp.result || 'No results specified',
+        tags: Array.isArray(exp.tags) ? exp.tags : []
+      };
+    });
 
     // Enhanced education formatting
     const formattedEducation = education.map((edu: any) => ({
@@ -383,6 +434,15 @@ serve(async (req) => {
       gpa: edu.gpa,
       isExpectedGraduation: edu.is_expected_graduation
     }));
+
+    // Add debug logging to check data
+    console.log('Formatted experiences sample:', {
+      count: formattedExperiences.length,
+      firstExperience: formattedExperiences[0],
+      hasContent: formattedExperiences.some(exp => 
+        exp.action && exp.action !== 'No action details provided'
+      )
+    });
 
     // Create focused job fit analysis prompt
     const prompt = createJobFitAnalysisPrompt(jobDescription, formattedExperiences, formattedEducation);
@@ -532,16 +592,10 @@ serve(async (req) => {
 
         // Add weak evidence experiences if score is below 80%
         if (recalculatedScore < 80 && weakExperiences.length > 0) {
-          // Map weak experiences to company-role-title format
-          const experienceMap = new Map();
-          analysis.relevantExperiences?.forEach((exp: any) => {
-            experienceMap.set(exp.id, `${exp.companyName}-${exp.roleTitle}-${exp.title}`);
-          });
-
           const weakExperienceDetails = weakExperiences
             .slice(0, 5) // Limit to 5 as requested
             .map((weak: any) => {
-              // Try to find the experience ID from context
+              // Try to find the experience from relevantExperiences
               const contextExp = analysis.relevantExperiences?.find((exp: any) => 
                 weak.experienceContext && (
                   weak.experienceContext.includes(exp.id) ||
@@ -552,7 +606,7 @@ serve(async (req) => {
               
               return {
                 experienceIdentifier: contextExp ? 
-                  `${contextExp.companyName}-${contextExp.roleTitle}-${contextExp.title}` : 
+                  `${contextExp.companyName} - ${contextExp.roleTitle} - ${contextExp.title}` : 
                   weak.experienceContext || 'Unknown Experience',
                 requirement: weak.requirement,
                 currentEvidence: weak.evidence,
