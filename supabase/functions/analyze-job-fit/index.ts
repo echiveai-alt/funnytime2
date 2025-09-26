@@ -114,6 +114,21 @@ function calculateJobFitScore(
   return { score: finalScore, breakdown, weakExperiences };
 }
 
+// Calculate years of experience from role dates
+function calculateExperienceYears(startDate: string | null, endDate: string | null): number {
+  if (!startDate) return 0;
+  
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : new Date(); // Current date if still active
+  
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+  
+  const diffInMs = end.getTime() - start.getTime();
+  const diffInYears = diffInMs / (1000 * 60 * 60 * 24 * 365.25); // Account for leap years
+  
+  return Math.max(0, diffInYears);
+}
+
 // Create a deterministic hash for consistent results using Deno APIs
 function createConsistentHash(jobDescription: string, experiences: any[]): string {
   const experienceString = experiences.map(exp => 
@@ -155,6 +170,9 @@ Experience ${index + 1}:
 - Company: ${exp.company}
 - Role: ${exp.role}
 - Specialty: ${exp.specialty || 'Not specified'}
+- Start Date: ${exp.startDate || 'Not specified'}
+- End Date: ${exp.endDate || 'Current/Not specified'}
+- Experience Duration: ${exp.experienceYears} years
 - Title: ${exp.title}
 - Situation: ${exp.situation || 'Not provided'}
 - Task: ${exp.task || 'Not provided'}
@@ -185,7 +203,7 @@ STRICT ANALYSIS FRAMEWORK:
 
 **CATEGORIES (Fixed definitions):**
 - **technical**: Specific tools, languages, frameworks (e.g., "Python", "AWS", "React")
-- **experience_level**: Years of experience, seniority level (e.g., "5+ years", "Senior level")
+- **experience_level**: Years of experience, seniority level - CALCULATE from role dates, don't extract as keywords
 - **domain_industry**: Sector knowledge (e.g., "fintech", "healthcare", "B2B SaaS")
 - **leadership_impact**: Team management, project leadership (e.g., "team leadership", "project management")
 - **cultural_soft**: Communication, problem-solving (e.g., "communication", "analytical thinking")
@@ -245,10 +263,10 @@ Return JSON with this EXACT structure (no deviations):
   "extractedKeywords": {
     "requirements": {
       "technical": ["Python", "React", "AWS"],
-      "experience": ["5+ years", "senior level", "startup experience"],
       "education": ["Bachelor's degree", "Computer Science", "certification"],
       "industry": ["fintech", "healthcare", "B2B SaaS"],
-      "soft_skills": ["leadership", "communication", "problem-solving"]
+      "soft_skills": ["leadership", "communication", "problem-solving"],
+      "seniority": ["Senior", "Lead", "Principal", "Director"]
     },
     "responsibilities": {
       "daily_tasks": ["code review", "sprint planning", "client meetings"],
@@ -419,12 +437,16 @@ serve(async (req) => {
       .map(exp => {
         const role = exp.roles;
         const company = role?.companies;
+        const experienceYears = calculateExperienceYears(role?.start_date, role?.end_date);
         
         return {
           id: exp.id,
           company: company?.name || 'Unknown Company',
           role: role?.title || 'Unknown Role',
           specialty: role?.specialty || null,
+          startDate: role?.start_date || null,
+          endDate: role?.end_date || null,
+          experienceYears: Math.round(experienceYears * 100) / 100, // Round to 2 decimal places
           title: exp.title || 'Untitled Experience',
           situation: exp.situation || null,
           task: exp.task || null,
