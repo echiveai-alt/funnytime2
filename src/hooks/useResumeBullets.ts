@@ -28,9 +28,7 @@ export const useResumeBullets = () => {
   const { toast } = useToast();
 
   const generateResumeBullets = async (
-    jobDescription: string, 
-    relevantExperiences: any[], 
-    selectedKeywords: string[]
+    analysisResult: any
   ): Promise<ResumeBulletsResult | null> => {
     try {
       setIsGenerating(true);
@@ -46,12 +44,16 @@ export const useResumeBullets = () => {
 
       console.log('Calling generate-resume-bullets function...');
       
-      // Call the generate-resume-bullets edge function
+      // Get the keyword matching type from localStorage
+      const keywordMatchType = localStorage.getItem('keywordMatchType') || 'exact';
+      
+      // Call the generate-resume-bullets edge function with analysis data
       const { data, error } = await supabase.functions.invoke('generate-resume-bullets', {
         body: { 
-          jobDescription, 
-          relevantExperiences, 
-          selectedKeywords 
+          experienceIdsByRole: analysisResult.experienceIdsByRole,
+          bulletKeywords: analysisResult.bulletKeywords,
+          jobRequirements: analysisResult.extractedJobPhrases,
+          keywordMatchType: keywordMatchType
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`,

@@ -48,12 +48,14 @@ serve(async (req) => {
     const { 
       experienceIdsByRole, 
       bulletKeywords, 
-      jobRequirements 
+      jobRequirements,
+      keywordMatchType = 'exact'
     } = requestBody;
 
     console.log('Request body keys:', Object.keys(requestBody));
     console.log('experienceIdsByRole type:', typeof experienceIdsByRole);
     console.log('bulletKeywords type:', typeof bulletKeywords);
+    console.log('keywordMatchType:', keywordMatchType);
 
     // Enhanced validation with detailed error messages
     if (!experienceIdsByRole) {
@@ -177,30 +179,54 @@ serve(async (req) => {
 
     // Create optimized prompt using extracted keywords instead of full job description
     const createBulletPrompt = () => {
+      const keywordMatchInstructions = keywordMatchType === 'exact' 
+        ? 'Use keywords exactly as listed - do not modify the form or tense'
+        : 'Use keywords and their variations - you can modify tense, add suffixes (ing, ed, er, etc.), or use related forms';
+
+      // Group job requirements by category for better organization
+      const reqsByCategory = {
+        technical: jobRequirements?.filter((req: any) => req.category === 'technical') || [],
+        soft_skill: jobRequirements?.filter((req: any) => req.category === 'soft_skill') || [],
+        industry: jobRequirements?.filter((req: any) => req.category === 'industry') || [],
+        qualification: jobRequirements?.filter((req: any) => req.category === 'qualification') || [],
+        function: jobRequirements?.filter((req: any) => req.category === 'function') || []
+      };
+      
       return `You are a professional resume writer. Create up to 6 impactful resume bullet points for each role using ONLY the user's provided experiences.
 
-KEYWORDS TO INTEGRATE (from job analysis):
-Technical: ${bulletKeywords.technical?.join(', ') || 'None'}
-Action Verbs: ${bulletKeywords.actionVerbs?.join(', ') || 'None'}
-Industry Terms: ${bulletKeywords.industry?.join(', ') || 'None'}
-Metrics: ${bulletKeywords.metrics?.join(', ') || 'None'}
-Responsibilities: ${bulletKeywords.responsibilities?.join(', ') || 'None'}
+KEYWORD MATCHING TYPE: ${keywordMatchType.toUpperCase()}
+${keywordMatchInstructions}
 
-KEY REQUIREMENTS (from job):
-${jobRequirements?.technical?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
-${jobRequirements?.soft_skill?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
-${jobRequirements?.industry?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
-${jobRequirements?.qualification?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
-${jobRequirements?.function?.map((req: any) => `• ${req.phrase} (${req.importance})`).join('\n') || ''}
+PRIORITY KEYWORDS TO INTEGRATE (from job analysis):
+Technical Skills: ${bulletKeywords.technical?.join(', ') || 'None'}
+Action Verbs: ${bulletKeywords.actionVerbs?.join(', ') || 'None'}  
+Industry Terms: ${bulletKeywords.industry?.join(', ') || 'None'}
+Metrics/Measurements: ${bulletKeywords.metrics?.join(', ') || 'None'}
+Key Responsibilities: ${bulletKeywords.responsibilities?.join(', ') || 'None'}
+Qualifications: ${bulletKeywords.qualifications?.join(', ') || 'None'}
+Culture/Values: ${bulletKeywords.culture?.join(', ') || 'None'}
+
+JOB REQUIREMENTS BY IMPORTANCE (integrate high importance first):
+${reqsByCategory.technical.length > 0 ? `Technical Requirements:
+${reqsByCategory.technical.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
+${reqsByCategory.soft_skill.length > 0 ? `Soft Skills:
+${reqsByCategory.soft_skill.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
+${reqsByCategory.industry.length > 0 ? `Industry Knowledge:
+${reqsByCategory.industry.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
+${reqsByCategory.qualification.length > 0 ? `Qualifications:
+${reqsByCategory.qualification.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
+${reqsByCategory.function.length > 0 ? `Functions/Roles:
+${reqsByCategory.function.map((req: any) => `• ${req.phrase} (${req.importance} priority)`).join('\n')}` : ''}
 
 CRITICAL RULES:
 1. Use ONLY information from user's experiences - never invent details
-2. Integrate keywords naturally where they fit the actual experience
-3. Structure: "Action, Context, Result" or "Result from Action"
-4. No abbreviations, em-dashes, colons, semicolons
-5. Each bullet MUST be under 179 visual width score
-6. Prioritize quantified results
-7. Maximum 6 bullets per role
+2. Integrate keywords naturally where they match the actual experience
+3. Prioritize HIGH importance requirements over medium/low
+4. Follow ${keywordMatchType} matching rules for keywords
+5. Structure: "Strong action verb + context + quantified result when possible"
+6. No abbreviations, em-dashes, colons, semicolons
+7. Each bullet MUST be under 179 visual width score
+8. Maximum 6 bullets per role
 
 USER EXPERIENCES BY ROLE:
 ${Object.entries(formattedExperiencesByRole).map(([roleKey, roleData]: [string, any]) => `
@@ -218,7 +244,7 @@ ${idx + 1}. Title: ${exp.title}
 `).join('')}
 `).join('\n')}
 
-Return ONLY JSON:
+Return ONLY JSON (no markdown formatting):
 {
   "companies": [
     {
@@ -231,8 +257,9 @@ Return ONLY JSON:
       ]
     }
   ],
-  "keywordsUsed": ["keywords successfully integrated"],
-  "keywordsNotUsed": ["keywords that didn't fit naturally"]
+  "keywordsUsed": ["keywords successfully integrated with ${keywordMatchType} matching"],
+  "keywordsNotUsed": ["keywords that didn't fit naturally into experiences"],
+  "matchingType": "${keywordMatchType}"
 }`;
     };
 

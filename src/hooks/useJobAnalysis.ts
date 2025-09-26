@@ -73,13 +73,10 @@ export const useJobAnalysis = () => {
       localStorage.setItem('jobAnalysisResult', JSON.stringify(data));
 
       // If score is higher than 85, generate resume bullets
-      if (data.overallScore && data.overallScore > 85 && data.relevantExperiences) {
+      if (data.overallScore && data.overallScore > 85 && data.experienceIdsByRole) {
         console.log('Score above 85, generating resume bullets...');
         
-        // Get selected keywords from localStorage (from job description page)
-        const selectedKeywords = JSON.parse(localStorage.getItem('selectedKeywords') || '[]');
-        
-        await generateResumeBullets(jobDescription, data.relevantExperiences, selectedKeywords);
+        await generateResumeBullets(data);
       }
 
       toast({
