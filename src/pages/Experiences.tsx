@@ -270,6 +270,7 @@ const Experiences = () => {
 
       {/* Company Modal */}
       <CompanyModal
+        key={openModal === "edit-company" ? `edit-${editingCompany?.id}` : "add"}
         isOpen={openModal === "company" || openModal === "edit-company"}
         onClose={() => {
           setOpenModal(null);
@@ -302,6 +303,7 @@ const Experiences = () => {
 
       {/* Role Modal */}
       <RoleModal
+        key={openModal === "edit-role" ? `edit-${editingRole?.id}` : "add"}
         isOpen={openModal === "role" || openModal === "edit-role"}
         onClose={() => {
           setOpenModal(null);
