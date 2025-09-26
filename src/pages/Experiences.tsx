@@ -277,21 +277,26 @@ const Experiences = () => {
         }}
         onSave={async (data, roleTitle) => {
           try {
+            console.log("Company save handler - before:", { openModal, editingCompany: !!editingCompany });
             if (editingCompany) {
               // Editing existing company - just update and close
               await updateCompany(editingCompany.id, data);
+              console.log("Company save handler - after update, before state changes");
+              // Update both states together to prevent flash
               setEditingCompany(null);
-              await refreshAndSelectLatest();
               setOpenModal(null);
+              await refreshAndSelectLatest();
             } else {
               // Creating new company - pass the roleTitle to createCompany
               // The createCompany function will handle creating both company and role
               const roleToCreate = roleTitle?.trim() || "New Role";
               await createCompany(data, roleToCreate);
+              // Update both states together to prevent flash
               setEditingCompany(null);
+              setOpenModal(null);
               await refreshAndSelectLatest();
-              setOpenModal(null); // Close since everything was created successfully
             }
+            console.log("Company save handler - after all operations");
           } catch (error) {
             console.error("Failed to save company:", error);
           }
@@ -309,14 +314,22 @@ const Experiences = () => {
           setOpenModal(null); // back to page
         }}
         onSave={async (data) => {
-          if (editingRole) {
-            await updateRole(editingRole.id, data);
-          } else {
-            await createRole(data);
+          try {
+            console.log("Role save handler - before:", { openModal, editingRole: !!editingRole });
+            if (editingRole) {
+              await updateRole(editingRole.id, data);
+            } else {
+              await createRole(data);
+            }
+            console.log("Role save handler - after operations, before state changes");
+            // Update both states together to prevent flash
+            setEditingRole(null);
+            setOpenModal(null);
+            await refreshAndSelectLatest(); // keep selection fresh
+            console.log("Role save handler - after all operations");
+          } catch (error) {
+            console.error("Failed to save role:", error);
           }
-          setEditingRole(null);
-          await refreshAndSelectLatest(); // keep selection fresh
-          setOpenModal(null); // close role modal
         }}
         onDelete={editingRole ? deleteRole : undefined}
         role={editingRole}
