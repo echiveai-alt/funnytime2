@@ -20,8 +20,7 @@ const MainTabs = () => {
     const event = new CustomEvent("openResumeModal");
     window.dispatchEvent(event);
   };
-
-  // ✅ Tabs config (was missing before)
+  
   const tabs = [
     { id: "experiences", label: "1. Experiences", path: "/app/experiences" },
     { id: "job-description", label: "2. Job Description", path: "/app/job-description" },
