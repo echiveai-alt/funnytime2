@@ -52,7 +52,7 @@ export const CompanyTabs = ({
                   onClick={() => onSelectCompany(company)}
                   disabled={isLoading}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative h-7",
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all whitespace-nowrap text-sm font-medium relative h-7",
                     isSelected
                       ? "bg-primary text-primary-foreground shadow-soft"
                       : "bg-background hover:bg-muted",
