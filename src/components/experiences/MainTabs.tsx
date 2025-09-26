@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { useExperiences } from "@/hooks/useExperiences";
 import { useJobAnalysis } from "@/hooks/useJobAnalysis";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { OnboardingResumeModal } from "@/components/experiences/OnboardingResumeModal";
 
 const MainTabs = () => {
   const navigate = useNavigate();
@@ -12,13 +14,16 @@ const MainTabs = () => {
   const { experiences, companies, roles, createCompany, createRole, createExperience, updateExperience, setSelectedRole, loadData } = useExperiences();
   const { analyzeJobFit, isAnalyzing } = useJobAnalysis();
   const { toast } = useToast();
-  
-  // Create a custom event to trigger the resume modal in Experiences component
-  const handleImportExperiencesClick = () => {
-    // Dispatch a custom event that the Experiences component can listen to
-    const event = new CustomEvent('openResumeModal');
-    window.dispatchEvent(event);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+
+  // Simplified handler - just close modal, let Experiences component handle refresh
+  const handleResumeImport = async (parsedData: any) => {
+    console.log('Resume import completed:', parsedData);
+    // Don't handle refresh here - the OnboardingResumeModal's onImportComplete 
+    // in the Experiences component will handle the refresh
   };
+  
+  const tabs = [
     { id: "experiences", label: "1. Experiences", path: "/app/experiences" },
     { id: "job-description", label: "2. Job Description", path: "/app/job-description" },
   ];
@@ -91,55 +96,64 @@ const MainTabs = () => {
   };
 
   return (
-    <div className="bg-background/95 backdrop-blur-lg border-b border-border/50">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex justify-between items-center py-3">
-          <div className="flex space-x-1">
-            {tabs.map((tab) => (
+    <>
+      <div className="bg-background/95 backdrop-blur-lg border-b border-border/50">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex justify-between items-center py-3">
+            <div className="flex space-x-1">
+              {tabs.map((tab) => (
+                <Button
+                  key={tab.id}
+                  variant="ghost"
+                  onClick={() => navigate(tab.path)}
+                  className={cn(
+                    "px-6 py-2 h-auto text-base font-medium transition-colors rounded-lg",
+                    isActiveTab(tab.path)
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  {tab.label}
+                </Button>
+              ))}
               <Button
-                key={tab.id}
                 variant="ghost"
-                onClick={() => navigate(tab.path)}
+                onClick={handleAnalyzeAndCreate}
+                disabled={isAnalyzing}
                 className={cn(
                   "px-6 py-2 h-auto text-base font-medium transition-colors rounded-lg",
-                  isActiveTab(tab.path)
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                  isAnalyzing
+                    ? "text-muted-foreground/50 cursor-not-allowed"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
-                {tab.label}
+                {isAnalyzing ? "Analyzing..." : "3. Analyze & Create"}
               </Button>
-            ))}
-            <Button
-              variant="ghost"
-              onClick={handleAnalyzeAndCreate}
-              disabled={isAnalyzing}
-              className={cn(
-                "px-6 py-2 h-auto text-base font-medium transition-colors rounded-lg",
-                isAnalyzing
-                  ? "text-muted-foreground/50 cursor-not-allowed"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              )}
-            >
-              {isAnalyzing ? "Analyzing..." : "3. Analyze & Create"}
-            </Button>
+            </div>
+            
+            {/* Import Experiences button - only show on Experiences page */}
+            {location.pathname === "/app/experiences" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowOnboardingModal(true)}
+                className="flex items-center gap-2 whitespace-nowrap"
+              >
+                <Upload className="w-4 h-4" />
+                Import Experiences
+              </Button>
+            )}
           </div>
-          
-          {/* Import Experiences button - only show on Experiences page */}
-          {location.pathname === "/app/experiences" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleImportExperiencesClick}
-              className="flex items-center gap-2 whitespace-nowrap"
-            >
-              <Upload className="w-4 h-4" />
-              Import Experiences
-            </Button>
-          )}
         </div>
       </div>
-    </div>
+
+      {/* Onboarding Resume Modal - Simplified to just handle modal state */}
+      <OnboardingResumeModal
+        isOpen={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
+        onImportComplete={handleResumeImport}
+      />
+    </>
   );
 };
 
