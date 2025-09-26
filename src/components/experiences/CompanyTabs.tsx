@@ -56,21 +56,17 @@ export const CompanyTabs = ({
                   onClick={() => onSelectCompany(company)}
                   disabled={isLoading}
                   className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative h-7",
-                      isSelected
-                      ? "bg-primary text-primary-foreground shadow-soft"
-                      : "bg-background hover:bg-muted",
-                  // Border colors always show based on company status
-                      company.is_current
-                      ? "border-green-500/70"
-                      : isSelected
-                      ? "border-primary"
-                      : "border-border hover:border-border/80"
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all whitespace-nowrap text-sm font-medium relative h-7",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary shadow-soft"
+                      : "bg-background hover:bg-muted border-border hover:border-border/80"
                   )}
                 >
-              <Building2 className="w-4 h-4" />
+                  <Building2 className="w-4 h-4" />
                   <span className="font-semibold">{company.name}</span>
-                  </span>
+                  {company.is_current && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
+                  )}
                 </button>
               );
             })}
