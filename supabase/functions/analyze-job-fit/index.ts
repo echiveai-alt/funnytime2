@@ -319,7 +319,7 @@ serve(async (req) => {
       throw new Error('Job description is required');
     }
 
-    // Fetch data with role information (specialty included but not weighted) - FIXED: removed industry column
+    // Fetch data with role information (specialty included but not weighted)
     const [experiencesResult, educationResult] = await Promise.allSettled([
       supabase
         .from('experiences')
@@ -358,7 +358,7 @@ serve(async (req) => {
       ? educationResult.value.data || []
       : [];
 
-    // Format data for job fit analysis (handle null values) - FIXED: removed industry reference
+    // Format data for job fit analysis (handle null values)
     const formattedExperiences = experiences.map(exp => ({
       id: exp.id,
       company: exp.roles.companies.name || 'Unknown Company',
