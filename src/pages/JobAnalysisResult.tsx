@@ -19,12 +19,6 @@ interface AnalysisResult {
     category: string;
     importance: string;
   }>;
-  weakExperiences?: Array<{
-    requirement: string;
-    evidence: string;
-    evidenceStrength: string;
-    experienceContext: string;
-  }>;
   matchedPhrases?: Array<{
     jobPhrase: string;
     experienceMatch: string;
@@ -176,37 +170,6 @@ export const JobAnalysisResult = () => {
                   {req.requirement}
                   <span className="ml-1 text-xs">({req.importance})</span>
                 </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Weak Evidence Experiences */}
-      {analysisResult.weakExperiences && analysisResult.weakExperiences.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-amber-600">Experiences with Weak Evidence</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {analysisResult.weakExperiences.map((weak, index) => (
-                <div key={index} className="border rounded-lg p-3 bg-amber-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="bg-amber-100 text-amber-800">
-                      {weak.requirement}
-                    </Badge>
-                    <Badge variant="secondary" className="text-xs">
-                      {weak.evidenceStrength} evidence
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    <span className="font-medium">From {weak.experienceContext}:</span>
-                  </p>
-                  <p className="text-sm text-amber-800">
-                    {weak.evidence}
-                  </p>
-                </div>
               ))}
             </div>
           </CardContent>
