@@ -58,6 +58,7 @@ const Experiences = () => {
   /**
    * 1) First visit this session + no companies => auto-open Resume (once per session).
    *    Won't trigger if any modal is already open.
+   * 2) Listen for custom event from MainTabs to open resume modal
    */
   useEffect(() => {
     if (experiencesLoading) return;
@@ -67,6 +68,19 @@ const Experiences = () => {
       sessionStorage.setItem(SESSION_FLAG, "1");
     }
   }, [experiencesLoading, hasAutoShownThisSession, noCompanies, openModal]);
+
+  // Listen for custom event from MainTabs to open resume modal
+  useEffect(() => {
+    const handleOpenResumeModal = () => {
+      setOpenModal("resume");
+    };
+
+    window.addEventListener('openResumeModal', handleOpenResumeModal);
+    
+    return () => {
+      window.removeEventListener('openResumeModal', handleOpenResumeModal);
+    };
+  }, []);
 
   /**
    * Experience actions
