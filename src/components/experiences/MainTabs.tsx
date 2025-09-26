@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,22 @@ const MainTabs = () => {
   // Only pull what we use to avoid TS/ESLint unused warnings
   const { experiences } = useExperiences();
   const { isAnalyzing } = useJobAnalysis();
+  
+  // Force re-render when localStorage changes for job analysis results
+  const [localStorageVersion, setLocalStorageVersion] = useState(0);
+  
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setLocalStorageVersion(prev => prev + 1);
+    };
+    
+    // Listen for custom storage events (we'll dispatch these when clearing results)
+    window.addEventListener('jobAnalysisStorageChange', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('jobAnalysisStorageChange', handleStorageChange);
+    };
+  }, []);
 
   // Create a custom event to trigger the resume modal in Experiences component
   const handleImportExperiencesClick = () => {
@@ -53,6 +70,7 @@ const MainTabs = () => {
 
   // Check if job analysis result exists and analysis is not running
   // Priority: disable when analyzing, then check if results exist
+  // The localStorageVersion dependency ensures this re-evaluates when localStorage changes
   const hasJobAnalysisResult = !!localStorage.getItem('jobAnalysisResult');
   const isResultsTabDisabled = isAnalyzing || !hasJobAnalysisResult;
 

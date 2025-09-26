@@ -117,6 +117,9 @@ export const clearAllJobAnalysisData = () => {
     localStorage.removeItem('resumeBullets');
     localStorage.removeItem('selectedKeywords');
     console.log('All job analysis data cleared');
+    
+    // Dispatch custom event to notify components of localStorage changes
+    window.dispatchEvent(new CustomEvent('jobAnalysisStorageChange'));
   } catch (error) {
     console.error('Failed to clear job analysis data:', error);
   }
