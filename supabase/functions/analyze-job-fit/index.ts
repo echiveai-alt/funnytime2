@@ -348,7 +348,6 @@ Return JSON with this EXACT structure (no deviations):
   "gaps": ["missing requirements or weak evidence areas"],
   "recommendations": {
     "forCandidate": ["specific actionable suggestions"],
-    "forInterview": ["targeted questions to explore"],
     "forApplication": ["positioning recommendations"]
   },
   "summary": "objective assessment based on scoring framework"
