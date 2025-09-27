@@ -665,6 +665,9 @@ serve(async (req) => {
 
     } catch (parseError) {
       console.error('JSON parsing failed:', parseError);
+      console.error('OpenAI Response Text:', responseText);
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      console.error('Extracted JSON Match:', jsonMatch ? jsonMatch[0] : 'No JSON match found');
       throw new Error('Failed to parse analysis results');
     }
 
