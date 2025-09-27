@@ -366,7 +366,18 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+    console.log('Environment check:');
+    console.log('OpenAI API Key available:', !!openaiApiKey);
+    console.log('OpenAI API Key length:', openaiApiKey ? openaiApiKey.length : 0);
+    console.log('Supabase URL available:', !!supabaseUrl);
+    console.log('Service Role Key available:', !!supabaseServiceKey);
+
     if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing environment variables:', {
+        openaiApiKey: !!openaiApiKey,
+        supabaseUrl: !!supabaseUrl,
+        supabaseServiceKey: !!supabaseServiceKey
+      });
       throw new Error('Missing required environment variables');
     }
 
@@ -490,7 +501,9 @@ serve(async (req) => {
 
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
-      throw new Error(`OpenAI API error: ${errorText}`);
+      console.error('OpenAI API Error Status:', openaiResponse.status);
+      console.error('OpenAI API Error Response:', errorText);
+      throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
     }
 
     const openaiData = await openaiResponse.json();
@@ -499,7 +512,16 @@ serve(async (req) => {
     // Parse and validate response
     let analysis: any;
     try {
+      console.log('Raw OpenAI Response Status:', openaiResponse.status);
+      console.log('Raw OpenAI Response Headers:', Object.fromEntries(openaiResponse.headers.entries()));
+      console.log('OpenAI Response Data:', JSON.stringify(openaiData, null, 2));
+      console.log('Response Text Length:', responseText ? responseText.length : 0);
+      console.log('Response Text Preview:', responseText ? responseText.substring(0, 500) : 'No response text');
+      
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      console.log('JSON Match Found:', jsonMatch ? 'Yes' : 'No');
+      console.log('JSON Match Preview:', jsonMatch ? jsonMatch[0].substring(0, 200) + '...' : 'No match');
+      
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
