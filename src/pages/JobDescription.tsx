@@ -61,17 +61,15 @@ const JobDescription = () => {
     setIsSubmitting(true);
     
     try {
-      // Store the selected keyword matching type
-      localStorage.setItem('selectedKeywords', JSON.stringify([]));
+      // Store data in localStorage ONLY when submitting
+      localStorage.setItem('jobDescription', jobDescription);
       localStorage.setItem('keywordMatchType', keywordMatchType);
+      localStorage.setItem('selectedKeywords', JSON.stringify([]));
       
       // Trigger the job analysis
       const result = await analyzeJobFit(jobDescription);
       
-      if (result) {
-        // Navigate to job analysis result page
-        navigate('/app/job-analysis-result');
-      }
+      // Navigation is handled by useJobAnalysis based on score
       
     } catch (error) {
       console.error("Analysis error:", error);
@@ -113,8 +111,7 @@ const JobDescription = () => {
                   value={jobDescription}
                   onChange={(e) => {
                     setJobDescription(e.target.value);
-                    // Save to localStorage for cross-page checking
-                    localStorage.setItem('jobDescription', e.target.value);
+                    // Only clear validation errors, don't update localStorage yet
                     if (errors.jobDescription) {
                       setErrors(prev => ({ ...prev, jobDescription: undefined }));
                     }
@@ -167,6 +164,7 @@ const JobDescription = () => {
                           Matches word roots (e.g., 'manage' = 'managing', 'management')
                         </div>
                       </div>
+                    </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
