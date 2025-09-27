@@ -364,28 +364,58 @@ export const JobAnalysisResult = () => {
           {analysisResult.fitAssessment?.categoryBreakdown && (
             <Card>
               <CardHeader>
-                <CardTitle>Category Performance Breakdown</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  Category Performance Breakdown
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {Object.entries(analysisResult.fitAssessment.categoryBreakdown).map(([category, data]) => {
                     const Icon = getCategoryIcon(category);
+                    const percentage = Math.round(data.score);
                     return (
-                      <div key={category} className="space-y-2">
+                      <div key={category} className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Icon className="w-4 h-4" />
-                            <span className="font-medium capitalize">
-                              {category.replace('_', ' ')}
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${percentage >= 80 ? 'bg-green-100' : percentage >= 60 ? 'bg-yellow-100' : 'bg-red-100'}`}>
+                              <Icon className={`w-5 h-5 ${percentage >= 80 ? 'text-green-600' : percentage >= 60 ? 'text-yellow-600' : 'text-red-600'}`} />
+                            </div>
+                            <div>
+                              <span className="font-semibold text-lg capitalize">
+                                {category.replace('_', ' ')}
+                              </span>
+                              <div className="text-sm text-muted-foreground">
+                                {data.achieved} of {data.possible} requirements met
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-2xl font-bold ${getScoreColor(percentage)}`}>
+                              {percentage}%
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {percentage >= 80 ? 'Excellent' : percentage >= 60 ? 'Good' : 'Needs Work'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="relative">
+                          <Progress 
+                            value={percentage} 
+                            className={`h-3 ${percentage >= 80 ? '[&>div]:bg-green-500' : percentage >= 60 ? '[&>div]:bg-yellow-500' : '[&>div]:bg-red-500'}`}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-xs font-medium text-white drop-shadow-sm">
+                              {percentage}%
                             </span>
                           </div>
-                          <span className={`font-semibold ${getScoreColor(data.score)}`}>
-                            {data.score}%
-                          </span>
                         </div>
-                        <Progress value={data.score} className="h-2" />
-                        <div className="text-xs text-muted-foreground">
-                          Achieved: {data.achieved} / {data.possible} points
+                        
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">0%</span>
+                          <span className="text-muted-foreground">50%</span>
+                          <span className="text-muted-foreground">100%</span>
                         </div>
                       </div>
                     );
