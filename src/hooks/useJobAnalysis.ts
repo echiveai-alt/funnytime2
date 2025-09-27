@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { storeJobKeyPhrases, storeJobDescription, storeRelevantExperiences, clearAllJobAnalysisData } from '@/utils/jobAnalysis';
 import { useResumeBullets } from '@/hooks/useResumeBullets';
+import { useNavigate } from 'react-router-dom';
 
 interface AnalysisResult {
   extractedJobPhrases?: Array<{
@@ -35,6 +36,7 @@ export const useJobAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
   const { generateResumeBullets } = useResumeBullets();
+  const navigate = useNavigate();
 
   const analyzeJobFit = async (jobDescription: string): Promise<AnalysisResult | null> => {
     try {

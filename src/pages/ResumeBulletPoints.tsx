@@ -53,10 +53,10 @@ const ResumeBulletPoints = () => {
   const isHighScore = (analysisResult?.overallScore || 0) >= 80;
 
   const copyToClipboard = async () => {
-    if (!isHighScore || !resumeBullets?.companies) return;
+    if (!isHighScore || !resumeBullets?.bulletOrganization) return;
     
     let clipboardText = "";
-    resumeBullets.companies.forEach(company => {
+    resumeBullets.bulletOrganization.forEach(company => {
       clipboardText += `${company.name}\n\n`;
       company.roles.forEach(role => {
         clipboardText += `${role.title}\n`;
@@ -176,7 +176,7 @@ const ResumeBulletPoints = () => {
             </CardHeader>
             <CardContent className="px-8 pb-8">
               <div className="space-y-8">
-                {resumeBullets.companies.map((company, companyIndex) => (
+                {resumeBullets.bulletOrganization.map((company, companyIndex) => (
                   <div key={companyIndex} className="bg-secondary/30 rounded-lg p-6">
                     <div className="mb-6">
                       <h2 className="text-xl font-semibold text-foreground">

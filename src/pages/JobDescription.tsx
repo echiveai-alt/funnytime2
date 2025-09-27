@@ -164,7 +164,6 @@ const JobDescription = () => {
                           Matches word roots (e.g., 'manage' = 'managing', 'management')
                         </div>
                       </div>
-                    </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
