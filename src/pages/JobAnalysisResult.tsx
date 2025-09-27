@@ -392,7 +392,7 @@ export const JobAnalysisResult = () => {
                 <div className="space-y-6">
                   {Object.entries(analysisResult.fitAssessment.categoryBreakdown).map(([category, data]) => {
                     const Icon = getCategoryIcon(category);
-                    const percentage = Math.round(data.score || 0);
+                    const percentage = Math.round((data as any).percentage || (data as any).score || 0);
                     return (
                       <div key={category} className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -650,7 +650,9 @@ export const JobAnalysisResult = () => {
                         ? 'text-green-800' 
                         : 'text-amber-800'
                     }`}>
-                      Priority: {analysisResult.actionPlan.priority.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {analysisResult.actionPlan.readyForApplication 
+                        ? 'Ready for Application' 
+                        : 'Profile Enhancement Needed'}
                     </h3>
                   </div>
                   
