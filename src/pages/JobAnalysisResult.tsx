@@ -477,11 +477,11 @@ export const JobAnalysisResult = () => {
                       <h4 className="font-semibold text-sm capitalize">
                         {category.replace(/([A-Z])/g, ' $1').toLowerCase()}
                       </h4>
-                      <div className="flex flex-wrap gap-1">
-                        {(keywords as string[]).slice(0, 8).map((keyword: string, index: number) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {keyword}
-                          </Badge>
+                       <div className="flex flex-wrap gap-1">
+                         {(keywords as string[]).map((keyword: string, index: number) => (
+                           <Badge key={index} variant="outline" className="text-xs">
+                             {keyword}
+                           </Badge>
                         ))}
                         {(keywords as string[]).length > 8 && (
                           <Badge variant="outline" className="text-xs">
