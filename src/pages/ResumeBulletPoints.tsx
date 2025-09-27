@@ -50,7 +50,7 @@ const ResumeBulletPoints = () => {
     }
   }, []);
 
-  const isHighScore = (analysisResult?.overallScore || 0) > 85;
+  const isHighScore = (analysisResult?.overallScore || 0) >= 80;
 
   const copyToClipboard = async () => {
     if (!isHighScore || !resumeBullets?.companies) return;
