@@ -636,6 +636,32 @@ serve(async (req) => {
 
       console.log(`Job fit analysis completed: ${analysis.fitAssessment.overallScore}% (${analysis.fitAssessment.fitLevel})`);
       console.log(`Consistency hash: ${consistencyHash}`);
+      
+      // Debug logging for keyword extraction analysis
+      console.log('=== KEYWORD EXTRACTION DEBUG ===');
+      console.log('Job Requirements Count:', analysis.jobRequirements ? analysis.jobRequirements.length : 0);
+      if (analysis.jobRequirements && analysis.jobRequirements.length > 0) {
+        console.log('Job Requirements Sample:', JSON.stringify(analysis.jobRequirements.slice(0, 5), null, 2));
+      }
+      
+      if (analysis.extractedKeywords) {
+        console.log('Extracted Keywords - Requirements:', analysis.extractedKeywords.requirements ? analysis.extractedKeywords.requirements.length : 0);
+        console.log('Extracted Keywords - Responsibilities:', analysis.extractedKeywords.responsibilities ? analysis.extractedKeywords.responsibilities.length : 0);
+        if (analysis.extractedKeywords.requirements) {
+          console.log('Requirements Keywords Sample:', JSON.stringify(analysis.extractedKeywords.requirements.slice(0, 10), null, 2));
+        }
+        if (analysis.extractedKeywords.responsibilities) {
+          console.log('Responsibilities Keywords Sample:', JSON.stringify(analysis.extractedKeywords.responsibilities.slice(0, 10), null, 2));
+        }
+      }
+      
+      if (analysis.bulletKeywords) {
+        console.log('Bullet Keywords Count:', Object.keys(analysis.bulletKeywords).length);
+        Object.entries(analysis.bulletKeywords).forEach(([category, keywords]: [string, any]) => {
+          console.log(`${category} Keywords:`, Array.isArray(keywords) ? keywords.length : 0);
+        });
+      }
+      console.log('=== END KEYWORD DEBUG ===');
 
     } catch (parseError) {
       console.error('JSON parsing failed:', parseError);
