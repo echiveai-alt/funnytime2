@@ -480,9 +480,9 @@ serve(async (req) => {
         'Authorization': `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini-2024-07-18',
+        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
-        max_completion_tokens: 4096,
+        max_tokens: 4096,
         temperature: 0, // Critical for consistency
         seed: parseInt(consistencyHash.slice(0, 8), 16) % 2147483647 // Use hash-based seed
       })
