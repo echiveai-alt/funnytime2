@@ -148,7 +148,7 @@ function createConsistentHash(jobDescription: string, experiences: any[]): strin
   return Math.abs(hash).toString(36).slice(0, 16);
 }
 
-// Enhanced prompt with explicit consistency requirements
+// Enhanced prompt with explicit consistency requirements and NO interview recommendations
 function createJobFitAnalysisPrompt(jobDescription: string, experiences: any[], education: any[], consistencyHash: string): string {
   return `
 You are an expert talent recruiter. Your analysis must be COMPLETELY DETERMINISTIC - identical inputs must produce identical outputs.
@@ -611,7 +611,7 @@ serve(async (req) => {
           analysis.experiencesByRole = experiencesByRole;
         }
 
-        // Action planning based on job fit assessment
+        // Enhanced Action planning based on job fit assessment
         const finalScore = analysis.fitAssessment?.overallScore || 0;
         const criticalGaps = analysis.unmatchedRequirements?.filter((req: any) => req.importance === 'critical') || [];
         
@@ -629,7 +629,7 @@ serve(async (req) => {
             priority: "application_ready",
             experienceIds: analysis.relevantExperiences?.map((exp: any) => exp.id) || [],
             readyForBulletGeneration: true,
-            interviewPrep: analysis.recommendations?.forInterview || []
+            readyForApplication: true
           };
         }
       }
