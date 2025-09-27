@@ -134,6 +134,10 @@ export const JobAnalysisResult = () => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
+        console.log('Analysis result data:', parsed);
+        console.log('Unmatched requirements:', parsed.unmatchedRequirements);
+        console.log('Category breakdown:', parsed.fitAssessment?.categoryBreakdown);
+        console.log('Bullet keywords:', parsed.bulletKeywords);
         setAnalysisResult(parsed);
       } catch (error) {
         console.error('Failed to parse stored analysis result:', error);
@@ -321,7 +325,7 @@ export const JobAnalysisResult = () => {
             )}
 
             {/* Unmatched Requirements */}
-            {analysisResult.unmatchedRequirements && analysisResult.unmatchedRequirements.length > 0 && (
+            {analysisResult.unmatchedRequirements && analysisResult.unmatchedRequirements.length > 0 ? (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-red-600 flex items-center gap-2">
@@ -357,6 +361,21 @@ export const JobAnalysisResult = () => {
                   </div>
                 </CardContent>
               </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-muted-foreground flex items-center gap-2">
+                    <Info className="w-5 h-5" />
+                    No Unmatched Requirements Found
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Either all requirements were matched or the analysis didn't identify specific unmet requirements. 
+                    Check the console logs for debugging information.
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </div>
 
@@ -373,7 +392,7 @@ export const JobAnalysisResult = () => {
                 <div className="space-y-6">
                   {Object.entries(analysisResult.fitAssessment.categoryBreakdown).map(([category, data]) => {
                     const Icon = getCategoryIcon(category);
-                    const percentage = Math.round(data.score);
+                    const percentage = Math.round(data.score || 0);
                     return (
                       <div key={category} className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -386,7 +405,7 @@ export const JobAnalysisResult = () => {
                                 {category.replace('_', ' ')}
                               </span>
                               <div className="text-sm text-muted-foreground">
-                                {data.achieved} of {data.possible} requirements met
+                                {data.achieved || 0} of {data.possible || 0} requirements met
                               </div>
                             </div>
                           </div>
