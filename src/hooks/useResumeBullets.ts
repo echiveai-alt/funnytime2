@@ -19,7 +19,7 @@ interface BulletCompany {
 }
 
 export interface ResumeBulletsResult {
-  companies: BulletCompany[];
+  bulletOrganization: BulletCompany[];
   missingKeywords: string[];
 }
 
@@ -52,7 +52,7 @@ export const useResumeBullets = () => {
         body: { 
           experienceIdsByRole: analysisResult.experienceIdsByRole,
           bulletKeywords: analysisResult.bulletKeywords,
-          jobRequirements: analysisResult.extractedJobPhrases,
+          jobRequirements: analysisResult.jobRequirements,
           keywordMatchType: keywordMatchType
         },
         headers: {
