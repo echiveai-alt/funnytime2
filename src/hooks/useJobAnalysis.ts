@@ -72,16 +72,24 @@ export const useJobAnalysis = () => {
       // Store the complete analysis result
       localStorage.setItem('jobAnalysisResult', JSON.stringify(data));
 
-      // If score is higher than 85, generate resume bullets
-      if (data.overallScore && data.overallScore > 85 && data.experienceIdsByRole) {
-        console.log('Score above 85, generating resume bullets...');
+      // If score is 80% or higher, generate resume bullets and navigate to bullets page
+      if (data.overallScore && data.overallScore >= 80 && data.experienceIdsByRole) {
+        console.log('Score at or above 80%, generating resume bullets...');
         
         await generateResumeBullets(data);
+        
+        // Navigate directly to resume bullets page
+        navigate('/app/resume-bullets');
+      } else {
+        // Navigate to detailed analysis page for scores below 80%
+        navigate('/app/job-analysis-result');
       }
 
       toast({
         title: 'Analysis Complete',
-        description: 'Your job fit analysis has been completed successfully.',
+        description: data.overallScore && data.overallScore >= 80 
+          ? 'Resume bullets have been generated successfully.'
+          : 'Your job fit analysis has been completed successfully.',
       });
 
       return data;
