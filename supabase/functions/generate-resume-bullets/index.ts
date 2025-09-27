@@ -63,9 +63,9 @@ serve(async (req) => {
     console.log('overallScore:', overallScore);
     console.log('keywordMatchType:', keywordMatchType);
 
-    // Enhanced validation with score threshold enforcement
-    if (overallScore && overallScore < 85) {
-      throw new Error(`Job fit score of ${overallScore}% is below the 85% threshold required for bullet generation. Please improve your job fit first.`);
+    // Enhanced validation with score threshold enforcement - changed to 80%
+    if (overallScore && overallScore < 80) {
+      throw new Error(`Job fit score of ${overallScore}% is below the 80% threshold required for bullet generation. Please improve your job fit first.`);
     }
 
     if (!experienceIdsByRole) {
@@ -399,7 +399,7 @@ Return ONLY JSON (no markdown formatting):
 
     // Validate and calculate visual width for each bullet point with optimization
     const validatedBullets = {
-      companies: bulletData.companies?.map((company: any) => ({
+      bulletOrganization: bulletData.companies?.map((company: any) => ({
         name: company.name,
         roles: company.roles?.map((role: any) => ({
           title: role.title,
