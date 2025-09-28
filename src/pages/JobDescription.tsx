@@ -224,7 +224,7 @@ const JobDescription = () => {
                   
                   <Progress 
                     value={Math.min(100, (characterCount / constants.MIN_JOB_DESCRIPTION_LENGTH) * 100)} 
-                    className={`w-full h-2 ${getProgressColor()}`}
+                    className="w-full h-2"
                   />
                 </div>
               </div>
