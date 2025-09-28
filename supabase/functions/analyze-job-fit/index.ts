@@ -58,7 +58,7 @@ class AnalysisError extends Error {
   }
 }
 
-// Deterministic scoring function
+// FIXED: Deterministic scoring function with proper field alignment
 function calculateJobFitScore(
   matches: any[], 
   jobRequirements: any[]
@@ -68,9 +68,14 @@ function calculateJobFitScore(
   const breakdown: any = {};
   const weakExperiences: any[] = [];
 
-  // Initialize breakdown by category
+  // Initialize breakdown by category - FIXED: Add both score and percentage fields
   Object.keys(SCORING_CONFIG.WEIGHTS).forEach(category => {
-    breakdown[category] = { possible: 0, achieved: 0, percentage: 0 };
+    breakdown[category] = { 
+      possible: 0, 
+      achieved: 0, 
+      score: 0,        // Frontend expects this field
+      percentage: 0    // Keep for backwards compatibility
+    };
   });
 
   // Group requirements by category
@@ -115,14 +120,30 @@ function calculateJobFitScore(
       }
     });
 
+    // FIXED: Calculate both score and percentage properly
+    const categoryPercentage = categoryPossible > 0 ? Math.round((categoryAchieved / categoryPossible) * 100) : 0;
+    
     breakdown[category] = {
       possible: Math.round(categoryPossible),
       achieved: Math.round(categoryAchieved),
-      percentage: categoryPossible > 0 ? Math.round((categoryAchieved / categoryPossible) * 100) : 0
+      score: categoryPercentage,        // This is what the frontend expects
+      percentage: categoryPercentage    // Keep this for backwards compatibility
     };
   });
 
-  const finalScore = Math.min(100, Math.round((achievedScore / totalPossibleScore) * 100));
+  const finalScore = totalPossibleScore > 0 ? Math.min(100, Math.round((achievedScore / totalPossibleScore) * 100)) : 0;
+  
+  console.log('Score calculation results:', {
+    finalScore,
+    totalPossible: totalPossibleScore,
+    achievedScore,
+    breakdown: Object.entries(breakdown).map(([cat, data]: [string, any]) => ({ 
+      category: cat, 
+      score: data.score, 
+      possible: data.possible, 
+      achieved: data.achieved 
+    }))
+  });
   
   return { score: finalScore, breakdown, weakExperiences };
 }
@@ -281,14 +302,7 @@ Return JSON with this EXACT structure:
       "experienceEvidence": "specific candidate evidence",
       "experienceContext": "Company - Role - Title",
       "matchType": "exact|semantic|synonym|transferable|contextual",
-      "evidenceStrength": "quantified|demonstrated|mentioned|implied",
-      "scoringCalculation": {
-        "matchTypeScore": 0.9,
-        "evidenceScore": 0.8,
-        "importanceMultiplier": 0.85,
-        "categoryWeight": 0.30,
-        "finalScore": 18.36
-      }
+      "evidenceStrength": "quantified|demonstrated|mentioned|implied"
     }
   ],
   "unmatchedRequirements": [
@@ -316,17 +330,6 @@ Return JSON with this EXACT structure:
       "strengthOfEvidence": "evidence strength level"
     }
   ],
-  "fitAssessment": {
-    "overallScore": 0,
-    "fitLevel": "Excellent|Strong|Good|Fair|Poor",
-    "categoryBreakdown": {
-      "technical": {"score": 0, "possible": 0, "achieved": 0},
-      "experience_level": {"score": 0, "possible": 0, "achieved": 0},
-      "domain_industry": {"score": 0, "possible": 0, "achieved": 0},
-      "leadership_impact": {"score": 0, "possible": 0, "achieved": 0},
-      "cultural_soft": {"score": 0, "possible": 0, "achieved": 0}
-    }
-  },
   "strengths": ["specific demonstrated strengths"],
   "gaps": ["missing or weak areas"],
   "recommendations": {
@@ -591,18 +594,21 @@ serve(async (req) => {
       throw parseError;
     }
 
-    // Enhanced scoring calculation
+    // FIXED: Enhanced scoring calculation with proper structure alignment
     if (analysis.jobRequirements && analysis.matchedRequirements) {
       const { score: recalculatedScore, breakdown, weakExperiences } = calculateJobFitScore(
         analysis.matchedRequirements,
         analysis.jobRequirements
       );
 
-      // Update with calculated score
+      // Update with calculated score - FIXED: Ensure proper structure alignment
       analysis.fitAssessment = analysis.fitAssessment || {};
       analysis.fitAssessment.overallScore = recalculatedScore;
       analysis.fitAssessment.categoryBreakdown = breakdown;
       analysis.fitAssessment.calculatedScore = true;
+      
+      // FIXED: Also set overallScore at root level for backwards compatibility
+      analysis.overallScore = recalculatedScore;
 
       // Determine fit level
       const score = recalculatedScore;
@@ -673,9 +679,22 @@ serve(async (req) => {
         readyForBulletGeneration: recalculatedScore >= 80,
         experienceIds: analysis.relevantExperiences?.map((exp: any) => exp.id) || []
       };
+
+      console.log('analyze-job-fit: Scoring completed:', {
+        overallScore: recalculatedScore,
+        fitLevel: analysis.fitAssessment.fitLevel,
+        categoryBreakdown: Object.entries(breakdown).map(([cat, data]: [string, any]) => ({
+          category: cat,
+          score: data.score,
+          possible: data.possible,
+          achieved: data.achieved
+        })),
+        weakExperiencesCount: weakExperiences.length,
+        criticalGapsCount: criticalGaps.length
+      });
     }
 
-    console.log(`analyze-job-fit: Analysis completed successfully - ${analysis.fitAssessment?.overallScore || 0}% (${analysis.fitAssessment?.fitLevel || 'Unknown'})`);
+    console.log(`analyze-job-fit: Analysis completed successfully - ${analysis.fitAssessment?.overallScore || analysis.overallScore || 0}% (${analysis.fitAssessment?.fitLevel || 'Unknown'})`);
 
     return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
