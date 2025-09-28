@@ -6,7 +6,7 @@ import { useResumeBullets } from '@/hooks/useResumeBullets';
 import { useNavigate } from 'react-router-dom';
 
 // Constants for consistent thresholds
-export const ANALYSIS_CONSTANTS = {
+const ANALYSIS_CONSTANTS = {
   MIN_SCORE_FOR_BULLETS: 80,
   MIN_JOB_DESCRIPTION_LENGTH: 100,
   MAX_RETRIES: 3,
@@ -41,6 +41,9 @@ interface AnalysisResult {
   experienceIdsByRole?: Record<string, any>;
   bulletKeywords?: Record<string, string[]>;
   jobRequirements?: Array<any>;
+  fitAssessment?: {
+    overallScore: number;
+  };
 }
 
 interface AnalysisError {
@@ -65,7 +68,7 @@ export const useJobAnalysis = () => {
       return `Job description must be at least ${ANALYSIS_CONSTANTS.MIN_JOB_DESCRIPTION_LENGTH} characters`;
     }
     
-    // Basic content validation - ensure it's not just random text
+    // Basic content validation
     const wordCount = jobDescription.trim().split(/\s+/).length;
     if (wordCount < 20) {
       return 'Job description seems too short to be meaningful';
@@ -77,7 +80,6 @@ export const useJobAnalysis = () => {
   const handleAnalysisError = (error: any): AnalysisError => {
     console.error('Analysis error details:', error);
     
-    // Categorize errors for better user experience
     if (error?.message?.includes('rate limit') || error?.message?.includes('429')) {
       return {
         code: 'RATE_LIMITED',
@@ -151,7 +153,7 @@ export const useJobAnalysis = () => {
     setAnalysisProgress(75);
 
     // Validate the response structure
-    if (!data || typeof data.overallScore !== 'number') {
+    if (!data || (typeof data.overallScore !== 'number' && !data.fitAssessment?.overallScore)) {
       throw new Error('Invalid analysis response received');
     }
 
@@ -193,7 +195,7 @@ export const useJobAnalysis = () => {
       setAnalysisProgress(90);
 
       // Route based on score with consistent logic
-      const score = data.overallScore || 0;
+      const score = data.overallScore || data.fitAssessment?.overallScore || 0;
       const hasRequiredData = data.experienceIdsByRole && data.bulletKeywords && data.jobRequirements;
       
       if (score >= ANALYSIS_CONSTANTS.MIN_SCORE_FOR_BULLETS && hasRequiredData) {
@@ -244,10 +246,6 @@ export const useJobAnalysis = () => {
         title: 'Analysis Failed',
         description: analysisError.message,
         variant: 'destructive',
-        action: analysisError.retryable ? {
-          altText: 'Retry',
-          onClick: () => analyzeJobFit(jobDescription),
-        } : undefined,
       });
       
       return null;
