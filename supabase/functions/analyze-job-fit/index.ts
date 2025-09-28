@@ -43,9 +43,22 @@ const SCORING_CONFIG = {
     fair: 45,
     poor: 0
   }
-};
+} as const;
 
-// Deterministic scoring function - same inputs always produce same output
+// Enhanced error handling
+class AnalysisError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public statusCode: number = 500,
+    public retryable: boolean = false
+  ) {
+    super(message);
+    this.name = 'AnalysisError';
+  }
+}
+
+// Deterministic scoring function
 function calculateJobFitScore(
   matches: any[], 
   jobRequirements: any[]
@@ -119,27 +132,27 @@ function calculateExperienceYears(startDate: string | null, endDate: string | nu
   if (!startDate) return 0;
   
   const start = new Date(startDate);
-  const end = endDate ? new Date(endDate) : new Date(); // Current date if still active
+  const end = endDate ? new Date(endDate) : new Date();
   
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
   
   const diffInMs = end.getTime() - start.getTime();
-  const diffInYears = diffInMs / (1000 * 60 * 60 * 24 * 365.25); // Account for leap years
+  const diffInYears = diffInMs / (1000 * 60 * 60 * 24 * 365.25);
   
   return Math.max(0, diffInYears);
 }
 
-// Create a deterministic hash for consistent results using Deno APIs
+// Create a deterministic hash for consistent results
 function createConsistentHash(jobDescription: string, experiences: any[]): string {
-  const experienceString = experiences.map(exp => 
-    `${exp.company}-${exp.role}-${exp.title}-${exp.action}-${exp.result}`
-  ).sort().join('|');
+  const experienceString = experiences
+    .map(exp => `${exp.company}-${exp.role}-${exp.title}-${exp.action}-${exp.result}`)
+    .sort()
+    .join('|');
   
   const combinedString = jobDescription + experienceString;
   const encoder = new TextEncoder();
   const data = encoder.encode(combinedString);
   
-  // Simple hash function for consistency
   let hash = 0;
   for (let i = 0; i < data.length; i++) {
     hash = ((hash << 5) - hash + data[i]) & 0xffffffff;
@@ -148,16 +161,23 @@ function createConsistentHash(jobDescription: string, experiences: any[]): strin
   return Math.abs(hash).toString(36).slice(0, 16);
 }
 
-// Enhanced prompt with explicit consistency requirements and NO interview recommendations
+// Enhanced prompt with better structure and validation
 function createJobFitAnalysisPrompt(jobDescription: string, experiences: any[], education: any[], consistencyHash: string): string {
-  return `
-You are an expert talent recruiter. Your analysis must be COMPLETELY DETERMINISTIC - identical inputs must produce identical outputs.
+  // Validate inputs
+  if (!jobDescription || jobDescription.trim().length < 50) {
+    throw new AnalysisError('Job description too short for meaningful analysis', 'INVALID_JOB_DESCRIPTION', 400);
+  }
+
+  if (!experiences || experiences.length === 0) {
+    throw new AnalysisError('No experiences provided for analysis', 'NO_EXPERIENCES', 400);
+  }
+
+  return `You are an expert talent recruiter and career analyst. Your analysis must be COMPLETELY DETERMINISTIC and CONSISTENT.
 
 CONSISTENCY REQUIREMENTS:
-- Use this hash for deterministic processing: ${consistencyHash}
-- Extract requirements in alphabetical order
-- Score matches using EXACT criteria below
-- Use consistent terminology throughout
+- Hash: ${consistencyHash}
+- Extract requirements alphabetically
+- Use exact scoring criteria
 - Temperature = 0 for deterministic results
 
 JOB DESCRIPTION:
@@ -169,124 +189,96 @@ Experience ${index + 1}:
 - ID: ${exp.id}
 - Company: ${exp.company}
 - Role: ${exp.role}
-- Specialty: ${exp.specialty || 'Not specified'}
-- Start Date: ${exp.startDate || 'Not specified'}
-- End Date: ${exp.endDate || 'Current/Not specified'}
-- Experience Duration: ${exp.experienceYears} years
+- Duration: ${exp.experienceYears} years (${exp.startDate || 'Unknown'} to ${exp.endDate || 'Current'})
 - Title: ${exp.title}
 - Situation: ${exp.situation || 'Not provided'}
-- Task: ${exp.task || 'Not provided'}
+- Task: ${exp.task || 'Not provided'}  
 - Action: ${exp.action}
 - Result: ${exp.result}
 - Tags: ${exp.tags.join(', ') || 'None'}
 `).join('')}
 
-EDUCATION: 
-${education && education.length > 0 ? education.map((edu: any, index: number) => `
-Education ${index + 1}:
-- School: ${edu.school || 'Not specified'}
-- Degree: ${edu.degree || 'Not specified'}  
-- Field: ${edu.field || 'Not specified'}
-- Graduation: ${edu.graduationDate || 'Not specified'}
-- GPA: ${edu.gpa || 'Not specified'}
-- Expected: ${edu.isExpectedGraduation ? 'Yes' : 'No'}
-`).join('') : 'No education information provided'}
+EDUCATION:
+${education?.length ? education.map((edu: any, index: number) => `
+${index + 1}. ${edu.degree || 'Degree'} in ${edu.field || 'Field'} from ${edu.school || 'School'}
+   Graduation: ${edu.graduationDate || 'Not specified'}
+   Expected: ${edu.isExpectedGraduation ? 'Yes' : 'No'}
+`).join('') : 'No education provided'}
 
-STRICT ANALYSIS FRAMEWORK:
+ANALYSIS FRAMEWORK:
 
-**REQUIREMENT EXTRACTION (Must be consistent):**
-1. Extract ONLY explicit requirements from job description
-2. Ignore vague responsibilities like "work collaboratively" 
-3. Focus on measurable, specific qualifications
-4. Sort requirements alphabetically for consistency
-5. Apply match criteria systematically - prioritize stronger match types
+**REQUIREMENT EXTRACTION:**
+1. Extract ONLY explicit, measurable requirements
+2. Ignore generic responsibilities 
+3. Sort alphabetically for consistency
+4. Focus on skills, tools, experience levels, certifications
 
 **CATEGORIES (Fixed definitions):**
-- **technical**: Specific tools, languages, frameworks (e.g., "Python", "AWS", "React")
-- **experience_level**: Years of experience, seniority level - CALCULATE from role dates, don't extract as keywords
-- **domain_industry**: Sector knowledge (e.g., "fintech", "healthcare", "B2B SaaS")
-- **leadership_impact**: Team management, project leadership (e.g., "team leadership", "project management")
-- **cultural_soft**: Communication, problem-solving (e.g., "communication", "analytical thinking")
+- technical: Specific tools, languages, frameworks, certifications
+- experience_level: Years of experience, seniority levels (calculate from dates)
+- domain_industry: Sector knowledge, industry experience
+- leadership_impact: Team management, project leadership, stakeholder management
+- cultural_soft: Communication, problem-solving, analytical thinking
 
-**IMPORTANCE LEVELS (Strict criteria):**
-- **critical**: Deal-breakers explicitly stated (e.g., "Bachelor's degree REQUIRED", "Must have security clearance")
-- **high**: "Preferred", "Strong experience", numbered years (e.g., "5+ years experience")
-- **medium**: "Experience with", "Familiar with", general skills
-- **low**: "Nice to have", bonus skills, additional responsibilities
+**IMPORTANCE LEVELS:**
+- critical: Explicit deal-breakers ("required", "must have", security clearance)
+- high: Strong preferences ("preferred", "X+ years", numbered requirements)
+- medium: General skills ("experience with", "familiar with")
+- low: Nice-to-have ("bonus", additional responsibilities)
 
-**MATCH TYPES (Apply systematically with clear standards):**
-- **exact**: Identical terms (case-insensitive) - "Python" matches "python", "SQL" matches "sql"
-- **semantic**: Same core concept, different phrasing - "team lead" matches "team leadership", "manage" matches "management"  
-- **synonym**: Industry-standard equivalents - "JavaScript" matches "JS", "artificial intelligence" matches "AI"
-- **transferable**: Clearly related skills from different domains - "retail team management" matches "team management", "sales analytics" matches "data analysis"
-- **contextual**: Skills reasonably implied from clear context - "Senior Software Engineer at startup" implies "software development" and potentially "leadership"
+**MATCH TYPES (Apply systematically):**
+- exact: Identical terms (case-insensitive)
+- semantic: Same concept, different phrasing
+- synonym: Industry equivalents
+- transferable: Related skills from different domains
+- contextual: Skills implied from role context
 
-**MATCHING STANDARDS:**
-- Require clear, logical connections between job requirements and candidate experience
-- Semantic matches must share the same core function or skill
-- Transferable matches must demonstrate applicable overlap, not just superficial similarity
-- Contextual matches must be based on reasonable professional implications
-- When in doubt, use a lower match type rather than forcing a connection
-- Mark as unmatched if no clear, defensible connection exists
+**EVIDENCE STRENGTH:**
+- quantified: Contains specific numbers/metrics
+- demonstrated: Clear examples with context
+- mentioned: Explicitly stated, no details
+- implied: Inferred from role/context
 
-**EVIDENCE STRENGTH (Strict criteria):**
-- **quantified**: Contains specific numbers/metrics (e.g., "reduced costs by 30%", "managed team of 8")
-- **demonstrated**: Clear examples with context (e.g., "Led 6-month project to implement...")
-- **mentioned**: Explicitly stated but no details (e.g., "responsible for Python development")
-- **implied**: Can be inferred from role/context (e.g., "Software Engineer" implies programming)
-
-**SCORING RULES:**
-- Score = (Match Type Score × Evidence Strength × Importance × Category Weight) × 100
-- Use ONLY the predefined multipliers - no subjective adjustments
-- Missing requirements score 0 - no partial credit
-- Calculate category percentages: achieved/possible × 100
-
-**CONSISTENCY CHECKS:**
-- Each requirement must map to exactly one match or be unmatched
-- Use identical scoring formula for all requirements
-- Maintain consistent terminology across all sections
-- Sort all arrays alphabetically for deterministic output
-
-Return JSON with this EXACT structure (no deviations):
+Return JSON with this EXACT structure:
 
 {
   "consistencyHash": "${consistencyHash}",
   "jobRequirements": [
     {
-      "requirement": "exact requirement text from job description",
-      "type": "requirement|responsibility", 
+      "requirement": "exact text from job description",
+      "type": "requirement",
       "category": "technical|experience_level|domain_industry|leadership_impact|cultural_soft",
       "importance": "critical|high|medium|low",
-      "context": "brief explanation of why this matters"
+      "context": "why this requirement matters"
     }
   ],
   "extractedKeywords": {
     "requirements": {
-      "technical": ["Python", "React", "AWS"],
-      "education": ["Bachelor's degree", "Computer Science", "certification"],
-      "industry": ["fintech", "healthcare", "B2B SaaS"],
-      "soft_skills": ["leadership", "communication", "problem-solving"],
-      "seniority": ["Senior", "Lead", "Principal", "Director"]
+      "technical": ["specific tools/languages"],
+      "education": ["degree requirements"],
+      "industry": ["sector knowledge"],
+      "soft_skills": ["communication skills"],
+      "seniority": ["experience levels"]
     },
     "responsibilities": {
-      "daily_tasks": ["code review", "sprint planning", "client meetings"],
-      "outcomes": ["increase conversion", "reduce latency", "improve UX"],
-      "management": ["team leadership", "project management", "stakeholder communication"]
+      "daily_tasks": ["routine activities"],
+      "outcomes": ["expected results"],
+      "management": ["leadership duties"]
     }
   },
   "bulletKeywords": {
-    "technical": ["Python", "React", "AWS", "microservices"],
-    "actionVerbs": ["developed", "optimized", "led", "implemented"],
-    "industry": ["fintech", "healthcare", "e-commerce", "SaaS"],
-    "metrics": ["ROI", "performance", "efficiency", "scale"],
-    "behavioral": ["collaboration", "problem-solving", "leadership"],
-    "qualifications": ["Bachelor's degree", "5+ years", "certification"]
+    "technical": ["resume-ready technical terms"],
+    "actionVerbs": ["strong action verbs"],
+    "industry": ["industry-specific terms"],
+    "metrics": ["measurable outcomes"],
+    "behavioral": ["soft skills terms"],
+    "qualifications": ["credential keywords"]
   },
   "matchedRequirements": [
     {
       "jobRequirement": "exact requirement text",
-      "type": "requirement|responsibility",
-      "experienceEvidence": "specific evidence from candidate",
+      "type": "requirement",
+      "experienceEvidence": "specific candidate evidence",
       "experienceContext": "Company - Role - Title",
       "matchType": "exact|semantic|synonym|transferable|contextual",
       "evidenceStrength": "quantified|demonstrated|mentioned|implied",
@@ -302,30 +294,26 @@ Return JSON with this EXACT structure (no deviations):
   "unmatchedRequirements": [
     {
       "requirement": "requirement text",
-      "type": "requirement|responsibility",
+      "type": "requirement",
       "category": "category",
       "importance": "importance level",
-      "suggestionToImprove": "how candidate could develop or better demonstrate this",
-      "scoringImpact": {
-        "possibleScore": 25.5,
-        "achievedScore": 0
-      }
+      "suggestionToImprove": "specific actionable advice"
     }
   ],
   "relevantExperiences": [
     {
-      "id": "experience id",
+      "id": "experience_id",
       "roleTitle": "role title",
       "companyName": "company name",
-      "title": "experience title", 
-      "situation": "situation (may be null)",
-      "task": "task (may be null)",
-      "action": "action",
-      "result": "result",
-      "tags": ["tags"],
+      "title": "experience title",
+      "situation": "situation or null",
+      "task": "task or null", 
+      "action": "action taken",
+      "result": "outcome achieved",
+      "tags": ["relevant tags"],
       "relevanceScore": 85,
-      "matchingRequirements": ["list of requirements this addresses"],
-      "strengthOfEvidence": "quantified|demonstrated|mentioned|implied"
+      "matchingRequirements": ["requirements this addresses"],
+      "strengthOfEvidence": "evidence strength level"
     }
   ],
   "fitAssessment": {
@@ -335,62 +323,50 @@ Return JSON with this EXACT structure (no deviations):
       "technical": {"score": 0, "possible": 0, "achieved": 0},
       "experience_level": {"score": 0, "possible": 0, "achieved": 0},
       "domain_industry": {"score": 0, "possible": 0, "achieved": 0},
-      "leadership_impact": {"score": 0, "possible": 0, "achieved": 0}, 
+      "leadership_impact": {"score": 0, "possible": 0, "achieved": 0},
       "cultural_soft": {"score": 0, "possible": 0, "achieved": 0}
-    },
-    "scoringBreakdown": {
-      "totalPossible": 0,
-      "totalAchieved": 0,
-      "calculationMethod": "sum(matchTypeScore × evidenceScore × importanceMultiplier × categoryWeight × 100)"
     }
   },
-  "strengths": ["demonstrated strengths with specific evidence"],
-  "gaps": ["missing requirements or weak evidence areas"],
+  "strengths": ["specific demonstrated strengths"],
+  "gaps": ["missing or weak areas"],
   "recommendations": {
-    "forCandidate": ["specific actionable suggestions"],
-    "forApplication": ["positioning recommendations"]
+    "forCandidate": ["specific improvement actions"],
+    "forApplication": ["application positioning advice"]
   },
-  "summary": "objective assessment based on scoring framework"
-}
-
-CRITICAL: Use temperature=0 thinking. Be completely deterministic. Same inputs = same outputs.`;
+  "summary": "objective assessment summary"
+}`;
 }
 
 serve(async (req) => {
-  console.log('Function called with method:', req.method);
+  console.log('analyze-job-fit: Function called with method:', req.method);
   
   if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight');
+    console.log('analyze-job-fit: Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Starting job analysis...');
+    console.log('analyze-job-fit: Starting analysis...');
+    
+    // Environment validation with better error messages
     const openaiApiKey = Deno.env.get('ANALYZE_JOB_FIT_OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    console.log('Environment check:');
-    console.log('OpenAI API Key available:', !!openaiApiKey);
-    console.log('OpenAI API Key length:', openaiApiKey ? openaiApiKey.length : 0);
-    console.log('Supabase URL available:', !!supabaseUrl);
-    console.log('Service Role Key available:', !!supabaseServiceKey);
-
-    if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing environment variables:', {
-        openaiApiKey: !!openaiApiKey,
-        supabaseUrl: !!supabaseUrl,
-        supabaseServiceKey: !!supabaseServiceKey
-      });
-      throw new Error('Missing required environment variables');
+    if (!openaiApiKey) {
+      throw new AnalysisError('OpenAI API key not configured', 'MISSING_API_KEY', 500);
+    }
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new AnalysisError('Supabase configuration missing', 'MISSING_SUPABASE_CONFIG', 500);
     }
 
+    console.log('analyze-job-fit: Environment validated');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Authentication
+    // Enhanced authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Authorization header required');
+      throw new AnalysisError('Authorization header required', 'MISSING_AUTH', 401);
     }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(
@@ -398,15 +374,40 @@ serve(async (req) => {
     );
 
     if (authError || !user) {
-      throw new Error('Invalid authentication token');
+      console.error('analyze-job-fit: Authentication failed:', authError);
+      throw new AnalysisError('Authentication failed', 'AUTH_FAILED', 401);
     }
 
-    const { jobDescription } = await req.json();
+    // Enhanced request validation
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      throw new AnalysisError('Invalid JSON in request body', 'INVALID_JSON', 400);
+    }
+
+    const { jobDescription } = requestBody;
+    
     if (!jobDescription) {
-      throw new Error('Job description is required');
+      throw new AnalysisError('Job description is required', 'MISSING_JOB_DESCRIPTION', 400);
     }
 
-    // Fetch data
+    if (typeof jobDescription !== 'string') {
+      throw new AnalysisError('Job description must be a string', 'INVALID_JOB_DESCRIPTION_TYPE', 400);
+    }
+
+    const trimmedDescription = jobDescription.trim();
+    if (trimmedDescription.length < 50) {
+      throw new AnalysisError('Job description too short for meaningful analysis (minimum 50 characters)', 'JOB_DESCRIPTION_TOO_SHORT', 400);
+    }
+
+    if (trimmedDescription.length > 20000) {
+      throw new AnalysisError('Job description too long (maximum 20,000 characters)', 'JOB_DESCRIPTION_TOO_LONG', 400);
+    }
+
+    console.log(`analyze-job-fit: Processing job description (${trimmedDescription.length} chars) for user ${user.id}`);
+
+    // Enhanced data fetching with better error handling
     const [experiencesResult, educationResult] = await Promise.allSettled([
       supabase
         .from('experiences')
@@ -433,43 +434,62 @@ serve(async (req) => {
         .order('graduation_date', { ascending: false })
     ]);
 
-    if (experiencesResult.status === 'rejected' || experiencesResult.value.error) {
-      throw new Error('Failed to fetch experiences');
+    if (experiencesResult.status === 'rejected') {
+      console.error('analyze-job-fit: Failed to fetch experiences:', experiencesResult.reason);
+      throw new AnalysisError('Failed to fetch user experiences', 'DATABASE_ERROR', 500, true);
+    }
+
+    if (experiencesResult.value.error) {
+      console.error('analyze-job-fit: Database error:', experiencesResult.value.error);
+      throw new AnalysisError('Database query failed', 'DATABASE_ERROR', 500, true);
     }
 
     const experiences = experiencesResult.value.data;
     if (!experiences || experiences.length === 0) {
-      throw new Error('No experiences found');
+      throw new AnalysisError('No professional experiences found. Please add some experiences before analyzing.', 'NO_EXPERIENCES', 400);
     }
 
     const education = educationResult.status === 'fulfilled' && !educationResult.value.error 
       ? educationResult.value.data || []
       : [];
 
-    // Format experiences consistently (sort for deterministic ordering)
+    console.log(`analyze-job-fit: Found ${experiences.length} experiences and ${education.length} education records`);
+
+    // Enhanced experience formatting with validation
     const formattedExperiences = experiences
       .map(exp => {
         const role = exp.roles;
         const company = role?.companies;
-        const experienceYears = calculateExperienceYears(role?.start_date, role?.end_date);
+        
+        if (!role || !company) {
+          console.warn('analyze-job-fit: Experience missing role/company data:', exp.id);
+          return null;
+        }
+        
+        const experienceYears = calculateExperienceYears(role.start_date, role.end_date);
         
         return {
           id: exp.id,
-          company: company?.name || 'Unknown Company',
-          role: role?.title || 'Unknown Role',
-          specialty: role?.specialty || null,
-          startDate: role?.start_date || null,
-          endDate: role?.end_date || null,
-          experienceYears: Math.round(experienceYears * 100) / 100, // Round to 2 decimal places
+          company: company.name || 'Unknown Company',
+          role: role.title || 'Unknown Role', 
+          specialty: role.specialty || null,
+          startDate: role.start_date || null,
+          endDate: role.end_date || null,
+          experienceYears: Math.round(experienceYears * 100) / 100,
           title: exp.title || 'Untitled Experience',
           situation: exp.situation || null,
           task: exp.task || null,
           action: exp.action || 'No action details provided',
           result: exp.result || 'No results specified',
-          tags: Array.isArray(exp.tags) ? exp.tags.sort() : [] // Sort tags for consistency
+          tags: Array.isArray(exp.tags) ? exp.tags.sort() : []
         };
       })
-      .sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID for consistency
+      .filter(exp => exp !== null)
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    if (formattedExperiences.length === 0) {
+      throw new AnalysisError('No valid experiences found after formatting', 'NO_VALID_EXPERIENCES', 400);
+    }
 
     const formattedEducation = education.map((edu: any) => ({
       school: edu.school,
@@ -481,13 +501,15 @@ serve(async (req) => {
     }));
 
     // Create consistency hash
-    const consistencyHash = createConsistentHash(jobDescription, formattedExperiences);
-    console.log('Consistency hash:', consistencyHash);
+    const consistencyHash = createConsistentHash(trimmedDescription, formattedExperiences);
+    console.log('analyze-job-fit: Generated consistency hash:', consistencyHash);
 
-    // Create deterministic prompt
-    const prompt = createJobFitAnalysisPrompt(jobDescription, formattedExperiences, formattedEducation, consistencyHash);
+    // Create enhanced prompt
+    const prompt = createJobFitAnalysisPrompt(trimmedDescription, formattedExperiences, formattedEducation, consistencyHash);
 
-    // Call OpenAI with temperature=0 for deterministic results
+    console.log('analyze-job-fit: Calling OpenAI API...');
+
+    // Enhanced OpenAI API call with better error handling
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -498,220 +520,176 @@ serve(async (req) => {
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 4096,
-        temperature: 0, // Critical for consistency
-        seed: parseInt(consistencyHash.slice(0, 8), 16) % 2147483647 // Use hash-based seed
+        temperature: 0,
+        seed: parseInt(consistencyHash.slice(0, 8), 16) % 2147483647,
+        timeout: 60000 // 60 second timeout
       })
     });
 
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
-      console.error('OpenAI API Error Status:', openaiResponse.status);
-      console.error('OpenAI API Error Response:', errorText);
-      throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
+      console.error('analyze-job-fit: OpenAI API Error:', openaiResponse.status, errorText);
+      
+      const isRetryable = openaiResponse.status >= 500 || openaiResponse.status === 429;
+      throw new AnalysisError(
+        `OpenAI API error: ${openaiResponse.status} - ${errorText}`,
+        'OPENAI_API_ERROR',
+        500,
+        isRetryable
+      );
     }
 
     const openaiData = await openaiResponse.json();
     const responseText = openaiData.choices[0].message.content;
 
-    // Parse and validate response
+    console.log('analyze-job-fit: OpenAI response received, parsing...');
+
+    // Enhanced JSON parsing with better error handling
     let analysis: any;
     try {
-      console.log('Raw OpenAI Response Status:', openaiResponse.status);
-      console.log('Raw OpenAI Response Headers:', Object.fromEntries(openaiResponse.headers.entries()));
-      console.log('OpenAI Response Data:', JSON.stringify(openaiData, null, 2));
-      console.log('Response Text Length:', responseText ? responseText.length : 0);
-      console.log('Response Text Preview:', responseText ? responseText.substring(0, 500) : 'No response text');
-      
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      console.log('JSON Match Found:', jsonMatch ? 'Yes' : 'No');
-      console.log('JSON Match Preview:', jsonMatch ? jsonMatch[0].substring(0, 200) + '...' : 'No match');
-      
       if (!jsonMatch) {
-        throw new Error('No JSON found in response');
+        console.error('analyze-job-fit: No JSON found in response');
+        throw new AnalysisError('No valid JSON found in AI response', 'INVALID_API_RESPONSE', 500, true);
       }
 
       analysis = JSON.parse(jsonMatch[0]);
 
-      // Verify consistency hash matches
+      // Validate required fields
+      if (!analysis.jobRequirements || !Array.isArray(analysis.jobRequirements)) {
+        throw new AnalysisError('Invalid analysis structure - missing job requirements', 'INVALID_ANALYSIS_STRUCTURE', 500, true);
+      }
+
+      // Verify consistency hash
       if (analysis.consistencyHash !== consistencyHash) {
-        console.warn('Consistency hash mismatch - this may indicate non-deterministic processing');
+        console.warn('analyze-job-fit: Consistency hash mismatch');
       }
-
-      // Recalculate score using deterministic function
-      if (analysis.jobRequirements && analysis.matchedRequirements) {
-        const { score: recalculatedScore, breakdown, weakExperiences } = calculateJobFitScore(
-          analysis.matchedRequirements,
-          analysis.jobRequirements
-        );
-
-        // Update with calculated score
-        analysis.fitAssessment.overallScore = recalculatedScore;
-        analysis.fitAssessment.categoryBreakdown = breakdown;
-        analysis.fitAssessment.calculatedScore = true; // Flag to indicate recalculation
-
-        // Add weak experiences if score < 80
-        if (recalculatedScore < 80 && weakExperiences.length > 0) {
-          const weakExperienceDetails = weakExperiences
-            .slice(0, 5)
-            .map((weak: any) => {
-              const contextExp = analysis.relevantExperiences?.find((exp: any) => 
-                weak.experienceContext && (
-                  weak.experienceContext.includes(exp.id) ||
-                  weak.experienceContext.includes(exp.title) ||
-                  weak.experienceContext.includes(exp.companyName)
-                )
-              );
-              
-              return {
-                experienceIdentifier: contextExp ? 
-                  `${contextExp.companyName} - ${contextExp.roleTitle} - ${contextExp.title}` : 
-                  weak.experienceContext || 'Unknown Experience',
-                requirement: weak.requirement,
-                currentEvidence: weak.evidence,
-                evidenceStrength: weak.evidenceStrength
-              };
-            });
-
-          analysis.weakEvidenceExperiences = {
-            message: "Score could improve with stronger evidence for these experiences:",
-            experiences: weakExperienceDetails,
-            suggestion: "Add specific metrics, outcomes, or detailed examples to strengthen evidence."
-          };
-        }
-
-        // Update fit level
-        const score = recalculatedScore;
-        if (score >= SCORING_CONFIG.FIT_THRESHOLDS.excellent) analysis.fitAssessment.fitLevel = "Excellent";
-        else if (score >= SCORING_CONFIG.FIT_THRESHOLDS.strong) analysis.fitAssessment.fitLevel = "Strong";
-        else if (score >= SCORING_CONFIG.FIT_THRESHOLDS.good) analysis.fitAssessment.fitLevel = "Good";
-        else if (score >= SCORING_CONFIG.FIT_THRESHOLDS.fair) analysis.fitAssessment.fitLevel = "Fair";
-        else analysis.fitAssessment.fitLevel = "Poor";
-
-        // Experience grouping by role
-        if (analysis.relevantExperiences) {
-          const experienceIdsByRole: any = {};
-          
-          analysis.relevantExperiences.forEach((exp: any) => {
-            const roleKey = `${exp.companyName}-${exp.roleTitle}`;
-            
-            if (!experienceIdsByRole[roleKey]) {
-              experienceIdsByRole[roleKey] = {
-                company: exp.companyName,
-                roleTitle: exp.roleTitle,
-                specialty: exp.specialty || null,
-                experienceIds: []
-              };
-            }
-            
-            experienceIdsByRole[roleKey].experienceIds.push(exp.id);
-          });
-          
-          // Sort and limit to top 6 experience IDs per role
-          Object.keys(experienceIdsByRole).forEach(roleKey => {
-            const roleExperiences = analysis.relevantExperiences
-              .filter((exp: any) => {
-                const expRoleKey = `${exp.companyName}-${exp.roleTitle}`;
-                return expRoleKey === roleKey;
-              })
-              .sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
-              .slice(0, 6);
-            
-            experienceIdsByRole[roleKey].experienceIds = roleExperiences.map((exp: any) => exp.id);
-          });
-          
-          analysis.experienceIdsByRole = experienceIdsByRole;
-          
-          // Keep experiencesByRole for analytics
-          const experiencesByRole: any = {};
-          Object.entries(experienceIdsByRole).forEach(([roleKey, roleData]: [string, any]) => {
-            const roleExperiences = analysis.relevantExperiences
-              .filter((exp: any) => roleData.experienceIds.includes(exp.id));
-            
-            experiencesByRole[roleKey] = {
-              company: roleData.company,
-              roleTitle: roleData.roleTitle,
-              specialty: roleData.specialty || null,
-              experiences: roleExperiences
-            };
-          });
-          analysis.experiencesByRole = experiencesByRole;
-        }
-
-        // Enhanced Action planning based on job fit assessment
-        const finalScore = analysis.fitAssessment?.overallScore || 0;
-        const criticalGaps = analysis.unmatchedRequirements?.filter((req: any) => req.importance === 'critical') || [];
-        
-        if (finalScore < SCORING_CONFIG.FIT_THRESHOLDS.good || criticalGaps.length > 0) {
-          analysis.actionPlan = {
-            priority: "improve_job_fit",
-            focus: criticalGaps.length > 0 ? "critical_gaps" : "general_improvement",
-            criticalGaps: criticalGaps.map((gap: any) => gap.requirement),
-            suggestedActions: analysis.recommendations?.forCandidate || [],
-            readyForApplication: false,
-            readyForBulletGeneration: finalScore >= 80
-          };
-        } else {
-          analysis.actionPlan = {
-            priority: "application_ready",
-            experienceIds: analysis.relevantExperiences?.map((exp: any) => exp.id) || [],
-            readyForBulletGeneration: true,
-            readyForApplication: true
-          };
-        }
-      }
-
-      console.log(`Job fit analysis completed: ${analysis.fitAssessment.overallScore}% (${analysis.fitAssessment.fitLevel})`);
-      console.log(`Consistency hash: ${consistencyHash}`);
-      
-      // Debug logging for keyword extraction analysis
-      console.log('=== KEYWORD EXTRACTION DEBUG ===');
-      console.log('Job Requirements Count:', analysis.jobRequirements ? analysis.jobRequirements.length : 0);
-      if (analysis.jobRequirements && analysis.jobRequirements.length > 0) {
-        console.log('Job Requirements Sample:', JSON.stringify(analysis.jobRequirements.slice(0, 5), null, 2));
-      }
-      
-      if (analysis.extractedKeywords) {
-        console.log('Extracted Keywords - Requirements:', analysis.extractedKeywords.requirements ? analysis.extractedKeywords.requirements.length : 0);
-        console.log('Extracted Keywords - Responsibilities:', analysis.extractedKeywords.responsibilities ? analysis.extractedKeywords.responsibilities.length : 0);
-        if (analysis.extractedKeywords.requirements) {
-          console.log('Requirements Keywords Sample:', JSON.stringify(analysis.extractedKeywords.requirements.slice(0, 10), null, 2));
-        }
-        if (analysis.extractedKeywords.responsibilities) {
-          console.log('Responsibilities Keywords Sample:', JSON.stringify(analysis.extractedKeywords.responsibilities.slice(0, 10), null, 2));
-        }
-      }
-      
-      if (analysis.bulletKeywords) {
-        console.log('Bullet Keywords Count:', Object.keys(analysis.bulletKeywords).length);
-        Object.entries(analysis.bulletKeywords).forEach(([category, keywords]: [string, any]) => {
-          console.log(`${category} Keywords:`, Array.isArray(keywords) ? keywords.length : 0);
-        });
-      }
-      console.log('=== END KEYWORD DEBUG ===');
 
     } catch (parseError) {
-      console.error('JSON parsing failed:', parseError);
-      console.error('OpenAI Response Text:', responseText);
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      console.error('Extracted JSON Match:', jsonMatch ? jsonMatch[0] : 'No JSON match found');
-      throw new Error('Failed to parse analysis results');
+      console.error('analyze-job-fit: JSON parsing failed:', parseError);
+      
+      if (parseError instanceof SyntaxError) {
+        throw new AnalysisError('Invalid JSON in AI response', 'JSON_PARSE_ERROR', 500, true);
+      }
+      throw parseError;
     }
+
+    // Enhanced scoring calculation
+    if (analysis.jobRequirements && analysis.matchedRequirements) {
+      const { score: recalculatedScore, breakdown, weakExperiences } = calculateJobFitScore(
+        analysis.matchedRequirements,
+        analysis.jobRequirements
+      );
+
+      // Update with calculated score
+      analysis.fitAssessment = analysis.fitAssessment || {};
+      analysis.fitAssessment.overallScore = recalculatedScore;
+      analysis.fitAssessment.categoryBreakdown = breakdown;
+      analysis.fitAssessment.calculatedScore = true;
+
+      // Determine fit level
+      const score = recalculatedScore;
+      if (score >= SCORING_CONFIG.FIT_THRESHOLDS.excellent) analysis.fitAssessment.fitLevel = "Excellent";
+      else if (score >= SCORING_CONFIG.FIT_THRESHOLDS.strong) analysis.fitAssessment.fitLevel = "Strong";
+      else if (score >= SCORING_CONFIG.FIT_THRESHOLDS.good) analysis.fitAssessment.fitLevel = "Good";
+      else if (score >= SCORING_CONFIG.FIT_THRESHOLDS.fair) analysis.fitAssessment.fitLevel = "Fair";
+      else analysis.fitAssessment.fitLevel = "Poor";
+
+      // Add weak experiences for scores below 80%
+      if (recalculatedScore < 80 && weakExperiences.length > 0) {
+        analysis.weakEvidenceExperiences = {
+          message: "Score could improve with stronger evidence for these experiences:",
+          experiences: weakExperiences.slice(0, 5).map((weak: any) => ({
+            experienceIdentifier: weak.experienceContext || 'Unknown Experience',
+            requirement: weak.requirement,
+            currentEvidence: weak.evidence,
+            evidenceStrength: weak.evidenceStrength
+          })),
+          suggestion: "Add specific metrics, outcomes, or detailed examples to strengthen evidence."
+        };
+      }
+
+      // Enhanced experience grouping
+      if (analysis.relevantExperiences) {
+        const experienceIdsByRole: any = {};
+        
+        analysis.relevantExperiences.forEach((exp: any) => {
+          const roleKey = `${exp.companyName}-${exp.roleTitle}`;
+          
+          if (!experienceIdsByRole[roleKey]) {
+            experienceIdsByRole[roleKey] = {
+              company: exp.companyName,
+              roleTitle: exp.roleTitle,
+              specialty: exp.specialty || null,
+              experienceIds: []
+            };
+          }
+          
+          experienceIdsByRole[roleKey].experienceIds.push(exp.id);
+        });
+        
+        // Sort and limit experiences per role
+        Object.keys(experienceIdsByRole).forEach(roleKey => {
+          const roleExperiences = analysis.relevantExperiences
+            .filter((exp: any) => {
+              const expRoleKey = `${exp.companyName}-${exp.roleTitle}`;
+              return expRoleKey === roleKey;
+            })
+            .sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+            .slice(0, 6);
+          
+          experienceIdsByRole[roleKey].experienceIds = roleExperiences.map((exp: any) => exp.id);
+        });
+        
+        analysis.experienceIdsByRole = experienceIdsByRole;
+      }
+
+      // Enhanced action planning
+      const criticalGaps = analysis.unmatchedRequirements?.filter((req: any) => req.importance === 'critical') || [];
+      
+      analysis.actionPlan = {
+        priority: recalculatedScore >= 60 ? "application_ready" : "improve_job_fit",
+        focus: criticalGaps.length > 0 ? "critical_gaps" : "general_improvement",
+        criticalGaps: criticalGaps.map((gap: any) => gap.requirement),
+        suggestedActions: analysis.recommendations?.forCandidate || [],
+        readyForApplication: recalculatedScore >= 60,
+        readyForBulletGeneration: recalculatedScore >= 80,
+        experienceIds: analysis.relevantExperiences?.map((exp: any) => exp.id) || []
+      };
+    }
+
+    console.log(`analyze-job-fit: Analysis completed successfully - ${analysis.fitAssessment?.overallScore || 0}% (${analysis.fitAssessment?.fitLevel || 'Unknown'})`);
 
     return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in job fit analysis:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    console.error('Error name:', error instanceof Error ? error.name : 'Unknown error type');
-    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('analyze-job-fit: Error occurred:', error);
+    
+    // Enhanced error response
+    let statusCode = 500;
+    let errorMessage = 'Analysis failed';
+    let errorCode = 'UNKNOWN_ERROR';
+    let retryable = false;
+    
+    if (error instanceof AnalysisError) {
+      statusCode = error.statusCode;
+      errorMessage = error.message;
+      errorCode = error.code;
+      retryable = error.retryable;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
     
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+      error: errorMessage,
+      code: errorCode,
+      retryable,
+      timestamp: new Date().toISOString(),
       details: error instanceof Error ? error.stack : String(error)
     }), {
-      status: 500,
+      status: statusCode,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
