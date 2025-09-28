@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 interface BulletPoint {
   text: string;
@@ -246,19 +247,18 @@ export const useResumeBullets = () => {
         title: 'Generation Failed',
         description: bulletError.message,
         variant: 'destructive',
-        ...(bulletError.details && {
-          action: {
-            altText: 'Details',
-            onClick: () => {
-              toast({
-                title: 'Error Details',
-                description: bulletError.details,
-                variant: 'destructive',
-              });
-            },
-          },
-        }),
       });
+      
+      // Show additional details if available
+      if (bulletError.details) {
+        setTimeout(() => {
+          toast({
+            title: 'Error Details',
+            description: bulletError.details,
+            variant: 'destructive',
+          });
+        }, 1000);
+      }
       
       return null;
       

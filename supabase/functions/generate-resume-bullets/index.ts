@@ -544,8 +544,8 @@ Return ONLY JSON (no markdown):
 
     console.log('Bullet generation completed successfully:', {
       companies: validatedBullets.bulletOrganization.length,
-      totalBullets: validatedBullets.bulletOrganization.reduce((acc, comp) => 
-        acc + comp.roles.reduce((roleAcc, role) => roleAcc + role.bulletPoints.length, 0), 0
+      totalBullets: validatedBullets.bulletOrganization.reduce((acc: number, comp: any) => 
+        acc + comp.roles.reduce((roleAcc: number, role: any) => roleAcc + role.bulletPoints.length, 0), 0
       ),
       keywordsUsed: validatedBullets.keywordsUsed.length,
       keywordsNotUsed: validatedBullets.keywordsNotUsed.length

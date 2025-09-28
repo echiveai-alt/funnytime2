@@ -148,7 +148,7 @@ const ResumeBulletPoints = () => {
       {isHighScore && resumeBullets ? (
         <>
           {/* Missing Keywords Section */}
-          {resumeBullets.missingKeywords && resumeBullets.missingKeywords.length > 0 && (
+          {resumeBullets.keywordsNotUsed && resumeBullets.keywordsNotUsed.length > 0 && (
             <Card className="shadow-soft border border-border/50 mb-8">
               <CardHeader>
                 <CardTitle className="text-xl font-semibold text-foreground">
@@ -157,7 +157,7 @@ const ResumeBulletPoints = () => {
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 <div className="flex flex-wrap gap-2">
-                  {resumeBullets.missingKeywords.map((keyword, index) => (
+                  {resumeBullets.keywordsNotUsed.map((keyword, index) => (
                     <Badge key={index} variant="outline" className="px-3 py-1">
                       {keyword}
                     </Badge>

@@ -218,7 +218,7 @@ export const useJobAnalysis = () => {
             title: 'Analysis Complete',
             description: 'Analysis completed but bullet generation failed. Showing detailed results.',
           });
-          navigate('/app/analysis-results');
+          navigate('/app/job-analysis-result');
         }
       } else {
         setAnalysisProgress(100);
@@ -234,7 +234,7 @@ export const useJobAnalysis = () => {
           description: 'Your job fit analysis is ready for review.',
         });
         
-        navigate('/app/analysis-results');
+        navigate('/app/job-analysis-result');
       }
 
       return data;
