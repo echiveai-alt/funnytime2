@@ -509,22 +509,39 @@ serve(async (req) => {
 
     console.log('analyze-job-fit: Calling OpenAI API...');
 
-    // Enhanced OpenAI API call with better error handling
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 4096,
-        temperature: 0,
-        seed: parseInt(consistencyHash.slice(0, 8), 16) % 2147483647,
-        timeout: 60000 // 60 second timeout
-      })
-    });
+    // Enhanced OpenAI API call with proper timeout handling
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    
+    let openaiResponse;
+    try {
+      openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiApiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 4096,
+          temperature: 0,
+          seed: parseInt(consistencyHash.slice(0, 8), 16) % 2147483647
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError.name === 'AbortError') {
+        throw new AnalysisError('OpenAI API request timed out', 'API_TIMEOUT', 504, true);
+      }
+      
+      throw new AnalysisError(`Network error: ${fetchError.message}`, 'NETWORK_ERROR', 500, true);
+    }
 
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text();
