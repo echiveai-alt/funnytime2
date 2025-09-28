@@ -58,42 +58,73 @@ class AnalysisError extends Error {
   }
 }
 
-// FIXED: Deterministic scoring function with proper field alignment
+// DIAGNOSTIC VERSION: Deterministic scoring function with extensive logging
 function calculateJobFitScore(
   matches: any[], 
   jobRequirements: any[]
 ): { score: number, breakdown: any, weakExperiences: any[] } {
+  console.log('=== DIAGNOSTIC SCORING ANALYSIS ===');
+  console.log('Total job requirements:', jobRequirements.length);
+  console.log('Total matches found:', matches.length);
+  
   let totalPossibleScore = 0;
   let achievedScore = 0;
   const breakdown: any = {};
   const weakExperiences: any[] = [];
 
-  // Initialize breakdown by category - FIXED: Add both score and percentage fields
+  // Initialize breakdown by category
   Object.keys(SCORING_CONFIG.WEIGHTS).forEach(category => {
     breakdown[category] = { 
       possible: 0, 
       achieved: 0, 
-      score: 0,        // Frontend expects this field
-      percentage: 0    // Keep for backwards compatibility
+      score: 0,
+      percentage: 0,
+      requirementCount: 0,  // Add this to track how many requirements per category
+      matchCount: 0
     };
   });
 
-  // Group requirements by category
+  // Group requirements by category WITH DIAGNOSTIC LOGGING
   const requirementsByCategory: any = {};
+  const categoryStats: any = {};
+  
   jobRequirements.forEach((req: any) => {
-    if (!requirementsByCategory[req.category]) {
-      requirementsByCategory[req.category] = [];
+    const category = req.category;
+    
+    if (!requirementsByCategory[category]) {
+      requirementsByCategory[category] = [];
+      categoryStats[category] = 0;
     }
-    requirementsByCategory[req.category].push(req);
+    requirementsByCategory[category].push(req);
+    categoryStats[category]++;
   });
+
+  console.log('Requirements by category:');
+  Object.entries(categoryStats).forEach(([cat, count]) => {
+    const hasWeight = SCORING_CONFIG.WEIGHTS.hasOwnProperty(cat);
+    const weight = (SCORING_CONFIG.WEIGHTS as any)[cat] || 0.1;
+    console.log(`  - ${cat}: ${count} requirements (weight: ${weight}, recognized: ${hasWeight})`);
+  });
+
+  // Check for category mismatches
+  const unrecognizedCategories = Object.keys(categoryStats).filter(cat => 
+    !SCORING_CONFIG.WEIGHTS.hasOwnProperty(cat)
+  );
+  if (unrecognizedCategories.length > 0) {
+    console.warn('UNRECOGNIZED CATEGORIES DETECTED:', unrecognizedCategories);
+    console.warn('These will get default weight of 0.1, which may cause low scores');
+  }
 
   // Calculate scores for each category
   Object.entries(requirementsByCategory).forEach(([category, requirements]: [string, any]) => {
     const categoryWeight = (SCORING_CONFIG.WEIGHTS as any)[category] || 0.1;
     let categoryPossible = 0;
     let categoryAchieved = 0;
+    let categoryMatches = 0;
+    
+    console.log(`\nProcessing category: ${category} (${(requirements as any[]).length} requirements, weight: ${categoryWeight})`);
 
-    (requirements as any[]).forEach((req: any) => {
+    (requirements as any[]).forEach((req: any, index: number) => {
       const importanceMultiplier = (SCORING_CONFIG.IMPORTANCE_MULTIPLIERS as any)[req.importance] || 0.5;
       const maxReqScore = categoryWeight * importanceMultiplier * 100;
       categoryPossible += maxReqScore;
@@ -101,7 +132,12 @@ function calculateJobFitScore(
 
       // Find matching experience for this requirement
       const match = matches.find(m => m.jobRequirement === req.requirement);
+      
+      console.log(`  Req ${index + 1}: "${req.requirement}" (${req.importance})`);
+      console.log(`    Max possible score: ${maxReqScore.toFixed(2)}`);
+      
       if (match) {
+        categoryMatches++;
         const matchTypeScore = (SCORING_CONFIG.MATCH_TYPE_SCORES as any)[match.matchType] || 0.5;
         const evidenceScore = (SCORING_CONFIG.EVIDENCE_MULTIPLIERS as any)[match.evidenceStrength] || 0.3;
         
@@ -117,32 +153,48 @@ function calculateJobFitScore(
         const achievedReqScore = maxReqScore * matchTypeScore * evidenceScore;
         categoryAchieved += achievedReqScore;
         achievedScore += achievedReqScore;
+        
+        console.log(`    ✓ MATCHED: Evidence strength: ${match.evidenceStrength} (${evidenceScore}), Match type: ${match.matchType} (${matchTypeScore})`);
+        console.log(`    Achieved score: ${achievedReqScore.toFixed(2)}`);
+      } else {
+        console.log(`    ✗ NO MATCH FOUND`);
       }
     });
 
-    // FIXED: Calculate both score and percentage properly
+    // Calculate category score
     const categoryPercentage = categoryPossible > 0 ? Math.round((categoryAchieved / categoryPossible) * 100) : 0;
     
-    breakdown[category] = {
-      possible: Math.round(categoryPossible),
-      achieved: Math.round(categoryAchieved),
-      score: categoryPercentage,        // This is what the frontend expects
-      percentage: categoryPercentage    // Keep this for backwards compatibility
-    };
+    console.log(`Category ${category} summary:`);
+    console.log(`  - Requirements: ${(requirements as any[]).length}`);
+    console.log(`  - Matches found: ${categoryMatches}`);
+    console.log(`  - Possible score: ${categoryPossible.toFixed(2)}`);
+    console.log(`  - Achieved score: ${categoryAchieved.toFixed(2)}`);
+    console.log(`  - Percentage: ${categoryPercentage}%`);
+    
+    // Update breakdown - only for recognized categories
+    if (SCORING_CONFIG.WEIGHTS.hasOwnProperty(category)) {
+      breakdown[category] = {
+        possible: Math.round(categoryPossible),
+        achieved: Math.round(categoryAchieved),
+        score: categoryPercentage,
+        percentage: categoryPercentage,
+        requirementCount: (requirements as any[]).length,
+        matchCount: categoryMatches
+      };
+    } else {
+      console.warn(`Category ${category} not in SCORING_CONFIG.WEIGHTS - will not appear in breakdown`);
+    }
   });
 
   const finalScore = totalPossibleScore > 0 ? Math.min(100, Math.round((achievedScore / totalPossibleScore) * 100)) : 0;
   
-  console.log('Score calculation results:', {
-    finalScore,
-    totalPossible: totalPossibleScore,
-    achievedScore,
-    breakdown: Object.entries(breakdown).map(([cat, data]: [string, any]) => ({ 
-      category: cat, 
-      score: data.score, 
-      possible: data.possible, 
-      achieved: data.achieved 
-    }))
+  console.log('\n=== FINAL SCORING SUMMARY ===');
+  console.log('Overall score:', finalScore);
+  console.log('Total possible score:', totalPossibleScore.toFixed(2));
+  console.log('Total achieved score:', achievedScore.toFixed(2));
+  console.log('Category breakdown summary:');
+  Object.entries(breakdown).forEach(([cat, data]: [string, any]) => {
+    console.log(`  ${cat}: ${data.score}% (${data.requirementCount} reqs, ${data.matchCount} matches)`);
   });
   
   return { score: finalScore, breakdown, weakExperiences };
