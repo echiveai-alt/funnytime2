@@ -11,8 +11,8 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useJobAnalysis } from "@/hooks/useJobAnalysis";
 
-// Simplified interface matching the new backend response
-interface SimplifiedAnalysisResult {
+// Unified interface matching the new backend response
+interface UnifiedAnalysisResult {
   overallScore: number;
   fitLevel: string;
   isFit: boolean;
@@ -29,19 +29,20 @@ interface SimplifiedAnalysisResult {
     requirement: string;
     importance: string;
   }>;
-  gaps?: string[];
+  // Only if not fit
   criticalGaps?: string[];
   recommendations?: {
     forCandidate: string[];
   };
-  // Only present if fit
-  experienceIdsByRole?: Record<string, any>;
+  // Only if fit
   bulletKeywords?: Record<string, string[]>;
-  fitAssessment?: {
-    overallScore: number;
-    fitLevel: string;
+  bulletPoints?: Record<string, any[]>;
+  resumeBullets?: {
+    bulletOrganization: any[];
+    keywordsUsed: string[];
+    keywordsNotUsed: string[];
   };
-  actionPlan?: {
+  actionPlan: {
     readyForApplication: boolean;
     readyForBulletGeneration: boolean;
     criticalGaps?: string[];
