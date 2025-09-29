@@ -328,7 +328,15 @@ serve(async (req) => {
       const companyRoleMap: Record<string, any[]> = {};
       
       Object.entries(processedBullets).forEach(([roleKey, bullets]: [string, any]) => {
-        const [company, role] = roleKey.split(' - ');
+        // Split on ' - ' to get company and role
+        const dashIndex = roleKey.indexOf(' - ');
+        if (dashIndex === -1) {
+          console.error(`Invalid roleKey format: ${roleKey}`);
+          return;
+        }
+        
+        const company = roleKey.substring(0, dashIndex).trim();
+        const role = roleKey.substring(dashIndex + 3).trim();
         
         if (!companyRoleMap[company]) {
           companyRoleMap[company] = [];
@@ -339,6 +347,12 @@ serve(async (req) => {
           bulletPoints: bullets
         });
       });
+
+      console.log('Company-Role mapping:', Object.keys(companyRoleMap).map(company => ({
+        company,
+        roleCount: companyRoleMap[company].length,
+        roles: companyRoleMap[company].map(r => r.title)
+      })));
 
       const bulletOrganization = Object.entries(companyRoleMap).map(([company, roles]) => ({
         name: company,
