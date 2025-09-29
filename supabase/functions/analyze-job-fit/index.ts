@@ -82,8 +82,8 @@ BULLET GENERATION (ONLY IF SCORE >= 80%):
 - Create up to ${CONSTANTS.MAX_BULLETS_PER_ROLE} bullets per role (or one per experience if fewer than 8 experiences for that role)
 - Order bullets from most relevant to least relevant based on job description alignment
 - Use one of these structures (in highest priority to low):
-  * "Result (with numbers if available) + Action verb + context (from situation and task)"
-  * "Action verb + context (from situation and task) + quantified result"
+  * "Result (with numbers if available) + Action verb + context (can be from situation, task, and action)"
+  * "Action verb + context (can be from situation, task, and action) + quantified result"
   * "Result (with numbers if available) + Action verb"
 - Target visual width: ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (acceptable range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
 - IMPORTANT: Generate bullets even if they fall outside the target range - we will display them with warnings
