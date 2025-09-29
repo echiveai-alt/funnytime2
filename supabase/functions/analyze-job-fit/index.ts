@@ -10,7 +10,9 @@ const corsHeaders = {
 const CONSTANTS = {
   FIT_THRESHOLD: 80,
   MAX_BULLETS_PER_ROLE: 8,
-  VISUAL_WIDTH_LIMIT: 179,
+  VISUAL_WIDTH_MIN: 150,
+  VISUAL_WIDTH_MAX: 179,
+  VISUAL_WIDTH_TARGET: 165,
 } as const;
 
 class AnalysisError extends Error {
@@ -83,7 +85,8 @@ BULLET GENERATION (ONLY IF SCORE >= 80%):
   * "Result (with numbers if available) + Action verb + context"
   * "Action verb + context + quantified result"
   * "Result (with numbers if available) + Action verb"
-- Keep each bullet under ${CONSTANTS.VISUAL_WIDTH_LIMIT} visual characters
+- Target visual width: ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (acceptable range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
+- IMPORTANT: Generate bullets even if they fall outside the target range - we will display them with warnings
 - KEYWORD MATCHING: ${keywordInstruction}
 - Use ONLY real information from experiences - never invent details
 - Embed keywords naturally where supported by experience
@@ -113,7 +116,7 @@ IF SCORE >= 80%:
   "bulletPoints": {
     "Company Name - Role Title": [
       {
-        "text": "bullet point text under ${CONSTANTS.VISUAL_WIDTH_LIMIT} visual chars",
+        "text": "bullet point text (create even if outside target range)",
         "experienceId": "exp_id",
         "keywordsUsed": ["keywords in this bullet"],
         "relevanceScore": 10
@@ -262,10 +265,15 @@ serve(async (req) => {
 
         processedBullets[roleKey] = sortedBullets.map((bullet: any) => {
           const visualWidth = calculateVisualWidth(bullet.text);
+          const isWithinRange = visualWidth >= CONSTANTS.VISUAL_WIDTH_MIN && 
+                                visualWidth <= CONSTANTS.VISUAL_WIDTH_MAX;
+          
           return {
             text: bullet.text,
             visualWidth: Math.round(visualWidth),
-            exceedsWidth: visualWidth > CONSTANTS.VISUAL_WIDTH_LIMIT,
+            exceedsMax: visualWidth > CONSTANTS.VISUAL_WIDTH_MAX,
+            belowMin: visualWidth < CONSTANTS.VISUAL_WIDTH_MIN,
+            isWithinRange: isWithinRange,
             experienceId: bullet.experienceId,
             keywordsUsed: bullet.keywordsUsed || [],
             relevanceScore: bullet.relevanceScore || 0
@@ -294,7 +302,12 @@ serve(async (req) => {
         generatedFrom: {
           totalExperiences: experiences.length,
           keywordMatchType: keywordMatchType,
-          scoreThreshold: CONSTANTS.FIT_THRESHOLD
+          scoreThreshold: CONSTANTS.FIT_THRESHOLD,
+          visualWidthRange: {
+            min: CONSTANTS.VISUAL_WIDTH_MIN,
+            max: CONSTANTS.VISUAL_WIDTH_MAX,
+            target: CONSTANTS.VISUAL_WIDTH_TARGET
+          }
         }
       };
     }
