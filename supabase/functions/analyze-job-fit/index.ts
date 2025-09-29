@@ -43,27 +43,38 @@ function calculateVisualWidth(text: string): number {
   return score;
 }
 
-function createUnifiedPrompt(jobDescription: string, experiences: any[], keywordMatchType: string): string {
+function createUnifiedPrompt(
+  jobDescription: string, 
+  experiencesByRole: Record<string, any[]>, 
+  keywordMatchType: string
+): string {
   const keywordInstruction = keywordMatchType === 'exact' 
     ? 'Use keywords EXACTLY as they appear in the job description'
     : 'Use keywords and their variations (different tenses, forms, related terms like "managed" for "led", "collaborated" for "worked with")';
+
+  const experiencesText = Object.entries(experiencesByRole)
+    .map(([roleKey, exps]) => {
+      return `
+=== ${roleKey} ===
+Number of experiences for this role: ${exps.length}
+${exps.map((exp, i) => `
+  Experience ${i + 1}:
+  - ID: ${exp.id}
+  - Title: ${exp.title}
+  - Action: ${exp.action}
+  - Result: ${exp.result}
+  ${exp.situation ? `- Context: ${exp.situation}` : ''}
+  ${exp.task ? `- Task: ${exp.task}` : ''}
+`).join('')}`;
+    }).join('\n');
 
   return `You are a professional resume analyzer and writer. Analyze if the candidate matches the job, and if they score 80% or higher, generate optimized resume bullets.
 
 JOB DESCRIPTION:
 ${jobDescription}
 
-CANDIDATE EXPERIENCES:
-${experiences.map((exp, i) => `
-${i + 1}. ID: ${exp.id}
-   Company: ${exp.company}
-   Role: ${exp.role}
-   Title: ${exp.title}
-   Action: ${exp.action}
-   Result: ${exp.result}
-   ${exp.situation ? `Context: ${exp.situation}` : ''}
-   ${exp.task ? `Task: ${exp.task}` : ''}
-`).join('')}
+CANDIDATE EXPERIENCES (GROUPED BY ROLE):
+${experiencesText}
 
 SCORING METHODOLOGY:
 1. Extract ALL keywords and requirements from job description (skills, tools, technologies, qualifications, responsibilities)
@@ -79,11 +90,18 @@ KEYWORD EXTRACTION:
 - For scores < 80%: divide keywords into "matchable" (found in experiences) and "unmatchable" (not found)
 
 BULLET GENERATION (ONLY IF SCORE >= 80%):
-- Create up to ${CONSTANTS.MAX_BULLETS_PER_ROLE} bullets per role (or one per experience if fewer than 8 experiences for that role)
+CRITICAL RULES:
+1. Create SEPARATE entries for EACH unique "Company Name - Role Title" combination shown above
+2. For each role, generate bullets ONLY from experiences that belong to that specific role
+3. Generate one bullet per experience in that role (up to maximum of ${CONSTANTS.MAX_BULLETS_PER_ROLE})
+4. IMPORTANT: If a role has 7 experiences, create 7 bullets. If it has 3 experiences, create 3 bullets.
+5. Each bullet MUST use the experienceId from the specific experience it's based on
+
+FORMATTING:
 - Order bullets from most relevant to least relevant based on job description alignment
-- Use one of these structures (in highest priority to low):
-  * "Result (with numbers if available) + Action verb + context (can be from situation, task, and action)"
-  * "Action verb + context (can be from situation, task, and action) + quantified result"
+- Use one of these structures:
+  * "Result (with numbers if available) + Action verb + context"
+  * "Action verb + context + quantified result"
   * "Result (with numbers if available) + Action verb"
 - Target visual width: ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (acceptable range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
 - IMPORTANT: Generate bullets even if they fall outside the target range - we will display them with warnings
@@ -116,10 +134,18 @@ IF SCORE >= 80%:
   "bulletPoints": {
     "Company Name - Role Title": [
       {
-        "text": "bullet point text (create even if outside target range)",
-        "experienceId": "exp_id",
+        "text": "bullet point text",
+        "experienceId": "exp_id_from_that_role",
         "keywordsUsed": ["keywords in this bullet"],
         "relevanceScore": 10
+      }
+    ],
+    "Another Company - Another Role": [
+      {
+        "text": "another bullet",
+        "experienceId": "exp_id_from_this_other_role",
+        "keywordsUsed": ["keywords"],
+        "relevanceScore": 9
       }
     ]
   },
@@ -206,17 +232,32 @@ serve(async (req) => {
       throw new AnalysisError('No experiences found', 'NO_EXPERIENCES', 400);
     }
 
-    // Format experiences
+    // Format experiences with explicit role grouping
     const formattedExperiences = experiences.map(exp => ({
       id: exp.id,
       company: exp.roles.companies.name,
       role: exp.roles.title,
+      roleKey: `${exp.roles.companies.name} - ${exp.roles.title}`, // Add explicit role key
       title: exp.title,
       action: exp.action,
       result: exp.result,
       situation: exp.situation,
       task: exp.task
     }));
+
+    // Group experiences by role for the prompt
+    const experiencesByRole = formattedExperiences.reduce((acc, exp) => {
+      if (!acc[exp.roleKey]) {
+        acc[exp.roleKey] = [];
+      }
+      acc[exp.roleKey].push(exp);
+      return acc;
+    }, {} as Record<string, typeof formattedExperiences>);
+
+    console.log('Experiences grouped by role:', Object.keys(experiencesByRole).map(key => ({
+      role: key,
+      count: experiencesByRole[key].length
+    })));
 
     // Call OpenAI with unified prompt
     console.log('Calling OpenAI with unified analysis and generation...');
@@ -231,7 +272,7 @@ serve(async (req) => {
         model: 'gpt-4o-mini',
         messages: [{ 
           role: 'user', 
-          content: createUnifiedPrompt(jobDescription.trim(), formattedExperiences, keywordMatchType)
+          content: createUnifiedPrompt(jobDescription.trim(), experiencesByRole, keywordMatchType)
         }],
         max_tokens: 4000,
         temperature: 0.1
