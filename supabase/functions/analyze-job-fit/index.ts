@@ -4,14 +4,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-keyword-match-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simplified constants
 const CONSTANTS = {
   FIT_THRESHOLD: 80,
   MAX_BULLETS_PER_ROLE: 6,
+  VISUAL_WIDTH_LIMIT: 179,
 } as const;
 
 class AnalysisError extends Error {
@@ -25,7 +24,24 @@ class AnalysisError extends Error {
   }
 }
 
-// Simple fit calculation - just count matched vs total requirements
+// Visual width calculation
+function calculateVisualWidth(text: string): number {
+  let score = 0;
+  for (const char of text) {
+    if (char === ' ') score += 0.55;
+    else if (['W', 'M', '@', '%', '&'].includes(char)) score += 1.25;
+    else if (['m', 'w', 'Q', 'G', 'O', 'D', 'B', 'H', 'N', 'U', 'A', 'K', 'R'].includes(char)) score += 1.15;
+    else if (['i', 'l', 'j', 't', 'f', 'r', 'I', 'J', '1', '!', ';', ':', '.', ',', "'", '"', '`', '|', '/'].includes(char)) score += 0.55;
+    else if (char === '-') score += 0.70;
+    else if (['0', '2', '3', '4', '5', '6', '7', '8', '9'].includes(char)) score += 1.00;
+    else if (char >= 'A' && char <= 'Z') score += 1.10;
+    else if (char >= 'a' && char <= 'z') score += 1.00;
+    else score += 0.80;
+  }
+  return score;
+}
+
+// Simple fit calculation
 function calculateFitScore(matchedRequirements: any[], totalRequirements: any[]): number {
   if (!totalRequirements || totalRequirements.length === 0) return 0;
   
@@ -44,19 +60,21 @@ function calculateFitScore(matchedRequirements: any[], totalRequirements: any[])
   return Math.round((matchedRequirements.length / totalRequirements.length) * 100);
 }
 
-function createSimplifiedPrompt(jobDescription: string, experiences: any[], keywordMatchType: string): string {
+function createUnifiedPrompt(jobDescription: string, experiences: any[], keywordMatchType: string): string {
   const keywordInstruction = keywordMatchType === 'exact' 
     ? 'Use keywords EXACTLY as they appear in the job description'
     : 'Use keywords and their variations (different tenses, forms, related terms)';
 
-  return `You are a professional resume analyzer. Analyze if the candidate's experiences match the job requirements.
+  return `You are a professional resume analyzer and writer. Analyze if the candidate matches the job, and if they score 80% or higher, generate optimized resume bullets.
 
 JOB DESCRIPTION:
 ${jobDescription}
 
 CANDIDATE EXPERIENCES:
 ${experiences.map((exp, i) => `
-${i + 1}. ${exp.company} - ${exp.role}
+${i + 1}. ID: ${exp.id}
+   Company: ${exp.company}
+   Role: ${exp.role}
    Title: ${exp.title}
    Action: ${exp.action}
    Result: ${exp.result}
@@ -64,51 +82,74 @@ ${i + 1}. ${exp.company} - ${exp.role}
    ${exp.task ? `Task: ${exp.task}` : ''}
 `).join('')}
 
-ANALYSIS REQUIREMENTS:
+ANALYSIS INSTRUCTIONS:
 1. Extract specific job requirements (skills, tools, experience levels, certifications)
 2. Mark importance: critical (must-have), high (preferred), medium (nice-to-have), low (bonus)
-3. Find which requirements match the candidate's experiences
-4. Extract keywords for resume optimization
+3. Match requirements to candidate's experiences
+4. Calculate fit score as: (matched requirements / total requirements) * 100
+5. If missing critical requirements, cap score at 70%
 
-KEYWORD MATCHING: ${keywordInstruction}
+BULLET GENERATION (ONLY IF SCORE >= 80%):
+- Create up to ${CONSTANTS.MAX_BULLETS_PER_ROLE} bullets per role
+- Structure: "Action verb + context + quantified result"
+- Keep each bullet under ${CONSTANTS.VISUAL_WIDTH_LIMIT} visual characters
+- KEYWORD MATCHING: ${keywordInstruction}
+- Use ONLY real information from experiences - never invent details
+- Embed keywords naturally where supported by experience
 
-Return JSON in this exact format:
+Return JSON in this EXACT format:
+
+IF SCORE >= 80%:
 {
+  "overallScore": 85,
+  "isFit": true,
+  "fitLevel": "Good",
   "jobRequirements": [
-    {
-      "requirement": "specific requirement text",
-      "importance": "critical|high|medium|low"
-    }
+    {"requirement": "text", "importance": "critical|high|medium|low"}
   ],
   "matchedRequirements": [
     {
       "jobRequirement": "requirement text",
-      "experienceEvidence": "evidence from candidate experience",
+      "experienceEvidence": "evidence from experience",
       "experienceSource": "Company - Role: Experience Title"
     }
   ],
   "unmatchedRequirements": [
-    {
-      "requirement": "requirement text", 
-      "importance": "importance level"
-    }
+    {"requirement": "text", "importance": "level"}
   ],
-  "resumeKeywords": {
-    "technical": ["technical terms from job"],
-    "skills": ["skill keywords"], 
-    "industry": ["industry-specific terms"],
-    "action": ["action verbs"],
+  "bulletKeywords": {
+    "technical": ["terms"],
+    "skills": ["skills"],
+    "industry": ["terms"],
+    "action": ["verbs"],
     "metrics": ["quantifiable terms"]
   },
-  "experiencesByRole": {
+  "bulletPoints": {
     "Company Name - Role Title": [
       {
-        "id": "experience_id",
-        "title": "experience title",
-        "action": "action taken",
-        "result": "result achieved",
-        "relevanceScore": 85
+        "text": "bullet point text under ${CONSTANTS.VISUAL_WIDTH_LIMIT} visual chars",
+        "experienceId": "exp_id",
+        "keywordsUsed": ["keywords in this bullet"]
       }
+    ]
+  },
+  "keywordsUsed": ["all keywords successfully embedded"],
+  "keywordsNotUsed": ["keywords that couldn't fit naturally"]
+}
+
+IF SCORE < 80%:
+{
+  "overallScore": 65,
+  "isFit": false,
+  "fitLevel": "Poor",
+  "jobRequirements": [...],
+  "matchedRequirements": [...],
+  "unmatchedRequirements": [...],
+  "criticalGaps": ["critical requirements missing"],
+  "recommendations": {
+    "forCandidate": [
+      "Add relevant experience in missing areas",
+      "Consider training in critical requirements"
     ]
   }
 }`;
@@ -148,18 +189,13 @@ serve(async (req) => {
     // Get request data
     const { jobDescription } = await req.json();
     
-    if (!jobDescription?.trim()) {
-      throw new AnalysisError('Job description is required', 'MISSING_JOB_DESCRIPTION', 400);
+    if (!jobDescription?.trim() || jobDescription.trim().length < 50) {
+      throw new AnalysisError('Job description too short for analysis', 'INVALID_INPUT', 400);
     }
 
-    if (jobDescription.trim().length < 50) {
-      throw new AnalysisError('Job description too short for analysis', 'JOB_DESCRIPTION_TOO_SHORT', 400);
-    }
-
-    // Get keyword matching preference
     const keywordMatchType = req.headers.get('x-keyword-match-type') || 'exact';
 
-    console.log(`Starting simplified analysis for user ${user.id}`);
+    console.log(`Starting unified analysis for user ${user.id}`);
 
     // Fetch user experiences
     const { data: experiences, error: expError } = await supabase
@@ -168,8 +204,6 @@ serve(async (req) => {
         *,
         roles!inner(
           title,
-          start_date,
-          end_date,
           companies!inner(name)
         )
       `)
@@ -179,7 +213,7 @@ serve(async (req) => {
       throw new AnalysisError('No experiences found', 'NO_EXPERIENCES', 400);
     }
 
-    // Format experiences simply
+    // Format experiences
     const formattedExperiences = experiences.map(exp => ({
       id: exp.id,
       company: exp.roles.companies.name,
@@ -191,8 +225,8 @@ serve(async (req) => {
       task: exp.task
     }));
 
-    // Call OpenAI
-    console.log('Calling OpenAI with simplified prompt...');
+    // Call OpenAI with unified prompt
+    console.log('Calling OpenAI with unified analysis and generation...');
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -204,9 +238,9 @@ serve(async (req) => {
         model: 'gpt-4o-mini',
         messages: [{ 
           role: 'user', 
-          content: createSimplifiedPrompt(jobDescription.trim(), formattedExperiences, keywordMatchType)
+          content: createUnifiedPrompt(jobDescription.trim(), formattedExperiences, keywordMatchType)
         }],
-        max_tokens: 3000,
+        max_tokens: 4000,
         temperature: 0.1
       })
     });
@@ -226,78 +260,67 @@ serve(async (req) => {
 
     const analysis = JSON.parse(jsonMatch[0]);
 
-    // Calculate simple fit score
-    const fitScore = calculateFitScore(
-      analysis.matchedRequirements || [], 
-      analysis.jobRequirements || []
-    );
+    // Validate and process bullet points if fit
+    if (analysis.isFit && analysis.bulletPoints) {
+      const processedBullets: any = {};
+      
+      Object.entries(analysis.bulletPoints).forEach(([roleKey, bullets]: [string, any]) => {
+        processedBullets[roleKey] = bullets.map((bullet: any) => {
+          const visualWidth = calculateVisualWidth(bullet.text);
+          return {
+            text: bullet.text,
+            visualWidth: Math.round(visualWidth),
+            exceedsWidth: visualWidth > CONSTANTS.VISUAL_WIDTH_LIMIT,
+            experienceId: bullet.experienceId,
+            keywordsUsed: bullet.keywordsUsed || []
+          };
+        });
+      });
 
-    const isFit = fitScore >= CONSTANTS.FIT_THRESHOLD;
+      analysis.bulletPoints = processedBullets;
 
-    // Prepare response based on fit status
-    let result: any = {
-      overallScore: fitScore,
-      fitLevel: isFit ? 'Good' : 'Poor',
-      isFit: isFit,
-      jobRequirements: analysis.jobRequirements || [],
-      matchedRequirements: analysis.matchedRequirements || [],
-      unmatchedRequirements: analysis.unmatchedRequirements || [],
-    };
+      // Format for frontend compatibility
+      const bulletOrganization = Object.entries(processedBullets).map(([roleKey, bullets]: [string, any]) => {
+        const [company, role] = roleKey.split(' - ');
+        return {
+          name: company,
+          roles: [{
+            title: role,
+            bulletPoints: bullets
+          }]
+        };
+      });
 
-    if (isFit) {
-      // If fit: prepare for bullet generation
-      result = {
-        ...result,
-        // Data needed for bullet generation
-        experienceIdsByRole: analysis.experiencesByRole || {},
-        bulletKeywords: analysis.resumeKeywords || {},
-        // Ready for bullet generation
-        fitAssessment: {
-          overallScore: fitScore,
-          fitLevel: 'Good'
-        },
-        actionPlan: {
-          readyForApplication: true,
-          readyForBulletGeneration: true
-        }
-      };
-    } else {
-      // If not fit: provide gap analysis
-      const criticalGaps = analysis.unmatchedRequirements?.filter(
-        (req: any) => req.importance === 'critical'
-      ) || [];
-
-      result = {
-        ...result,
-        gaps: analysis.unmatchedRequirements?.map((req: any) => req.requirement) || [],
-        criticalGaps: criticalGaps.map((req: any) => req.requirement),
-        recommendations: {
-          forCandidate: [
-            'Add more relevant experience in missing skill areas',
-            'Consider training or certification in critical requirements',
-            'Highlight transferable skills more clearly in existing experiences'
-          ]
-        },
-        fitAssessment: {
-          overallScore: fitScore,
-          fitLevel: 'Poor'
-        },
-        actionPlan: {
-          readyForApplication: false,
-          readyForBulletGeneration: false,
-          criticalGaps: criticalGaps.map((req: any) => req.requirement)
+      analysis.resumeBullets = {
+        bulletOrganization,
+        keywordsUsed: analysis.keywordsUsed || [],
+        keywordsNotUsed: analysis.keywordsNotUsed || [],
+        generatedFrom: {
+          totalExperiences: experiences.length,
+          keywordMatchType: keywordMatchType,
+          scoreThreshold: CONSTANTS.FIT_THRESHOLD
         }
       };
     }
 
-    console.log(`Analysis completed: ${fitScore}% fit (${isFit ? 'PASS' : 'FAIL'})`);
+    // Add action plan
+    analysis.actionPlan = {
+      readyForApplication: analysis.isFit,
+      readyForBulletGeneration: analysis.isFit,
+      criticalGaps: analysis.criticalGaps || []
+    };
 
-    return new Response(JSON.stringify(result), {
+    console.log(`Analysis completed: ${analysis.overallScore}% (${analysis.isFit ? 'FIT' : 'NOT FIT'})`);
+    if (analysis.isFit) {
+      console.log('Bullets generated in same call');
+    }
+
+    return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Analysis error:', error);
+    console.error('Unified analysis error:', error);
     
     let statusCode = 500;
     let errorCode = 'UNKNOWN_ERROR';
@@ -308,7 +331,7 @@ serve(async (req) => {
     }
     
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: error.message,
       code: errorCode
     }), {
       status: statusCode,
