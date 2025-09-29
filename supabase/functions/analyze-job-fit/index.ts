@@ -161,25 +161,14 @@ serve(async (req) => {
   }
 
   try {
-    console.log('=== ANALYZE JOB FIT FUNCTION START ===');
-    console.log('Request method:', req.method);
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
-    
     // Environment validation
     const openaiApiKey = Deno.env.get('ANALYZE_JOB_FIT_OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing environment variables:', {
-        hasOpenAI: !!openaiApiKey,
-        hasSupabaseUrl: !!supabaseUrl,
-        hasServiceKey: !!supabaseServiceKey
-      });
       throw new AnalysisError('Missing required environment variables', 'CONFIG_ERROR', 500);
     }
-
-    console.log('Environment variables OK');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -208,74 +197,33 @@ serve(async (req) => {
 
     console.log(`Starting unified analysis for user ${user.id}`);
 
-    // Fetch user experiences with proper joins
-    console.log('Fetching experiences for user:', user.id);
-    
-    // First get experiences
-    const { data: experiencesData, error: expError } = await supabase
+    // Fetch user experiences
+    const { data: experiences, error: expError } = await supabase
       .from('experiences')
-      .select('*')
+      .select(`
+        *,
+        roles!inner(
+          title,
+          companies!inner(name)
+        )
+      `)
       .eq('user_id', user.id);
 
-    if (expError) {
-      console.error('Experiences query error:', expError);
-      throw new AnalysisError(`Database error: ${expError.message}`, 'DATABASE_ERROR', 500);
-    }
-
-    if (!experiencesData?.length) {
-      console.log('No experiences found for user');
+    if (expError || !experiences?.length) {
       throw new AnalysisError('No experiences found', 'NO_EXPERIENCES', 400);
     }
 
-    // Get roles for these experiences
-    const roleIds = [...new Set(experiencesData.map(exp => exp.role_id))];
-    const { data: rolesData, error: rolesError } = await supabase
-      .from('roles')
-      .select('id, title, company_id')
-      .in('id', roleIds);
-
-    if (rolesError) {
-      console.error('Roles query error:', rolesError);
-      throw new AnalysisError(`Database error: ${rolesError.message}`, 'DATABASE_ERROR', 500);
-    }
-
-    // Get companies for these roles
-    const companyIds = [...new Set(rolesData?.map(role => role.company_id) || [])];
-    const { data: companiesData, error: companiesError } = await supabase
-      .from('companies')
-      .select('id, name')
-      .in('id', companyIds);
-
-    if (companiesError) {
-      console.error('Companies query error:', companiesError);
-      throw new AnalysisError(`Database error: ${companiesError.message}`, 'DATABASE_ERROR', 500);
-    }
-
-    // Create lookup maps
-    const rolesMap = new Map(rolesData?.map(role => [role.id, role]) || []);
-    const companiesMap = new Map(companiesData?.map(company => [company.id, company]) || []);
-
-    // Format experiences with company and role info
-    const experiences = experiencesData.map(exp => {
-      const role = rolesMap.get(exp.role_id);
-      const company = role ? companiesMap.get(role.company_id) : null;
-      
-      return {
-        id: exp.id,
-        company: company?.name || 'Unknown Company',
-        role: role?.title || 'Unknown Role',
-        title: exp.title,
-        action: exp.action,
-        result: exp.result,
-        situation: exp.situation,
-        task: exp.task
-      };
-    });
-
-    console.log('Successfully formatted experiences:', experiences.length);
-
-    // Format experiences - already formatted above
-    console.log('Formatted experiences count:', experiences.length);
+    // Format experiences
+    const formattedExperiences = experiences.map(exp => ({
+      id: exp.id,
+      company: exp.roles.companies.name,
+      role: exp.roles.title,
+      title: exp.title,
+      action: exp.action,
+      result: exp.result,
+      situation: exp.situation,
+      task: exp.task
+    }));
 
     // Call OpenAI with unified prompt
     console.log('Calling OpenAI with unified analysis and generation...');
@@ -290,7 +238,7 @@ serve(async (req) => {
         model: 'gpt-4o-mini',
         messages: [{ 
           role: 'user', 
-          content: createUnifiedPrompt(jobDescription.trim(), experiences, keywordMatchType)
+          content: createUnifiedPrompt(jobDescription.trim(), formattedExperiences, keywordMatchType)
         }],
         max_tokens: 4000,
         temperature: 0.1
@@ -383,7 +331,7 @@ serve(async (req) => {
     }
     
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: error.message,
       code: errorCode
     }), {
       status: statusCode,
