@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { storeJobDescription, clearAllJobAnalysisData } from '@/utils/jobAnalysis';
-import { useResumeBullets } from '@/hooks/useResumeBullets';
 import { useNavigate } from 'react-router-dom';
 
-// Simplified constants
 const ANALYSIS_CONSTANTS = {
   MIN_SCORE_FOR_BULLETS: 80,
   MIN_JOB_DESCRIPTION_LENGTH: 50,
@@ -13,37 +11,38 @@ const ANALYSIS_CONSTANTS = {
   RETRY_DELAY_MS: 1000,
 } as const;
 
-// Simplified interface matching backend response
-interface SimplifiedAnalysisResult {
+interface UnifiedAnalysisResult {
   overallScore: number;
   fitLevel: string;
   isFit: boolean;
   jobRequirements: Array<any>;
   matchedRequirements: Array<any>;
   unmatchedRequirements: Array<any>;
-  experienceIdsByRole?: Record<string, any>;
+  // Only if fit
   bulletKeywords?: Record<string, string[]>;
-  fitAssessment?: {
-    overallScore: number;
-    fitLevel: string;
+  bulletPoints?: Record<string, any[]>;
+  resumeBullets?: {
+    bulletOrganization: any[];
+    keywordsUsed: string[];
+    keywordsNotUsed: string[];
+    generatedFrom: any;
   };
-  actionPlan?: {
+  // Only if not fit
+  criticalGaps?: string[];
+  recommendations?: {
+    forCandidate: string[];
+  };
+  actionPlan: {
     readyForApplication: boolean;
     readyForBulletGeneration: boolean;
+    criticalGaps?: string[];
   };
-}
-
-interface AnalysisError {
-  code: string;
-  message: string;
-  retryable: boolean;
 }
 
 export const useJobAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const { toast } = useToast();
-  const { generateResumeBullets } = useResumeBullets();
   const navigate = useNavigate();
 
   const validateJobDescription = (jobDescription: string): string | null => {
@@ -58,7 +57,7 @@ export const useJobAnalysis = () => {
     return null;
   };
 
-  const handleAnalysisError = (error: any): AnalysisError => {
+  const handleAnalysisError = (error: any): { code: string; message: string; retryable: boolean } => {
     console.error('Analysis error:', error);
     
     if (error?.message?.includes('rate limit') || error?.message?.includes('429')) {
@@ -112,13 +111,15 @@ export const useJobAnalysis = () => {
     });
   };
 
-  const performAnalysis = async (jobDescription: string, keywordMatchType: string): Promise<SimplifiedAnalysisResult> => {
+  const performAnalysis = async (jobDescription: string, keywordMatchType: string): Promise<UnifiedAnalysisResult> => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       throw new Error('Please log in to analyze job fit');
     }
 
     setAnalysisProgress(25);
+
+    console.log('Calling unified analyze-job-fit edge function...');
 
     const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
       body: { jobDescription },
@@ -128,14 +129,18 @@ export const useJobAnalysis = () => {
       },
     });
 
+    console.log('Edge function response:', { hasData: !!data, hasError: !!error });
+
     if (error) {
+      console.error('Edge function error:', error);
       throw error;
     }
 
-    setAnalysisProgress(75);
+    setAnalysisProgress(90);
 
-    // Validate the simplified response structure
+    // Validate response
     if (!data || typeof data.overallScore !== 'number' || typeof data.isFit !== 'boolean') {
+      console.error('Invalid response structure:', data);
       throw new Error('Invalid analysis response received');
     }
 
@@ -145,7 +150,7 @@ export const useJobAnalysis = () => {
   const analyzeJobFit = async (
     jobDescription: string, 
     keywordMatchType: string = 'exact'
-  ): Promise<SimplifiedAnalysisResult | null> => {
+  ): Promise<UnifiedAnalysisResult | null> => {
     try {
       setIsAnalyzing(true);
       setAnalysisProgress(0);
@@ -161,49 +166,40 @@ export const useJobAnalysis = () => {
       storeJobDescription(jobDescription);
       setAnalysisProgress(10);
 
-      // Perform analysis with retry logic
+      // Perform unified analysis (includes bullet generation if fit)
       const data = await retryWithDelay(
         () => performAnalysis(jobDescription, keywordMatchType),
         ANALYSIS_CONSTANTS.MAX_RETRIES
       );
 
-      setAnalysisProgress(85);
+      setAnalysisProgress(95);
 
       // Store results
       localStorage.setItem('jobAnalysisResult', JSON.stringify(data));
-      setAnalysisProgress(90);
+      
+      // Store resume bullets if generated
+      if (data.resumeBullets) {
+        localStorage.setItem('resumeBullets', JSON.stringify(data.resumeBullets));
+      }
 
-      // Simple routing based on fit status
-      if (data.isFit && data.experienceIdsByRole && data.bulletKeywords) {
-        console.log(`Score ${data.overallScore}% - generating bullets...`);
-        
-        try {
-          await generateResumeBullets(data);
-          setAnalysisProgress(100);
-          
-          toast({
-            title: 'Analysis Complete',
-            description: 'Resume bullets have been generated successfully.',
-          });
-          
-          navigate('/app/resume-bullets');
-        } catch (bulletError) {
-          console.error('Bullet generation failed:', bulletError);
-          // Fall back to analysis results
-          toast({
-            title: 'Analysis Complete',
-            description: 'Analysis completed but bullet generation failed.',
-          });
-          navigate('/app/job-analysis-result');
-        }
-      } else {
-        setAnalysisProgress(100);
-        
-        console.log(`Score ${data.overallScore}% - showing analysis results`);
+      setAnalysisProgress(100);
+
+      // Route based on fit status
+      if (data.isFit) {
+        console.log(`Score ${data.overallScore}% - bullets generated in same call`);
         
         toast({
           title: 'Analysis Complete',
-          description: `Job fit: ${data.overallScore}%. ${data.isFit ? 'Ready for bullets!' : 'Improvements needed.'}`,
+          description: 'Resume bullets have been generated successfully.',
+        });
+        
+        navigate('/app/resume-bullets');
+      } else {
+        console.log(`Score ${data.overallScore}% - showing gap analysis`);
+        
+        toast({
+          title: 'Analysis Complete',
+          description: `Job fit: ${data.overallScore}%. Improvements needed.`,
         });
         
         navigate('/app/job-analysis-result');
