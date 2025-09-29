@@ -161,14 +161,25 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== ANALYZE JOB FIT FUNCTION START ===');
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+    
     // Environment validation
     const openaiApiKey = Deno.env.get('ANALYZE_JOB_FIT_OPENAI_API_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing environment variables:', {
+        hasOpenAI: !!openaiApiKey,
+        hasSupabaseUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey
+      });
       throw new AnalysisError('Missing required environment variables', 'CONFIG_ERROR', 500);
     }
+
+    console.log('Environment variables OK');
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -197,7 +208,8 @@ serve(async (req) => {
 
     console.log(`Starting unified analysis for user ${user.id}`);
 
-    // Fetch user experiences
+    // Fetch user experiences - fix the query structure
+    console.log('Fetching experiences for user:', user.id);
     const { data: experiences, error: expError } = await supabase
       .from('experiences')
       .select(`
@@ -209,7 +221,19 @@ serve(async (req) => {
       `)
       .eq('user_id', user.id);
 
-    if (expError || !experiences?.length) {
+    console.log('Database query result:', { 
+      experiencesCount: experiences?.length || 0, 
+      hasError: !!expError,
+      error: expError 
+    });
+
+    if (expError) {
+      console.error('Database error:', expError);
+      throw new AnalysisError(`Database error: ${expError.message}`, 'DATABASE_ERROR', 500);
+    }
+
+    if (!experiences?.length) {
+      console.log('No experiences found for user');
       throw new AnalysisError('No experiences found', 'NO_EXPERIENCES', 400);
     }
 
