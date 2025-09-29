@@ -2,61 +2,64 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Edit3, AlertCircle } from "lucide-react";
+import { Copy, Edit3, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { ResumeBulletsResult } from "@/hooks/useResumeBullets";
 
-// Types for the component
-interface JobAnalysisResult {
-  overallScore?: number;
-  fitLevel?: string;
-  strengths?: string[];
-  gaps?: string[];
-  recommendations?: string[];
-  matchedPhrases?: Array<{
-    jobPhrase: string;
-    experienceMatch: string;
-    experienceContext: string;
-    matchType: string;
-    evidenceStrength: string;
-  }>;
-  unmatchedPhrases?: Array<{
-    phrase: string;
-    category: string;
-    importance: string;
-    reason: string;
-  }>;
+// Types matching unified backend
+interface UnifiedAnalysisResult {
+  overallScore: number;
+  fitLevel: string;
+  isFit: boolean;
+  resumeBullets?: {
+    bulletOrganization: Array<{
+      name: string;
+      roles: Array<{
+        title: string;
+        bulletPoints: Array<{
+          text: string;
+          visualWidth: number;
+          exceedsWidth: boolean;
+          keywordsUsed: string[];
+        }>;
+      }>;
+    }>;
+    keywordsUsed: string[];
+    keywordsNotUsed: string[];
+  };
+  criticalGaps?: string[];
+  recommendations?: {
+    forCandidate: string[];
+  };
 }
 
-
 const ResumeBulletPoints = () => {
-  const [analysisResult, setAnalysisResult] = useState<JobAnalysisResult | null>(null);
-  const [resumeBullets, setResumeBullets] = useState<ResumeBulletsResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<UnifiedAnalysisResult | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load analysis results and resume bullets from localStorage
+    // Load analysis results from localStorage
     const analysisData = localStorage.getItem('jobAnalysisResult');
-    const bulletsData = localStorage.getItem('resumeBullets');
 
     if (analysisData) {
-      setAnalysisResult(JSON.parse(analysisData));
-    }
-
-    if (bulletsData) {
-      setResumeBullets(JSON.parse(bulletsData));
+      try {
+        const parsed = JSON.parse(analysisData);
+        console.log('Unified analysis result:', parsed);
+        setAnalysisResult(parsed);
+      } catch (error) {
+        console.error('Failed to parse analysis result:', error);
+      }
     }
   }, []);
 
   const isHighScore = (analysisResult?.overallScore || 0) >= 80;
 
   const copyToClipboard = async () => {
-    if (!isHighScore || !resumeBullets?.bulletOrganization) return;
+    if (!isHighScore || !analysisResult?.resumeBullets?.bulletOrganization) return;
     
     let clipboardText = "";
-    resumeBullets.bulletOrganization.forEach(company => {
+    analysisResult.resumeBullets.bulletOrganization.forEach(company => {
       clipboardText += `${company.name}\n\n`;
       company.roles.forEach(role => {
         clipboardText += `${role.title}\n`;
@@ -96,7 +99,7 @@ const ResumeBulletPoints = () => {
           {isSuccess ? 'Your experiences align well with the job requirements' : 'Unfortunately, the input experiences are not well aligned to the job description.'}
         </p>
         {!isSuccess && (
-          <p className="text-sm text-red-500 mt-2 font-medium">Bullet points will not be created.</p>
+          <p className="text-sm text-red-500 mt-2 font-medium">Bullet points were not generated.</p>
         )}
       </div>
       <div className="flex flex-col items-center">
@@ -128,7 +131,7 @@ const ResumeBulletPoints = () => {
     <main className="max-w-[1080px] mx-auto px-6 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">
-          Job Alignment Analysis and Fitted Experiences
+          Job Alignment Analysis and Resume Bullets
         </h1>
         <p className="text-lg text-muted-foreground">
           Based on your professional experiences and target job description
@@ -145,20 +148,45 @@ const ResumeBulletPoints = () => {
         </CardContent>
       </Card>
 
-      {isHighScore && resumeBullets ? (
+      {isHighScore && analysisResult.resumeBullets ? (
         <>
-          {/* Missing Keywords Section */}
-          {resumeBullets.keywordsNotUsed && resumeBullets.keywordsNotUsed.length > 0 && (
+          {/* Keywords Used */}
+          {analysisResult.resumeBullets.keywordsUsed && analysisResult.resumeBullets.keywordsUsed.length > 0 && (
             <Card className="shadow-soft border border-border/50 mb-8">
               <CardHeader>
-                <CardTitle className="text-xl font-semibold text-foreground">
-                  Keywords That Could Not Be Fit
+                <CardTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  Keywords Successfully Embedded ({analysisResult.resumeBullets.keywordsUsed.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 <div className="flex flex-wrap gap-2">
-                  {resumeBullets.keywordsNotUsed.map((keyword, index) => (
-                    <Badge key={index} variant="outline" className="px-3 py-1">
+                  {analysisResult.resumeBullets.keywordsUsed.map((keyword, index) => (
+                    <Badge key={index} variant="outline" className="px-3 py-1 bg-green-50 text-green-700">
+                      {keyword}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Missing Keywords */}
+          {analysisResult.resumeBullets.keywordsNotUsed && analysisResult.resumeBullets.keywordsNotUsed.length > 0 && (
+            <Card className="shadow-soft border border-border/50 mb-8">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-orange-600" />
+                  Keywords That Could Not Be Embedded ({analysisResult.resumeBullets.keywordsNotUsed.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-8 pb-8">
+                <p className="text-sm text-muted-foreground mb-3">
+                  These keywords could not be naturally embedded based on your actual experience evidence.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {analysisResult.resumeBullets.keywordsNotUsed.map((keyword, index) => (
+                    <Badge key={index} variant="outline" className="px-3 py-1 bg-orange-50 text-orange-700">
                       {keyword}
                     </Badge>
                   ))}
@@ -176,7 +204,7 @@ const ResumeBulletPoints = () => {
             </CardHeader>
             <CardContent className="px-8 pb-8">
               <div className="space-y-8">
-                {resumeBullets.bulletOrganization.map((company, companyIndex) => (
+                {analysisResult.resumeBullets.bulletOrganization.map((company, companyIndex) => (
                   <div key={companyIndex} className="bg-secondary/30 rounded-lg p-6">
                     <div className="mb-6">
                       <h2 className="text-xl font-semibold text-foreground">
@@ -198,12 +226,21 @@ const ResumeBulletPoints = () => {
                               <div key={index}>
                                 {bullet.exceedsWidth && (
                                   <p className="text-orange-600 text-sm font-medium mb-1">
-                                    • Could not fit within requested width
+                                    • Could not fit within requested width ({bullet.visualWidth} chars)
                                   </p>
                                 )}
                                 <p className={`leading-relaxed ${bullet.exceedsWidth ? 'text-orange-700 ml-2' : 'text-foreground'}`}>
                                   • {bullet.text}
                                 </p>
+                                {bullet.keywordsUsed && bullet.keywordsUsed.length > 0 && (
+                                  <div className="ml-4 mt-1 flex flex-wrap gap-1">
+                                    {bullet.keywordsUsed.map((kw: string, kwIndex: number) => (
+                                      <Badge key={kwIndex} variant="secondary" className="text-xs">
+                                        {kw}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -239,88 +276,47 @@ const ResumeBulletPoints = () => {
         </>
       ) : (
         <>
-          {/* Low Score Analysis Section */}
+          {/* Low Score - Show Gaps */}
           <Card className="shadow-soft border border-border/50 mb-8">
             <CardHeader>
               <CardTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-orange-600" />
-                Job Fit Analysis
+                Why Bullets Were Not Generated
               </CardTitle>
             </CardHeader>
             <CardContent className="px-8 pb-8">
-              <div className="space-y-6">
-                {/* Strengths */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 text-green-600">Strengths</h3>
-                  <ul className="space-y-2">
-                    {analysisResult.strengths?.map((strength: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-green-500 mt-1">✓</span>
-                        <span>{strength}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Your job fit score is below the 80% threshold required for bullet generation. 
+                Address the gaps below to improve your profile.
+              </p>
 
-                {/* Gaps */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3 text-orange-600">Areas for Improvement</h3>
-                  <ul className="space-y-2">
-                    {analysisResult.gaps?.map((gap: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-orange-500 mt-1">△</span>
-                        <span>{gap}</span>
-                      </li>
+              {analysisResult.criticalGaps && analysisResult.criticalGaps.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3 text-red-600">Critical Missing Requirements</h3>
+                  <div className="space-y-2">
+                    {analysisResult.criticalGaps.map((gap: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2 bg-red-50 p-3 rounded border border-red-200">
+                        <span className="text-red-500 mt-1">✗</span>
+                        <span className="text-red-800">{gap}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
+              )}
 
-                {/* Recommendations */}
+              {analysisResult.recommendations?.forCandidate && (
                 <div>
                   <h3 className="text-lg font-semibold mb-3 text-blue-600">Recommendations</h3>
-                  <ul className="space-y-2">
-                    {analysisResult.recommendations?.map((rec: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2">
+                  <div className="space-y-2">
+                    {analysisResult.recommendations.forCandidate.map((rec: string, index: number) => (
+                      <div key={index} className="flex items-start gap-2 bg-blue-50 p-3 rounded border border-blue-200">
                         <span className="text-blue-500 mt-1">💡</span>
-                        <span>{rec}</span>
-                      </li>
+                        <span className="text-blue-800">{rec}</span>
+                      </div>
                     ))}
-                  </ul>
-                </div>
-
-                {/* Matched/Unmatched Phrases */}
-                {(analysisResult.matchedPhrases || analysisResult.unmatchedPhrases) && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Phrase Analysis</h3>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {analysisResult.matchedPhrases && (
-                        <div>
-                          <h4 className="font-medium text-green-600 mb-2">Matched Phrases</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {analysisResult.matchedPhrases.map((phrase, index) => (
-                              <span key={index} className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                                {phrase.jobPhrase}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {analysisResult.unmatchedPhrases && (
-                        <div>
-                          <h4 className="font-medium text-orange-600 mb-2">Unmatched Phrases</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {analysisResult.unmatchedPhrases.map((phrase, index) => (
-                              <span key={index} className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
-                                {phrase.phrase}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -332,7 +328,7 @@ const ResumeBulletPoints = () => {
               size="lg"
             >
               <Edit3 className="w-4 h-4" />
-              Revise Experiences
+              Add/Revise Experiences
             </Button>
           </div>
         </>
