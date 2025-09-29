@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const CONSTANTS = {
   FIT_THRESHOLD: 80,
-  MAX_BULLETS_PER_ROLE: 8,
+  MAX_BULLETS_PER_ROLE: 6,
   VISUAL_WIDTH_LIMIT: 179,
 } as const;
 
@@ -41,10 +41,29 @@ function calculateVisualWidth(text: string): number {
   return score;
 }
 
+// Simple fit calculation
+function calculateFitScore(matchedRequirements: any[], totalRequirements: any[]): number {
+  if (!totalRequirements || totalRequirements.length === 0) return 0;
+  
+  const criticalRequirements = totalRequirements.filter(req => req.importance === 'critical');
+  const matchedCritical = matchedRequirements.filter(match => 
+    criticalRequirements.some(req => req.requirement === match.jobRequirement)
+  );
+  
+  // If missing critical requirements, cap at 70%
+  if (criticalRequirements.length > 0 && matchedCritical.length < criticalRequirements.length) {
+    const maxScore = 70;
+    const baseScore = Math.round((matchedRequirements.length / totalRequirements.length) * 100);
+    return Math.min(maxScore, baseScore);
+  }
+  
+  return Math.round((matchedRequirements.length / totalRequirements.length) * 100);
+}
+
 function createUnifiedPrompt(jobDescription: string, experiences: any[], keywordMatchType: string): string {
   const keywordInstruction = keywordMatchType === 'exact' 
     ? 'Use keywords EXACTLY as they appear in the job description'
-    : 'Use keywords and their variations (different tenses, forms, related terms like "managed" for "led", "collaborated" for "worked with")';
+    : 'Use keywords and their variations (different tenses, forms, related terms)';
 
   return `You are a professional resume analyzer and writer. Analyze if the candidate matches the job, and if they score 80% or higher, generate optimized resume bullets.
 
@@ -63,31 +82,20 @@ ${i + 1}. ID: ${exp.id}
    ${exp.task ? `Task: ${exp.task}` : ''}
 `).join('')}
 
-SCORING METHODOLOGY:
-1. Extract ALL keywords and requirements from job description (skills, tools, technologies, qualifications, responsibilities)
-2. For each requirement/keyword, check if candidate's experiences contain it or a translatable equivalent:
-   - Exact matches count fully
-   - Translatable matches count fully (e.g., "managed team" = "led team", "collaborated" = "worked with others")
-3. Score = (matched requirements / total requirements) * 100
-4. If missing critical requirements (e.g., required certifications, years of experience), cap score at 70%
-
-KEYWORD EXTRACTION:
-- Extract a comprehensive list of ALL keywords from the job description (no categorization needed)
-- Keywords include: skills, tools, technologies, methodologies, qualifications, action verbs, domain terms
-- For scores < 80%: divide keywords into "matchable" (found in experiences) and "unmatchable" (not found)
+ANALYSIS INSTRUCTIONS:
+1. Extract specific job requirements (skills, tools, experience levels, certifications)
+2. Mark importance: critical (must-have), high (preferred), medium (nice-to-have), low (bonus)
+3. Match requirements to candidate's experiences
+4. Calculate fit score as: (matched requirements / total requirements) * 100
+5. If missing critical requirements, cap score at 70%
 
 BULLET GENERATION (ONLY IF SCORE >= 80%):
-- Create up to ${CONSTANTS.MAX_BULLETS_PER_ROLE} bullets per role (or one per experience if fewer than 8 experiences for that role)
-- Order bullets from most relevant to least relevant based on job description alignment
-- Use one of these structures:
-  * "Result (with numbers if available) + Action verb + context"
-  * "Action verb + context + quantified result"
-  * "Result (with numbers if available) + Action verb"
+- Create up to ${CONSTANTS.MAX_BULLETS_PER_ROLE} bullets per role
+- Structure: "Action verb + context + quantified result"
 - Keep each bullet under ${CONSTANTS.VISUAL_WIDTH_LIMIT} visual characters
 - KEYWORD MATCHING: ${keywordInstruction}
 - Use ONLY real information from experiences - never invent details
 - Embed keywords naturally where supported by experience
-- Track which keywords were used in bullets and which couldn't be embedded
 
 Return JSON in this EXACT format:
 
@@ -109,19 +117,24 @@ IF SCORE >= 80%:
   "unmatchedRequirements": [
     {"requirement": "text", "importance": "level"}
   ],
-  "allKeywords": ["comprehensive", "list", "of", "all", "keywords", "from", "job", "description"],
+  "bulletKeywords": {
+    "technical": ["terms"],
+    "skills": ["skills"],
+    "industry": ["terms"],
+    "action": ["verbs"],
+    "metrics": ["quantifiable terms"]
+  },
   "bulletPoints": {
     "Company Name - Role Title": [
       {
         "text": "bullet point text under ${CONSTANTS.VISUAL_WIDTH_LIMIT} visual chars",
         "experienceId": "exp_id",
-        "keywordsUsed": ["keywords in this bullet"],
-        "relevanceScore": 10
+        "keywordsUsed": ["keywords in this bullet"]
       }
     ]
   },
-  "keywordsUsed": ["keywords successfully embedded in bullets"],
-  "keywordsNotUsed": ["keywords that couldn't fit naturally in bullets"]
+  "keywordsUsed": ["all keywords successfully embedded"],
+  "keywordsNotUsed": ["keywords that couldn't fit naturally"]
 }
 
 IF SCORE < 80%:
@@ -132,9 +145,6 @@ IF SCORE < 80%:
   "jobRequirements": [...],
   "matchedRequirements": [...],
   "unmatchedRequirements": [...],
-  "allKeywords": ["comprehensive", "list", "of", "all", "keywords"],
-  "matchableKeywords": ["keywords found in candidate experiences"],
-  "unmatchableKeywords": ["keywords NOT found in candidate experiences"],
   "criticalGaps": ["critical requirements missing"],
   "recommendations": {
     "forCandidate": [
@@ -255,20 +265,14 @@ serve(async (req) => {
       const processedBullets: any = {};
       
       Object.entries(analysis.bulletPoints).forEach(([roleKey, bullets]: [string, any]) => {
-        // Sort by relevanceScore (highest first) if provided
-        const sortedBullets = bullets.sort((a: any, b: any) => 
-          (b.relevanceScore || 0) - (a.relevanceScore || 0)
-        );
-
-        processedBullets[roleKey] = sortedBullets.map((bullet: any) => {
+        processedBullets[roleKey] = bullets.map((bullet: any) => {
           const visualWidth = calculateVisualWidth(bullet.text);
           return {
             text: bullet.text,
             visualWidth: Math.round(visualWidth),
             exceedsWidth: visualWidth > CONSTANTS.VISUAL_WIDTH_LIMIT,
             experienceId: bullet.experienceId,
-            keywordsUsed: bullet.keywordsUsed || [],
-            relevanceScore: bullet.relevanceScore || 0
+            keywordsUsed: bullet.keywordsUsed || []
           };
         });
       });
