@@ -9,7 +9,6 @@ const corsHeaders = {
 
 const CONSTANTS = {
   FIT_THRESHOLD: 80,
-  MAX_BULLETS_PER_ROLE: 8,
   VISUAL_WIDTH_MIN: 150,
   VISUAL_WIDTH_MAX: 179,
   VISUAL_WIDTH_TARGET: 165,
@@ -90,26 +89,12 @@ KEYWORD EXTRACTION:
 - For scores < 80%: divide keywords into "matchable" (found in experiences) and "unmatchable" (not found)
 
 BULLET GENERATION (ONLY IF SCORE >= 80%):
-CRITICAL RULES FOR ORGANIZATION:
-1. Look at the role groupings above (e.g., "=== Company Name - Role Title ===")
-2. You MUST create a SEPARATE bulletPoints entry for EVERY different role grouping you see
-3. Each company-role combination gets its own key in the bulletPoints object
-4. Generate bullets ONLY from experiences that belong to that specific role
-5. Generate one bullet per experience in that role (up to maximum of ${CONSTANTS.MAX_BULLETS_PER_ROLE})
-6. Each bullet MUST use the experienceId from the specific experience it's based on
-
-EXAMPLE STRUCTURE:
-If you see these role groupings:
-- "=== Cadre - Product Manager ===" with 3 experiences
-- "=== Codecademy - Product Analyst ===" with 2 experiences
-- "=== LiveRamp - Data Analyst ===" with 4 experiences
-
-Then bulletPoints object MUST have THREE separate keys:
-{
-  "Cadre - Product Manager": [3 bullets from Cadre PM experiences],
-  "Codecademy - Product Analyst": [2 bullets from Codecademy PA experiences],
-  "LiveRamp - Data Analyst": [4 bullets from LiveRamp DA experiences]
-}
+CRITICAL RULES:
+1. Create SEPARATE entries for EACH unique "Company Name - Role Title" combination shown above
+2. For each role, generate bullets ONLY from experiences that belong to that specific role
+3. Generate one bullet per experience in that role (up to maximum of ${CONSTANTS.MAX_BULLETS_PER_ROLE})
+4. IMPORTANT: If a role has 7 experiences, create 7 bullets. If it has 3 experiences, create 3 bullets.
+5. Each bullet MUST use the experienceId from the specific experience it's based on
 
 FORMATTING:
 - Order bullets from most relevant to least relevant based on job description alignment
@@ -395,7 +380,7 @@ serve(async (req) => {
     }
     
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      error: error.message,
       code: errorCode
     }), {
       status: statusCode,
