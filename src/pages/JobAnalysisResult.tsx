@@ -367,6 +367,61 @@ export const JobAnalysisResult = () => {
 
       <Separator />
 
+      {/* Resume Bullets Section - Only show for high scores (>=80%) */}
+      {isFit && analysisResult.resumeBullets && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Generated Resume Bullets
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {analysisResult.resumeBullets.bulletOrganization.map((company: any, companyIndex: number) => (
+              <div key={companyIndex}>
+                <div className="mb-4">
+                  <h3 className="text-xl font-semibold mb-1">{company.name}</h3>
+                </div>
+                
+                <div className="space-y-4">
+                  {company.roles.map((role: any, roleIndex: number) => (
+                    <div key={roleIndex} className="border rounded-lg p-4 bg-card">
+                      <div className="mb-3">
+                        <h4 className="text-lg font-semibold text-muted-foreground">{role.title}</h4>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {role.bulletPoints.map((bullet: any, bulletIndex: number) => (
+                          <div
+                            key={bulletIndex}
+                            className="flex items-start gap-3 p-3 border rounded-lg bg-background hover:bg-accent/50 transition-colors"
+                          >
+                            <div className="flex-1">
+                              <p className="text-sm leading-relaxed">• {bullet.text}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(bullet.text, `bullet-${companyIndex}-${roleIndex}-${bulletIndex}`)}
+                            >
+                              {copiedSection === `bullet-${companyIndex}-${roleIndex}-${bulletIndex}` ? (
+                                <Check className="w-4 h-4" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Action Plan */}
       <Card>
         <CardHeader>
@@ -423,16 +478,7 @@ export const JobAnalysisResult = () => {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-4 justify-center">
-            {isFit ? (
-              <Button 
-                onClick={() => navigate('/app/resume-bullets')}
-                size="lg"
-                className="flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                View Resume Bullets
-              </Button>
-            ) : (
+            {!isFit && (
               <Button 
                 onClick={() => navigate('/app/experiences')}
                 size="lg"

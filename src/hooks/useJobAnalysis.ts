@@ -163,8 +163,7 @@ export const useJobAnalysis = () => {
       hasSession: !!session,
       hasAccessToken: !!session.access_token,
       bodyLength: jobDescription.length,
-      keywordMatchType,
-      supabaseUrl: supabase.supabaseUrl
+      keywordMatchType
     });
 
     console.log('Calling unified analyze-job-fit edge function...');
@@ -273,26 +272,17 @@ export const useJobAnalysis = () => {
 
       setAnalysisProgress(100);
 
-      // Route based on fit status
-      if (data.isFit) {
-        console.log(`Score ${data.overallScore}% - bullets generated in same call`);
-        
-        toast({
-          title: 'Analysis Complete',
-          description: 'Resume bullets have been generated successfully.',
-        });
-        
-        navigate('/app/resume-bullets');
-      } else {
-        console.log(`Score ${data.overallScore}% - showing gap analysis`);
-        
-        toast({
-          title: 'Analysis Complete',
-          description: `Job fit: ${data.overallScore}%. Improvements needed.`,
-        });
-        
-        navigate('/app/job-analysis-result');
-      }
+      // Navigate to results page for all scores
+      console.log(`Score ${data.overallScore}% - ${data.isFit ? 'bullets generated' : 'showing gap analysis'}`);
+      
+      toast({
+        title: 'Analysis Complete',
+        description: data.isFit 
+          ? 'Resume bullets have been generated successfully.' 
+          : `Job fit: ${data.overallScore}%. Improvements needed.`,
+      });
+      
+      navigate('/app/job-analysis-result');
 
       return data;
       
