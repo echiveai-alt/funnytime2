@@ -11,8 +11,8 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useJobAnalysis } from "@/hooks/useJobAnalysis";
 
-// Unified interface matching the new backend response
-interface UnifiedAnalysisResult {
+// Simplified interface matching the new backend response
+interface SimplifiedAnalysisResult {
   overallScore: number;
   fitLevel: string;
   isFit: boolean;
@@ -29,20 +29,19 @@ interface UnifiedAnalysisResult {
     requirement: string;
     importance: string;
   }>;
-  // Only if not fit
+  gaps?: string[];
   criticalGaps?: string[];
   recommendations?: {
     forCandidate: string[];
   };
-  // Only if fit
+  // Only present if fit
+  experienceIdsByRole?: Record<string, any>;
   bulletKeywords?: Record<string, string[]>;
-  bulletPoints?: Record<string, any[]>;
-  resumeBullets?: {
-    bulletOrganization: any[];
-    keywordsUsed: string[];
-    keywordsNotUsed: string[];
+  fitAssessment?: {
+    overallScore: number;
+    fitLevel: string;
   };
-  actionPlan: {
+  actionPlan?: {
     readyForApplication: boolean;
     readyForBulletGeneration: boolean;
     criticalGaps?: string[];
@@ -50,8 +49,9 @@ interface UnifiedAnalysisResult {
 }
 
 export const JobAnalysisResult = () => {
-  const [analysisResult, setAnalysisResult] = useState<UnifiedAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<SimplifiedAnalysisResult | null>(null);
   const [copiedSection, setCopiedSection] = useState<string>("");
+  const [activeSection, setActiveSection] = useState<string>("summary");
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAnalyzing } = useJobAnalysis();
@@ -106,6 +106,13 @@ export const JobAnalysisResult = () => {
   const { overallScore, isFit, fitLevel } = analysisResult;
   const criticalGaps = analysisResult.criticalGaps || [];
 
+  // Navigation sections
+  const sections = [
+    { id: "summary", label: "Summary", icon: TrendingUp },
+    { id: "requirements", label: "Requirements Analysis", icon: CheckCircle },
+    { id: "next-steps", label: "Next Steps", icon: ArrowRight },
+  ];
+
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
     if (score >= 60) return "text-yellow-600";
@@ -119,9 +126,9 @@ export const JobAnalysisResult = () => {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
+    <div className="container mx-auto py-8">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
@@ -129,235 +136,271 @@ export const JobAnalysisResult = () => {
         <div className="flex-1">
           <h1 className="text-3xl font-bold">Job Fit Analysis Report</h1>
           <p className="text-muted-foreground">
-            Assessment of your professional experience match
+            Simplified assessment of your professional experience match
           </p>
         </div>
       </div>
 
-      {/* Overall Score Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            Overall Job Fit Score
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={`border rounded-lg p-6 ${getScoreColorBg(overallScore)}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className={`text-4xl font-bold ${getScoreColor(overallScore)} mb-2`}>
-                  {overallScore}%
-                </div>
-                <div className="text-lg font-semibold mb-1">{fitLevel} Match</div>
-                <div className="text-sm text-muted-foreground">
-                  {isFit ? 'Ready for bullet generation' : 'Profile improvement needed'}
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-muted-foreground">Status</div>
-                <div className="font-medium">
-                  {isFit ? 'Application Ready' : 'Needs Improvement'}
-                </div>
-              </div>
-            </div>
+      {/* Section Navigation */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-2">
+            {sections.map((section) => {
+              const Icon = section.icon;
+              return (
+                <Button
+                  key={section.id}
+                  variant={activeSection === section.id ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveSection(section.id)}
+                  className="flex items-center gap-2"
+                >
+                  <Icon className="w-4 h-4" />
+                  {section.label}
+                </Button>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
 
-      {/* Resume Keywords (only if fit) */}
-      {isFit && analysisResult.bulletKeywords && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                Resume Keywords Available
+      {/* SUMMARY SECTION */}
+      {activeSection === "summary" && (
+        <div className="space-y-6">
+          {/* Overall Score Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Overall Job Fit Score
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`border rounded-lg p-6 ${getScoreColorBg(overallScore)}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-4xl font-bold ${getScoreColor(overallScore)} mb-2`}>
+                      {overallScore}%
+                    </div>
+                    <div className="text-lg font-semibold mb-1">{fitLevel} Match</div>
+                    <div className="text-sm text-muted-foreground">
+                      {isFit ? 'Ready for bullet generation' : 'Profile improvement needed'}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground">Status</div>
+                    <div className="font-medium">
+                      {isFit ? 'Application Ready' : 'Needs Improvement'}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(
-                  Object.values(analysisResult.bulletKeywords || {}).flat().join(', '),
-                  'bulletKeywords'
-                )}
-              >
-                {copiedSection === 'bulletKeywords' ? (
-                  <Check className="w-4 h-4 mr-2" />
-                ) : (
-                  <Copy className="w-4 h-4 mr-2" />
-                )}
-                Copy All
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(analysisResult.bulletKeywords).map(([category, keywords]) => (
-                <div key={category} className="space-y-2">
-                  <h4 className="font-semibold text-sm capitalize text-green-600">
-                    {category}
-                  </h4>
-                  <div className="flex flex-wrap gap-1">
-                    {(keywords as string[]).slice(0, 8).map((keyword: string, index: number) => (
-                      <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800">
-                        {keyword}
-                      </Badge>
-                    ))}
-                    {(keywords as string[]).length > 8 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{(keywords as string[]).length - 8} more
-                      </Badge>
+            </CardContent>
+          </Card>
+
+          {/* Resume Keywords (only if fit) */}
+          {isFit && analysisResult.bulletKeywords && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    Resume Keywords Available
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(
+                      Object.values(analysisResult.bulletKeywords || {}).flat().join(', '),
+                      'bulletKeywords'
                     )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Requirements Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Matched Requirements */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-green-600 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              Matched Requirements ({analysisResult.matchedRequirements.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {analysisResult.matchedRequirements.map((match, index) => (
-                <div key={index} className="border border-green-200 rounded-lg p-3 bg-green-50">
-                  <div className="mb-2">
-                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs">
-                      {match.jobRequirement}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-green-800">
-                    <span className="font-medium">{match.experienceSource}:</span> {match.experienceEvidence}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Unmatched Requirements */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-600 flex items-center gap-2">
-              <XCircle className="w-5 h-5" />
-              Missing Requirements ({analysisResult.unmatchedRequirements.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {analysisResult.unmatchedRequirements.map((req, index) => (
-                <div key={index} className="border border-red-200 rounded-lg p-3 bg-red-50">
-                  <div className="flex items-start justify-between">
-                    <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 text-xs">
-                      {req.requirement}
-                    </Badge>
-                    <Badge className={
-                      req.importance === 'critical' 
-                        ? "bg-red-100 text-red-800 border-red-200 text-xs" 
-                        : "bg-orange-100 text-orange-800 border-orange-200 text-xs"
-                    } variant="secondary">
-                      {req.importance}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Critical Gaps Warning */}
-      {criticalGaps.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-600 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" />
-              Critical Missing Requirements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-red-800 mb-3">
-                These requirements are marked as critical and may prevent application success:
-              </p>
-              <div className="space-y-2">
-                {criticalGaps.map((gap, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                    <span className="text-sm text-red-800 font-medium">{gap}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Separator />
-
-      {/* Action Plan */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ArrowRight className="w-5 h-5" />
-            Recommended Next Steps
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className={`border rounded-lg p-4 mb-6 ${
-            isFit ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-          }`}>
-            <div className="flex items-center gap-2 mb-2">
-              {isFit ? (
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              ) : (
-                <XCircle className="w-5 h-5 text-red-600" />
-              )}
-              <h3 className={`font-semibold ${
-                isFit ? 'text-green-800' : 'text-red-800'
-              }`}>
-                {isFit ? 'Ready for Application' : 'Profile Enhancement Required'}
-              </h3>
-            </div>
-
-            {!isFit && criticalGaps.length > 0 && (
-              <div className="mt-3">
-                <h4 className="font-medium text-red-800 mb-2">Critical gaps to address:</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {criticalGaps.map((gap, index) => (
-                    <div key={index} className="flex items-start gap-2 bg-red-100 p-2 rounded">
-                      <XCircle className="w-4 h-4 mt-0.5 text-red-600 flex-shrink-0" />
-                      <span className="text-sm text-red-800">{gap}</span>
+                  >
+                    {copiedSection === 'bulletKeywords' ? (
+                      <Check className="w-4 h-4 mr-2" />
+                    ) : (
+                      <Copy className="w-4 h-4 mr-2" />
+                    )}
+                    Copy All
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(analysisResult.bulletKeywords).map(([category, keywords]) => (
+                    <div key={category} className="space-y-2">
+                      <h4 className="font-semibold text-sm capitalize text-green-600">
+                        {category}
+                      </h4>
+                      <div className="flex flex-wrap gap-1">
+                        {(keywords as string[]).slice(0, 8).map((keyword: string, index: number) => (
+                          <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800">
+                            {keyword}
+                          </Badge>
+                        ))}
+                        {(keywords as string[]).length > 8 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{(keywords as string[]).length - 8} more
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
-            {analysisResult.recommendations?.forCandidate && (
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">Recommended Actions:</h4>
-                <div className="space-y-2">
-                  {analysisResult.recommendations.forCandidate.map((action, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <Lightbulb className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
-                      <span className="text-sm">{action}</span>
+      {/* REQUIREMENTS ANALYSIS SECTION */}
+      {activeSection === "requirements" && (
+        <div className="space-y-6">
+          {/* Matched vs Unmatched Requirements */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Matched Requirements */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-green-600 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Matched Requirements ({analysisResult.matchedRequirements.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {analysisResult.matchedRequirements.map((match, index) => (
+                    <div key={index} className="border border-green-200 rounded-lg p-3 bg-green-50">
+                      <div className="mb-2">
+                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs">
+                          {match.jobRequirement}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-green-800">
+                        <span className="font-medium">{match.experienceSource}:</span> {match.experienceEvidence}
+                      </p>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              </CardContent>
+            </Card>
+
+            {/* Unmatched Requirements */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-red-600 flex items-center gap-2">
+                  <XCircle className="w-5 h-5" />
+                  Missing Requirements ({analysisResult.unmatchedRequirements.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {analysisResult.unmatchedRequirements.map((req, index) => (
+                    <div key={index} className="border border-red-200 rounded-lg p-3 bg-red-50">
+                      <div className="flex items-start justify-between">
+                        <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 text-xs">
+                          {req.requirement}
+                        </Badge>
+                        <Badge className={
+                          req.importance === 'critical' 
+                            ? "bg-red-100 text-red-800 border-red-200 text-xs" 
+                            : "bg-orange-100 text-orange-800 border-orange-200 text-xs"
+                        } variant="secondary">
+                          {req.importance}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
+
+          {/* Critical Gaps Warning */}
+          {criticalGaps.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-red-600 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  Critical Missing Requirements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-800 mb-3">
+                    These requirements are marked as critical and may prevent application success:
+                  </p>
+                  <div className="space-y-2">
+                    {criticalGaps.map((gap, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                        <span className="text-sm text-red-800 font-medium">{gap}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* NEXT STEPS SECTION */}
+      {activeSection === "next-steps" && (
+        <div className="space-y-6">
+          {/* Action Plan */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ArrowRight className="w-5 h-5" />
+                Recommended Next Steps
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`border rounded-lg p-4 mb-4 ${
+                isFit ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  {isFit ? (
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-600" />
+                  )}
+                  <h3 className={`font-semibold ${
+                    isFit ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {isFit ? 'Ready for Application' : 'Profile Enhancement Required'}
+                  </h3>
+                </div>
+
+                {!isFit && criticalGaps.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="font-medium text-red-800 mb-2">Critical gaps to address:</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {criticalGaps.map((gap, index) => (
+                        <div key={index} className="flex items-start gap-2 bg-red-100 p-2 rounded">
+                          <XCircle className="w-4 h-4 mt-0.5 text-red-600 flex-shrink-0" />
+                          <span className="text-sm text-red-800">{gap}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {analysisResult.recommendations?.forCandidate && (
+                  <div className="mt-4">
+                    <h4 className="font-medium mb-2">Recommended Actions:</h4>
+                    <div className="space-y-2">
+                      {analysisResult.recommendations.forCandidate.map((action, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <Lightbulb className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                          <span className="text-sm">{action}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-4 justify-center">
@@ -391,8 +434,8 @@ export const JobAnalysisResult = () => {
               Analyze Another Job
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 };
