@@ -50,7 +50,7 @@ interface UnifiedAnalysisResult {
 }
 
 export const JobAnalysisResult = () => {
-  const [analysisResult, setAnalysisResult] = useState<SimplifiedAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<UnifiedAnalysisResult | null>(null);
   const [copiedSection, setCopiedSection] = useState<string>("");
   const navigate = useNavigate();
   const { toast } = useToast();
