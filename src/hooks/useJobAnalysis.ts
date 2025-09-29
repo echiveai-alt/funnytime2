@@ -59,6 +59,28 @@ export const useJobAnalysis = () => {
 
   const handleAnalysisError = (error: any): { code: string; message: string; retryable: boolean } => {
     console.error('Analysis error:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    
+    // Check for function not found/deployed
+    if (error?.message?.includes('FunctionsRelayError') || 
+        error?.message?.includes('Function not found') ||
+        error?.message?.includes('404')) {
+      return {
+        code: 'FUNCTION_NOT_FOUND',
+        message: 'Edge function not found. Please check if the function is deployed in Supabase.',
+        retryable: false,
+      };
+    }
+
+    // Check for configuration errors
+    if (error?.message?.includes('CONFIG_ERROR') || 
+        error?.message?.includes('Missing required environment variables')) {
+      return {
+        code: 'CONFIG_ERROR',
+        message: 'Server configuration error. Please check environment variables in Supabase Edge Functions settings.',
+        retryable: false,
+      };
+    }
     
     if (error?.message?.includes('rate limit') || error?.message?.includes('429')) {
       return {
@@ -76,7 +98,9 @@ export const useJobAnalysis = () => {
       };
     }
     
-    if (error?.message?.includes('authentication') || error?.message?.includes('401')) {
+    if (error?.message?.includes('authentication') || 
+        error?.message?.includes('401') ||
+        error?.message?.includes('AUTH_FAILED')) {
       return {
         code: 'AUTH_ERROR',
         message: 'Session expired. Please refresh and log in again.',
@@ -92,6 +116,15 @@ export const useJobAnalysis = () => {
       };
     }
 
+    // Network errors
+    if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
+      return {
+        code: 'NETWORK_ERROR',
+        message: 'Network connection error. Please check your connection and try again.',
+        retryable: true,
+      };
+    }
+
     return {
       code: 'UNKNOWN',
       message: error?.message || 'Analysis failed. Please try again.',
@@ -101,7 +134,9 @@ export const useJobAnalysis = () => {
 
   const retryWithDelay = (fn: () => Promise<any>, retries: number): Promise<any> => {
     return fn().catch(error => {
-      if (retries > 0 && error?.retryable !== false) {
+      const errorInfo = handleAnalysisError(error);
+      
+      if (retries > 0 && errorInfo.retryable) {
         console.log(`Retrying analysis, ${retries} attempts remaining...`);
         return new Promise(resolve => {
           setTimeout(() => resolve(retryWithDelay(fn, retries - 1)), ANALYSIS_CONSTANTS.RETRY_DELAY_MS);
@@ -119,6 +154,15 @@ export const useJobAnalysis = () => {
 
     setAnalysisProgress(25);
 
+    console.log('About to invoke edge function with:', {
+      functionName: 'analyze-job-fit',
+      hasSession: !!session,
+      hasAccessToken: !!session.access_token,
+      bodyLength: jobDescription.length,
+      keywordMatchType,
+      supabaseUrl: supabase.supabaseUrl
+    });
+
     console.log('Calling unified analyze-job-fit edge function...');
 
     const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
@@ -129,11 +173,39 @@ export const useJobAnalysis = () => {
       },
     });
 
-    console.log('Edge function response:', { hasData: !!data, hasError: !!error });
+    console.log('Edge function response:', { 
+      hasData: !!data, 
+      hasError: !!error,
+      dataKeys: data ? Object.keys(data) : [],
+      errorDetails: error ? {
+        message: error.message,
+        status: error.status,
+        context: error.context,
+        name: error.name
+      } : null
+    });
 
     if (error) {
       console.error('Edge function error:', error);
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+      
+      // Check for specific error types with more detailed messages
+      if (error.message?.includes('FunctionsRelayError')) {
+        throw new Error('Edge function not found or not deployed. Please verify the function "analyze-job-fit" is deployed in your Supabase project.');
+      }
+      
+      if (error.context?.body) {
+        console.error('Error response body:', error.context.body);
+        throw new Error(error.context.body.error || error.message);
+      }
+      
       throw error;
+    }
+
+    // Check if we got an error in the response data itself
+    if (data?.error) {
+      console.error('Error in response data:', data.error);
+      throw new Error(data.error);
     }
 
     setAnalysisProgress(90);
@@ -141,8 +213,14 @@ export const useJobAnalysis = () => {
     // Validate response
     if (!data || typeof data.overallScore !== 'number' || typeof data.isFit !== 'boolean') {
       console.error('Invalid response structure:', data);
-      throw new Error('Invalid analysis response received');
+      throw new Error('Invalid analysis response received. Expected overallScore and isFit properties.');
     }
+
+    console.log('Valid response received:', {
+      overallScore: data.overallScore,
+      isFit: data.isFit,
+      hasResumeBullets: !!data.resumeBullets
+    });
 
     return data;
   };
@@ -154,6 +232,11 @@ export const useJobAnalysis = () => {
     try {
       setIsAnalyzing(true);
       setAnalysisProgress(0);
+      
+      console.log('Starting job analysis with:', {
+        descriptionLength: jobDescription.length,
+        keywordMatchType
+      });
       
       // Validate input
       const validationError = validateJobDescription(jobDescription);
@@ -175,10 +258,12 @@ export const useJobAnalysis = () => {
       setAnalysisProgress(95);
 
       // Store results
+      console.log('Storing analysis results...');
       localStorage.setItem('jobAnalysisResult', JSON.stringify(data));
       
       // Store resume bullets if generated
       if (data.resumeBullets) {
+        console.log('Storing resume bullets...');
         localStorage.setItem('resumeBullets', JSON.stringify(data.resumeBullets));
       }
 
@@ -209,6 +294,12 @@ export const useJobAnalysis = () => {
       
     } catch (error) {
       const analysisError = handleAnalysisError(error);
+      
+      console.error('Final error handler:', {
+        code: analysisError.code,
+        message: analysisError.message,
+        retryable: analysisError.retryable
+      });
       
       toast({
         title: 'Analysis Failed',
