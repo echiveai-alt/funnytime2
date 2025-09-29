@@ -29,18 +29,22 @@ interface UnifiedAnalysisResult {
     requirement: string;
     importance: string;
   }>;
-  // Only if not fit
-  criticalGaps?: string[];
-  recommendations?: {
-    forCandidate: string[];
-  };
+  allKeywords: string[]; // All keywords from job description
   // Only if fit
-  bulletKeywords?: Record<string, string[]>;
   bulletPoints?: Record<string, any[]>;
+  keywordsUsed?: string[]; // Keywords embedded in bullets
+  keywordsNotUsed?: string[]; // Keywords that couldn't be embedded
   resumeBullets?: {
     bulletOrganization: any[];
     keywordsUsed: string[];
     keywordsNotUsed: string[];
+  };
+  // Only if not fit
+  matchableKeywords?: string[]; // Keywords found in experiences
+  unmatchableKeywords?: string[]; // Keywords NOT found in experiences
+  criticalGaps?: string[];
+  recommendations?: {
+    forCandidate: string[];
   };
   actionPlan: {
     readyForApplication: boolean;
@@ -165,57 +169,115 @@ export const JobAnalysisResult = () => {
         </CardContent>
       </Card>
 
-      {/* Resume Keywords (only if fit) */}
-      {isFit && analysisResult.bulletKeywords && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                Resume Keywords Available
+      {/* Keywords Analysis Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Job Description Keywords
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => copyToClipboard(
+                analysisResult.allKeywords.join(', '),
+                'allKeywords'
+              )}
+            >
+              {copiedSection === 'allKeywords' ? (
+                <Check className="w-4 h-4 mr-2" />
+              ) : (
+                <Copy className="w-4 h-4 mr-2" />
+              )}
+              Copy All
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {/* All Keywords */}
+            <div>
+              <h4 className="font-semibold text-sm mb-2">
+                All Extracted Keywords ({analysisResult.allKeywords.length})
+              </h4>
+              <div className="flex flex-wrap gap-1">
+                {analysisResult.allKeywords.map((keyword, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {keyword}
+                  </Badge>
+                ))}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => copyToClipboard(
-                  Object.values(analysisResult.bulletKeywords || {}).flat().join(', '),
-                  'bulletKeywords'
-                )}
-              >
-                {copiedSection === 'bulletKeywords' ? (
-                  <Check className="w-4 h-4 mr-2" />
-                ) : (
-                  <Copy className="w-4 h-4 mr-2" />
-                )}
-                Copy All
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(analysisResult.bulletKeywords).map(([category, keywords]) => (
-                <div key={category} className="space-y-2">
-                  <h4 className="font-semibold text-sm capitalize text-green-600">
-                    {category}
-                  </h4>
-                  <div className="flex flex-wrap gap-1">
-                    {(keywords as string[]).slice(0, 8).map((keyword: string, index: number) => (
-                      <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800">
-                        {keyword}
-                      </Badge>
-                    ))}
-                    {(keywords as string[]).length > 8 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{(keywords as string[]).length - 8} more
-                      </Badge>
-                    )}
+            </div>
+
+            {/* For Fit Candidates: Show Used vs Not Used */}
+            {isFit && analysisResult.keywordsUsed && (
+              <>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 text-green-600">
+                      Keywords Used in Bullets ({analysisResult.keywordsUsed.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {analysisResult.keywordsUsed.map((keyword, index) => (
+                        <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-300">
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 text-amber-600">
+                      Keywords Not Embedded ({analysisResult.keywordsNotUsed?.length || 0})
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {analysisResult.keywordsNotUsed?.map((keyword, index) => (
+                        <Badge key={index} variant="outline" className="text-xs bg-amber-50 text-amber-800 border-amber-300">
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </>
+            )}
+
+            {/* For Non-Fit Candidates: Show Matchable vs Unmatchable */}
+            {!isFit && analysisResult.matchableKeywords && (
+              <>
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 text-green-600">
+                      Matchable to Your Experience ({analysisResult.matchableKeywords.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {analysisResult.matchableKeywords.map((keyword, index) => (
+                        <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-300">
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2 text-red-600">
+                      Not Found in Experience ({analysisResult.unmatchableKeywords?.length || 0})
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {analysisResult.unmatchableKeywords?.map((keyword, index) => (
+                        <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-800 border-red-300">
+                          {keyword}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Requirements Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
