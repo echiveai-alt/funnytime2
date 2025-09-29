@@ -92,9 +92,10 @@ BULLET GENERATION (ONLY IF SCORE >= 80%):
 CRITICAL RULES:
 1. Create SEPARATE entries for EACH unique "Company Name - Role Title" combination shown above
 2. For each role, generate bullets ONLY from experiences that belong to that specific role
-3. Generate one bullet per experience in that role (up to maximum of ${CONSTANTS.MAX_BULLETS_PER_ROLE})
-4. IMPORTANT: If a role has 7 experiences, create 7 bullets. If it has 3 experiences, create 3 bullets.
+3. Generate EXACTLY ONE bullet for EVERY SINGLE experience in that role - NO EXCEPTIONS
+4. IMPORTANT: If a role has 12 experiences, create 12 bullets. If it has 2 experiences, create 2 bullets.
 5. Each bullet MUST use the experienceId from the specific experience it's based on
+6. DO NOT skip any experiences - every experience must be converted into a bullet point
 
 FORMATTING:
 - Order bullets from most relevant to least relevant based on job description alignment
@@ -323,17 +324,26 @@ serve(async (req) => {
 
       analysis.bulletPoints = processedBullets;
 
-      // Format for frontend compatibility
-      const bulletOrganization = Object.entries(processedBullets).map(([roleKey, bullets]: [string, any]) => {
+      // Format for frontend compatibility - group by company, then roles
+      const companyRoleMap: Record<string, any[]> = {};
+      
+      Object.entries(processedBullets).forEach(([roleKey, bullets]: [string, any]) => {
         const [company, role] = roleKey.split(' - ');
-        return {
-          name: company,
-          roles: [{
-            title: role,
-            bulletPoints: bullets
-          }]
-        };
+        
+        if (!companyRoleMap[company]) {
+          companyRoleMap[company] = [];
+        }
+        
+        companyRoleMap[company].push({
+          title: role,
+          bulletPoints: bullets
+        });
       });
+
+      const bulletOrganization = Object.entries(companyRoleMap).map(([company, roles]) => ({
+        name: company,
+        roles: roles
+      }));
 
       analysis.resumeBullets = {
         bulletOrganization,
