@@ -18,9 +18,11 @@ interface UnifiedAnalysisResult {
   jobRequirements: Array<any>;
   matchedRequirements: Array<any>;
   unmatchedRequirements: Array<any>;
+  allKeywords: string[]; // All keywords extracted from job description
   // Only if fit
-  bulletKeywords?: Record<string, string[]>;
   bulletPoints?: Record<string, any[]>;
+  keywordsUsed?: string[]; // Keywords embedded in bullets
+  keywordsNotUsed?: string[]; // Keywords that couldn't be embedded
   resumeBullets?: {
     bulletOrganization: any[];
     keywordsUsed: string[];
@@ -28,6 +30,8 @@ interface UnifiedAnalysisResult {
     generatedFrom: any;
   };
   // Only if not fit
+  matchableKeywords?: string[]; // Keywords found in experiences
+  unmatchableKeywords?: string[]; // Keywords NOT found in experiences
   criticalGaps?: string[];
   recommendations?: {
     forCandidate: string[];
