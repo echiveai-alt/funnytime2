@@ -124,6 +124,7 @@ export const useJobAnalysis = () => {
     const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
       body: { jobDescription },
       headers: {
+        Authorization: `Bearer ${session.access_token}`,
         'x-keyword-match-type': keywordMatchType
       },
     });
