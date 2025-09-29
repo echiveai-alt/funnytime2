@@ -50,7 +50,7 @@ interface UnifiedAnalysisResult {
 }
 
 export const JobAnalysisResult = () => {
-  const [analysisResult, setAnalysisResult] = useState<SimplifiedAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<UnifiedAnalysisResult | null>(null);
   const [copiedSection, setCopiedSection] = useState<string>("");
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -66,7 +66,7 @@ export const JobAnalysisResult = () => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        console.log('Simplified analysis result:', parsed);
+        console.log('Unified analysis result:', parsed);
         setAnalysisResult(parsed);
       } catch (error) {
         console.error('Failed to parse stored analysis result:', error);
