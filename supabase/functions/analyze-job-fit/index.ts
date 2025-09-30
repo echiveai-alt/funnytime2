@@ -125,80 +125,143 @@ ${JSON.stringify(stage1Results.allKeywords, null, 2)}
 CANDIDATE EXPERIENCES (GROUPED BY ROLE):
 ${experiencesText}
 
-MATCHING RULES - BE EXTREMELY STRICT:
-1. For each requirement, check if candidate's experiences provide EXPLICIT evidence
-2. NO ASSUMPTIONS: If the experience doesn't explicitly mention it, it's NOT matched
-3. NO GENEROUS INTERPRETATION: 
-   - "Analyzed data" ≠ "SQL experience" unless SQL is mentioned
-   - "Worked with teams" ≠ "Led teams" unless leadership is clear
-   - "CRM experience" ≠ "Salesforce" unless Salesforce is mentioned
-4. NO PARTIAL CREDIT: Either matched with clear evidence, or not matched
+MATCHING RULES - BE EXTREMELY STRICT BUT FAIR:
 
-SCORING:
-- Calculate: (matched requirements / total requirements) × 100
-- Round DOWN, not up
-- 40-60% is NORMAL for most candidates
-- 70-79% is a strong candidate with minor gaps
-- 80%+ should be RARE - only when nearly all requirements clearly met
-- If missing ANY critical requirements, cap at 65%
+1. WHAT COUNTS AS A MATCH:
+   ✓ The experience explicitly mentions the skill/tool/technology
+   ✓ The experience describes performing the exact responsibility
+   ✓ The experience shows clear evidence of the capability
+   
+   Examples of VALID matches:
+   - Requirement: "SQL experience" + Experience: "Wrote SQL queries to analyze customer data" = MATCH
+   - Requirement: "Team leadership" + Experience: "Led a team of 5 engineers" = MATCH
+   - Requirement: "Python" + Experience: "Developed Python scripts for automation" = MATCH
 
-BULLET GENERATION (ONLY IF SCORE >= 80%):
-1. Create EXACTLY ONE bullet for EVERY experience
-2. Create SEPARATE entries for EACH "Company - Role" combination
-3. Order bullets by relevance (most relevant first)
-4. Structure: "Result (with numbers) + Action verb + context" OR "Action verb + context + quantified result" OR "Result + Action verb"
-5. Target width: ${CONSTANTS.VISUAL_WIDTH_TARGET} chars (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
-6. ${keywordInstruction}
-7. ONLY embed keywords if they naturally fit based on the experience content
-8. Track which keywords were embedded and which couldn't fit
+2. WHAT DOES NOT COUNT AS A MATCH:
+   ✗ Generic statements without specifics
+   ✗ Assumptions or inferences
+   ✗ Tangentially related skills
+   
+   Examples of INVALID matches:
+   - Requirement: "SQL" + Experience: "Analyzed data" = NO MATCH (SQL not mentioned)
+   - Requirement: "Team leadership" + Experience: "Worked with team" = NO MATCH (no leadership evidence)
+   - Requirement: "Salesforce" + Experience: "CRM experience" = NO MATCH (Salesforce not specified)
 
-Return JSON:
-IF SCORE >= 80%:
+3. FOR EACH REQUIREMENT:
+   - Check ALL candidate experiences
+   - If ANY experience provides explicit evidence → MATCHED
+   - Record the specific experience and evidence found
+   - If NO experience mentions it → UNMATCHED
+   - Be thorough - don't skip requirements
+
+4. SCORING CALCULATION:
+   - Score = (Number of Matched Requirements / Total Requirements) × 100
+   - Round DOWN to nearest whole number
+   - If missing ANY critical requirements, cap score at 65%
+   - 40-60% is NORMAL and expected for most candidates
+   - 70-79% means strong candidate with minor gaps
+   - 80%+ should be RARE - only when nearly all requirements clearly met
+
+CRITICAL: YOU MUST POPULATE BOTH matchedRequirements AND unmatchedRequirements ARRAYS FOR ALL SCORES.
+Even if score is low, show which requirements were matched and which were not.
+
+Return JSON in this EXACT format:
+
+FOR SCORES >= 80% (Fit candidates):
 {
-  "overallScore": 75,
+  "overallScore": 85,
   "isFit": true,
-  "fitLevel": "Good|Strong|Excellent",
+  "fitLevel": "Excellent",
   "matchedRequirements": [
     {
-      "jobRequirement": "requirement from stage 1",
-      "experienceEvidence": "specific evidence from experience",
-      "experienceSource": "Company - Role: Experience Title"
+      "jobRequirement": "SQL experience",
+      "experienceEvidence": "Wrote complex SQL queries to analyze customer behavior patterns",
+      "experienceSource": "TechCorp - Data Analyst: Customer Analysis Project"
     }
   ],
   "unmatchedRequirements": [
     {
-      "requirement": "requirement from stage 1",
-      "importance": "level"
+      "requirement": "Tableau certification",
+      "importance": "medium"
     }
   ],
   "bulletPoints": {
     "Company - Role": [
       {
-        "text": "bullet text",
-        "experienceId": "exp_id",
-        "keywordsUsed": ["keywords in this bullet"],
+        "text": "Increased customer retention by 23% through SQL-driven analysis of 50K+ user behaviors",
+        "experienceId": "exp_123",
+        "keywordsUsed": ["SQL", "customer retention", "analysis"],
         "relevanceScore": 10
       }
     ]
   },
-  "keywordsUsed": ["keywords embedded in bullets"],
-  "keywordsNotUsed": ["keywords not embedded"]
+  "keywordsUsed": ["SQL", "customer retention", "analysis"],
+  "keywordsNotUsed": ["Tableau", "certification"]
 }
 
-IF SCORE < 80%:
+FOR SCORES < 80% (Not fit candidates):
 {
   "overallScore": 55,
   "isFit": false,
-  "fitLevel": "Poor|Fair",
-  "matchedRequirements": [...],
-  "unmatchedRequirements": [...],
-  "matchableKeywords": ["keywords found in experiences"],
-  "unmatchableKeywords": ["keywords NOT in experiences"],
-  "criticalGaps": ["critical requirements missing"],
+  "fitLevel": "Fair",
+  "matchedRequirements": [
+    {
+      "jobRequirement": "Data analysis",
+      "experienceEvidence": "Analyzed customer data to identify trends and patterns",
+      "experienceSource": "StartupCo - Analyst: Market Research"
+    },
+    {
+      "jobRequirement": "Excel proficiency",
+      "experienceEvidence": "Created Excel dashboards with pivot tables and vlookups",
+      "experienceSource": "StartupCo - Analyst: Financial Reporting"
+    }
+  ],
+  "unmatchedRequirements": [
+    {
+      "requirement": "SQL experience",
+      "importance": "critical"
+    },
+    {
+      "requirement": "Python programming",
+      "importance": "high"
+    },
+    {
+      "requirement": "Tableau expertise",
+      "importance": "high"
+    },
+    {
+      "requirement": "Machine learning knowledge",
+      "importance": "medium"
+    }
+  ],
+  "matchableKeywords": ["data analysis", "Excel", "trends", "patterns"],
+  "unmatchableKeywords": ["SQL", "Python", "Tableau", "machine learning"],
+  "criticalGaps": ["SQL experience", "Python programming"],
   "recommendations": {
-    "forCandidate": ["specific recommendations"]
+    "forCandidate": [
+      "Gain SQL experience through online courses or personal projects",
+      "Learn Python basics for data analysis (pandas, numpy)",
+      "Consider entry-level positions that don't require Python/SQL",
+      "Highlight your strong Excel and analytical skills in applications"
+    ]
   }
-}`;
+}
+
+BULLET GENERATION RULES (ONLY IF SCORE >= 80%):
+1. Create EXACTLY ONE bullet for EVERY experience
+2. Create SEPARATE entries for EACH "Company - Role" combination
+3. Order bullets by relevance (most relevant first)
+4. Structure: "Result (with numbers) + Action verb + context" OR "Action verb + context + quantified result"
+5. Target width: ${CONSTANTS.VISUAL_WIDTH_TARGET} chars (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
+6. ${keywordInstruction}
+7. ONLY embed keywords if they naturally fit based on the experience content
+8. Track which keywords were embedded and which couldn't fit
+
+REMEMBER: 
+- Always provide matchedRequirements array (even if empty for very low scores)
+- Always provide unmatchedRequirements array (even if empty for perfect scores)
+- Be specific about which experience provides evidence for each match
+- For unmatched requirements, include the importance level from the job requirements`;
 }
 
 async function callOpenAI(apiKey: string, messages: any[], maxTokens: number) {
@@ -222,6 +285,145 @@ async function callOpenAI(apiKey: string, messages: any[], maxTokens: number) {
 
   const data = await response.json();
   return data.choices[0].message.content;
+}
+
+// Validation function for Stage 2 response
+function validateStage2Response(stage2Results: any): void {
+  // Basic structure validation
+  if (typeof stage2Results.overallScore !== 'number') {
+    throw new AnalysisError('Missing or invalid overallScore in response', 'INVALID_RESPONSE', 500);
+  }
+  
+  if (typeof stage2Results.isFit !== 'boolean') {
+    throw new AnalysisError('Missing or invalid isFit in response', 'INVALID_RESPONSE', 500);
+  }
+
+  // CRITICAL: These arrays must always be present
+  if (!Array.isArray(stage2Results.matchedRequirements)) {
+    console.error('Missing matchedRequirements array in response:', stage2Results);
+    throw new AnalysisError(
+      'AI response missing matchedRequirements array. This is required for all scores.',
+      'INVALID_RESPONSE',
+      500
+    );
+  }
+
+  if (!Array.isArray(stage2Results.unmatchedRequirements)) {
+    console.error('Missing unmatchedRequirements array in response:', stage2Results);
+    throw new AnalysisError(
+      'AI response missing unmatchedRequirements array. This is required for all scores.',
+      'INVALID_RESPONSE',
+      500
+    );
+  }
+
+  // Validate matched requirements structure
+  for (const match of stage2Results.matchedRequirements) {
+    if (!match.jobRequirement || !match.experienceEvidence || !match.experienceSource) {
+      console.error('Invalid matched requirement structure:', match);
+      throw new AnalysisError(
+        'Invalid matchedRequirements structure. Each must have jobRequirement, experienceEvidence, and experienceSource',
+        'INVALID_RESPONSE',
+        500
+      );
+    }
+  }
+
+  // Validate unmatched requirements structure
+  for (const unmatched of stage2Results.unmatchedRequirements) {
+    if (!unmatched.requirement || !unmatched.importance) {
+      console.error('Invalid unmatched requirement structure:', unmatched);
+      throw new AnalysisError(
+        'Invalid unmatchedRequirements structure. Each must have requirement and importance',
+        'INVALID_RESPONSE',
+        500
+      );
+    }
+  }
+
+  // Validate fit-specific fields
+  if (stage2Results.isFit) {
+    if (!stage2Results.bulletPoints || typeof stage2Results.bulletPoints !== 'object') {
+      throw new AnalysisError('Fit candidate missing bulletPoints', 'INVALID_RESPONSE', 500);
+    }
+    if (!Array.isArray(stage2Results.keywordsUsed)) {
+      throw new AnalysisError('Fit candidate missing keywordsUsed array', 'INVALID_RESPONSE', 500);
+    }
+  }
+
+  // Validate non-fit specific fields (set defaults if missing)
+  if (!stage2Results.isFit) {
+    if (!Array.isArray(stage2Results.matchableKeywords)) {
+      console.warn('Non-fit candidate missing matchableKeywords array, setting default');
+      stage2Results.matchableKeywords = [];
+    }
+    if (!Array.isArray(stage2Results.unmatchableKeywords)) {
+      console.warn('Non-fit candidate missing unmatchableKeywords array, setting default');
+      stage2Results.unmatchableKeywords = [];
+    }
+    if (!Array.isArray(stage2Results.criticalGaps)) {
+      console.warn('Non-fit candidate missing criticalGaps array, setting default');
+      stage2Results.criticalGaps = [];
+    }
+    if (!stage2Results.recommendations?.forCandidate) {
+      console.warn('Non-fit candidate missing recommendations, setting default');
+      stage2Results.recommendations = { forCandidate: [] };
+    }
+  }
+
+  console.log('Stage 2 response validation passed:', {
+    score: stage2Results.overallScore,
+    isFit: stage2Results.isFit,
+    matchedCount: stage2Results.matchedRequirements.length,
+    unmatchedCount: stage2Results.unmatchedRequirements.length
+  });
+}
+
+// Call OpenAI with retry logic for invalid responses
+async function callOpenAIWithRetry(
+  apiKey: string, 
+  messages: any[], 
+  maxTokens: number,
+  maxAttempts: number = 2
+): Promise<any> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`OpenAI call attempt ${attempt}/${maxAttempts}`);
+      
+      const responseText = await callOpenAI(apiKey, messages, maxTokens);
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      
+      const parsed = JSON.parse(jsonMatch[0]);
+      validateStage2Response(parsed); // This will throw if validation fails
+      
+      return parsed;
+      
+    } catch (error) {
+      console.error(`Attempt ${attempt} failed:`, error);
+      
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+      
+      // Add additional instruction for retry
+      messages.push({
+        role: 'assistant',
+        content: 'I need to provide a more complete response.'
+      });
+      messages.push({
+        role: 'user',
+        content: 'CRITICAL: Your previous response was incomplete or invalid. You MUST include both matchedRequirements and unmatchedRequirements arrays with proper structure. Even if the score is low, show what was matched (with evidence) and what was not matched (with importance level). Return valid JSON only.'
+      });
+      
+      console.log('Retrying with enhanced prompt...');
+    }
+  }
+  
+  throw new AnalysisError('Max retry attempts reached', 'MAX_RETRIES', 500);
 }
 
 serve(async (req) => {
@@ -356,12 +558,12 @@ serve(async (req) => {
     // ===== STAGE 2: Match to experiences and generate bullets =====
     console.log('STAGE 2: Matching requirements to experiences...');
     
-    const stage2Response = await callOpenAI(
+    const stage2Results = await callOpenAIWithRetry(
       openaiApiKey,
       [
         {
           role: 'system',
-          content: 'You are a strict resume analyzer. Match candidate experiences against pre-extracted job requirements. Be critical and honest. Only high-quality matches should score 80%+.'
+          content: 'You are a strict resume analyzer. Match candidate experiences against pre-extracted job requirements. Be critical and honest. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays, regardless of score. Only high-quality matches should score 80%+.'
         },
         {
           role: 'user',
@@ -371,18 +573,15 @@ serve(async (req) => {
       8000
     );
 
-    const stage2Match = stage2Response.match(/\{[\s\S]*\}/);
-    if (!stage2Match) {
-      throw new AnalysisError('Invalid Stage 2 response format', 'INVALID_RESPONSE', 500);
-    }
-
-    const stage2Results = JSON.parse(stage2Match[0]);
-    
-    console.log('Stage 2 complete:', {
+    console.log('Stage 2 complete - detailed results:', {
       score: stage2Results.overallScore,
       isFit: stage2Results.isFit,
-      matched: stage2Results.matchedRequirements?.length || 0,
-      unmatched: stage2Results.unmatchedRequirements?.length || 0
+      fitLevel: stage2Results.fitLevel,
+      totalRequirements: stage1Results.jobRequirements.length,
+      matchedCount: stage2Results.matchedRequirements?.length || 0,
+      unmatchedCount: stage2Results.unmatchedRequirements?.length || 0,
+      matchedSample: stage2Results.matchedRequirements?.[0],
+      unmatchedSample: stage2Results.unmatchedRequirements?.[0]
     });
 
     // Merge stage 1 and stage 2 results
@@ -532,6 +731,7 @@ serve(async (req) => {
     };
 
     console.log(`Analysis completed: ${analysis.overallScore}% (${analysis.isFit ? 'FIT' : 'NOT FIT'})`);
+    console.log(`Matched: ${analysis.matchedRequirements.length}, Unmatched: ${analysis.unmatchedRequirements.length}`);
 
     return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
