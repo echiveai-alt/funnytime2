@@ -163,12 +163,17 @@ MATCHING RULES - BE EXTREMELY STRICT BUT FAIR:
    - Be thorough - don't skip requirements
 
 4. EDUCATION MATCHING RULES:
-   - "Bachelor's degree" or "Bachelor's" or "undergraduate degree" matches ANY Bachelor degree (B.A., B.S., B.Sc., B.Eng., etc.)
+   - "Bachelor's degree" or "Bachelor's" or "undergraduate degree" or "Bachelor's degree or equivalent" matches ANY Bachelor degree (B.A., B.S., B.Sc., B.Eng., Bachelor of Arts, Bachelor of Science, etc.)
    - "Master's degree" or "Master's" matches any Master degree (M.A., M.S., MBA, M.Eng., etc.)
    - "PhD" or "Doctorate" matches doctoral degrees
+   - ANY mention of "Bachelor's" in the requirement should match if candidate has ANY Bachelor-level degree
+   - "Equivalent practical experience" alongside a degree requirement does NOT eliminate the match if the candidate HAS the degree
    - Match the LEVEL, not necessarily the field (unless field is specifically required)
    - For education matches, use format in experienceSource: "Education: [Degree] from [School]"
-   - Example: Requirement "Bachelor's degree" + Education "B.Sc in Actuarial Science from University X" = MATCH
+   - Examples: 
+     * Requirement "Bachelor's degree" + Education "B.Sc in Actuarial Science" = MATCH
+     * Requirement "Bachelor's degree or equivalent practical experience" + Education "B.Sc in Actuarial Science" = MATCH
+     * Requirement "Bachelor's in Computer Science" + Education "B.Sc in Actuarial Science" = NO MATCH (field specific)
 
 5. SCORING CALCULATION:
    - Score = (Number of Matched Requirements / Total Requirements) × 100
@@ -235,7 +240,7 @@ FOR SCORES < 80% (Not fit candidates):
       "experienceSource": "StartupCo - Analyst: Market Research"
     },
     {
-      "jobRequirement": "Bachelor's degree",
+      "jobRequirement": "Bachelor's degree or equivalent practical experience",
       "experienceEvidence": "B.Sc in Actuarial Science",
       "experienceSource": "Education: B.Sc in Actuarial Science from University X"
     },
@@ -636,7 +641,7 @@ ${educationInfo.map((edu, i) => `
       [
         {
           role: 'system',
-          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. Be critical and honest. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays, regardless of score. For scores < 80%, ALWAYS provide 3-5 specific recommendations. Check education for degree requirements. Only high-quality matches should score 80%+.'
+          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. CRITICAL: Always check candidate education first for any degree requirements before marking them as unmatched. A B.Sc, B.A., B.S., or any Bachelor-level degree satisfies "Bachelor\'s degree" requirements regardless of field unless field is specified. Be critical and honest. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays, regardless of score. For scores < 80%, ALWAYS provide 3-5 specific recommendations. Only high-quality matches should score 80%+.'
         },
         {
           role: 'user',
