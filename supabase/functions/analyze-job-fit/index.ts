@@ -76,12 +76,22 @@ CANDIDATE EXPERIENCES (GROUPED BY ROLE):
 ${experiencesText}
 
 SCORING METHODOLOGY:
-1. Extract ALL keywords and requirements from job description (skills, tools, technologies, qualifications, responsibilities)
-2. For each requirement/keyword, check if candidate's experiences contain it or a translatable equivalent:
-   - Exact matches count fully
-   - Translatable matches count fully (e.g., "managed team" = "led team", "collaborated" = "worked with others")
-3. Score = (matched requirements / total requirements) * 100
-4. If missing critical requirements (e.g., required certifications, years of experience), cap score at 70%
+1. Extract ALL specific, measurable requirements from job description:
+   - Required skills, tools, and technologies (be specific: "React" not just "frontend")
+   - Years of experience required
+   - Specific certifications or degrees
+   - Industry-specific knowledge
+   - Required responsibilities and achievements
+2. For EACH requirement, strictly evaluate if candidate's experiences demonstrate it:
+   - Exact matches: Full credit
+   - Close equivalents: Full credit (e.g., "managed" = "led", "collaborated" = "worked with")
+   - Partial matches: NO credit (e.g., "React" experience doesn't count for "Vue.js" requirement)
+   - No evidence: NO credit
+3. Calculate score: (matched requirements / total requirements) × 100
+4. CRITICAL REQUIREMENTS RULE: If ANY critical/required items are missing, cap score at 70% maximum
+5. BE STRICT: A 50-60% score is common and acceptable. Don't inflate scores to be kind.
+
+IMPORTANT: Extract specific requirements from the job description. More granular requirements = more accurate scoring.
 
 KEYWORD EXTRACTION:
 - Extract a comprehensive list of ALL keywords from the job description (no categorization needed)
@@ -104,7 +114,8 @@ FORMATTING:
   * "Action verb + context + quantified result"
   * "Result (with numbers if available) + Action verb"
 - Target visual width: ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (acceptable range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
-- IMPORTANT: Generate bullets even if they fall outside the target range - we will display them with warnings
+- If too short, fill with more context if possible or more actions
+- If too long, create more concise sentences as much as possible or shorten context
 - KEYWORD MATCHING: ${keywordInstruction}
 - Use ONLY real information from experiences - never invent details
 - Embed keywords naturally where supported by experience
