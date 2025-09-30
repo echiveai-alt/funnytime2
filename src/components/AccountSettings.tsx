@@ -233,6 +233,24 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
               </div>
             </div>
 
+            {/* Educational Achievements */}
+            <div className="space-y-2 pt-4 border-t">
+              <Label>Educational Achievements</Label>
+              <p className="text-sm text-muted-foreground">
+                Review and update your educational background
+              </p>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  navigate("/onboarding/education");
+                  onClose();
+                }}
+                className="w-full"
+              >
+                Manage Education
+              </Button>
+            </div>
+
             {/* Delete Account */}
             <div className="space-y-2 pt-4 border-t">
               <Button 
