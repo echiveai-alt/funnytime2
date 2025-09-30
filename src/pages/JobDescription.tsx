@@ -274,25 +274,8 @@ const JobDescription = () => {
                 )}
               </div>
 
-              {/* Information Box */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-medium text-blue-900 mb-2">Analysis Process:</h4>
-                    <ul className="space-y-1 text-sm text-blue-800">
-                      <li>• Extract key requirements and skills from job description</li>
-                      <li>• Match against your STAR-format experiences</li>
-                      <li>• Calculate overall job fit percentage (0-100%)</li>
-                      <li>• Generate tailored resume bullets if score ≥ 80%</li>
-                      <li>• Provide improvement recommendations if score &lt; 80%</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
               {/* Action Button */}
-              <div className="flex justify-center pt-6">
+              <div className="flex justify-center pt-2">
                 <Button
                   type="submit"
                   disabled={isAnalyzing || characterCount < constants.MIN_JOB_DESCRIPTION_LENGTH}
@@ -314,9 +297,26 @@ const JobDescription = () => {
               </div>
 
               {/* Help Text */}
-              <div className="text-center text-sm text-muted-foreground space-y-1">
+              <div className="text-center text-sm text-muted-foreground space-y-1 mb-6">
                 <p>Analysis typically takes 15-45 seconds</p>
                 <p>Higher scores (80%+) automatically generate resume bullets</p>
+              </div>
+
+              {/* Information Box */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-medium text-blue-900 mb-2">Analysis Process:</h4>
+                    <ul className="space-y-1 text-sm text-blue-800">
+                      <li>• Extract key requirements and skills from job description</li>
+                      <li>• Match against your STAR-format experiences</li>
+                      <li>• Calculate overall job fit percentage (0-100%)</li>
+                      <li>• Generate tailored resume bullets if score ≥ 80%</li>
+                      <li>• Provide improvement recommendations if score &lt; 80%</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </form>
           )}
