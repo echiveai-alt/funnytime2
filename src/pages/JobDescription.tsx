@@ -283,7 +283,7 @@ const JobDescription = () => {
               </div>
 
               {/* Action Button */}
-              <div className="flex justify-center items-center py-3">
+              <div className="flex justify-center items-center py-2">
                 <Button
                   type="submit"
                   disabled={isAnalyzing || characterCount < constants.MIN_JOB_DESCRIPTION_LENGTH}
@@ -305,7 +305,7 @@ const JobDescription = () => {
               </div>
 
               {/* Help Text */}
-              <div className="text-center text-sm text-muted-foreground space-y-1 mb-6">
+              <div className="text-center text-sm text-muted-foreground space-y-1 mb-4">
                 <p>Analysis typically takes 15-45 seconds</p>
                 <p>Higher scores (80%+) automatically generate resume bullets</p>
               </div>
