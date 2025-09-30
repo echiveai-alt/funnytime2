@@ -251,7 +251,7 @@ const JobDescription = () => {
                         Matches words precisely (e.g., 'manage' ≠ 'managing')
                       </div>
                       <div className="text-xs font-normal opacity-75 break-words">
-                        Best for: Workday, Greenhouse, and Lever
+                        Best for: Workday, Greenhouse, Lever, and most ATS
                       </div>
                     </div>
                   </Button>
@@ -268,7 +268,7 @@ const JobDescription = () => {
                         Matches word roots (e.g., 'manage' = 'managing')
                       </div>
                       <div className="text-xs font-normal opacity-75 break-words">
-                        Best for: Workfold, Eightfold, most AI based ATS
+                        Best for: Workable, Eightfold, and other AI based ATS
                       </div>
                     </div>
                   </Button>
