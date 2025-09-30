@@ -242,18 +242,16 @@ const JobDescription = () => {
                   <Button
                     type="button"
                     variant={keywordMatchType === "exact" ? "default" : "outline"}
-                    className="h-[120px] w-full"
+                    className="h-auto py-4 px-4 w-full"
                     onClick={() => handleKeywordMatchTypeChange("exact")}
                   >
-                    <div className="text-left w-full flex flex-col h-full justify-between">
-                      <div className="font-semibold mb-2">Exact Match</div>
-                      <div className="space-y-1.5 flex-1">
-                        <div className="text-xs font-normal opacity-90">
-                          Matches words precisely (e.g., 'manage' ≠ 'managing')
-                        </div>
-                        <div className="text-xs font-normal opacity-75">
-                          Best for: Technical roles, compliance positions
-                        </div>
+                    <div className="text-left w-full space-y-2">
+                      <div className="font-semibold">Exact Match</div>
+                      <div className="text-xs font-normal opacity-90 break-words">
+                        Matches words precisely (e.g., 'manage' ≠ 'managing')
+                      </div>
+                      <div className="text-xs font-normal opacity-75 break-words">
+                        Best for: Technical roles, compliance positions
                       </div>
                     </div>
                   </Button>
@@ -261,18 +259,16 @@ const JobDescription = () => {
                   <Button
                     type="button"
                     variant={keywordMatchType === "word-stem" ? "default" : "outline"}
-                    className="h-[120px] w-full"
+                    className="h-auto py-4 px-4 w-full"
                     onClick={() => handleKeywordMatchTypeChange("word-stem")}
                   >
-                    <div className="text-left w-full flex flex-col h-full justify-between">
-                      <div className="font-semibold mb-2">Word-Stem Match</div>
-                      <div className="space-y-1.5 flex-1">
-                        <div className="text-xs font-normal opacity-90">
-                          Matches word roots (e.g., 'manage' = 'managing', 'management')
-                        </div>
-                        <div className="text-xs font-normal opacity-75">
-                          Best for: Most roles, creative flexibility
-                        </div>
+                    <div className="text-left w-full space-y-2">
+                      <div className="font-semibold">Word-Stem Match</div>
+                      <div className="text-xs font-normal opacity-90 break-words">
+                        Matches word roots (e.g., 'manage' = 'managing', 'management')
+                      </div>
+                      <div className="text-xs font-normal opacity-75 break-words">
+                        Best for: Most roles, creative flexibility
                       </div>
                     </div>
                   </Button>
