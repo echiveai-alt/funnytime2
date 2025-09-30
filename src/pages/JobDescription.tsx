@@ -283,7 +283,7 @@ const JobDescription = () => {
               </div>
 
               {/* Action Button */}
-              <div className="flex justify-center items-center py-6">
+              <div className="flex justify-center items-center py-3">
                 <Button
                   type="submit"
                   disabled={isAnalyzing || characterCount < constants.MIN_JOB_DESCRIPTION_LENGTH}
