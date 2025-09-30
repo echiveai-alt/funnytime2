@@ -185,7 +185,6 @@ const JobDescription = () => {
                   <li>• Extracting key requirements and skills from job description</li>
                   <li>• Matching against your professional experiences</li>
                   <li>• Calculating overall job fit percentage</li>
-                  <li>• Preparing personalized recommendations</li>
                 </ul>
               </div>
             </div>
