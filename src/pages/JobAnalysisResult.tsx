@@ -427,90 +427,29 @@ export const JobAnalysisResult = () => {
         </Card>
       )}
 
-      {/* Action Plan */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ArrowRight className="w-5 h-5" />
-            Recommended Next Steps
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Only show the status box if fit OR if there are critical gaps or recommendations */}
-          {(isFit || criticalGaps.length > 0 || (analysisResult.recommendations?.forCandidate && analysisResult.recommendations.forCandidate.length > 0)) && (
-            <div className={`border rounded-lg p-4 mb-6 ${
-              isFit ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-            }`}>
-              <div className="flex items-center gap-2 mb-2">
-                {isFit ? (
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-red-600" />
-                )}
-                <h3 className={`font-semibold ${
-                  isFit ? 'text-green-800' : 'text-red-800'
-                }`}>
-                  {isFit ? 'Ready for Application' : 'Profile Enhancement Required'}
-                </h3>
-              </div>
-
-              {!isFit && criticalGaps.length > 0 && (
-                <div className="mt-3">
-                  <h4 className="font-medium text-red-800 mb-2">Critical gaps to address:</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {criticalGaps.map((gap, index) => (
-                      <div key={index} className="flex items-start gap-2 bg-red-100 p-2 rounded">
-                        <XCircle className="w-4 h-4 mt-0.5 text-red-600 flex-shrink-0" />
-                        <span className="text-sm text-red-800">{gap}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Only show recommendations section if there are actual recommendations */}
-              {analysisResult.recommendations?.forCandidate && 
-               analysisResult.recommendations.forCandidate.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="font-medium mb-2">Recommended Actions:</h4>
-                  <div className="space-y-2">
-                    {analysisResult.recommendations.forCandidate.map((action, index) => (
-                      <div key={index} className="flex items-start gap-2">
-                        <Lightbulb className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
-                        <span className="text-sm">{action}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-4 justify-center">
-            {!isFit && (
-              <Button 
-                onClick={() => navigate('/app/experiences')}
-                size="lg"
-                variant="default"
-                className="flex items-center gap-2"
-              >
-                <Users className="w-4 h-4" />
-                Add/Edit Experiences
-              </Button>
-            )}
-            
-            <Button 
-              onClick={() => navigate('/app/job-description')}
-              variant="outline" 
-              size="lg"
-            >
-              <Target className="w-4 h-4 mr-2" />
-              Analyze Another Job
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Action Buttons - directly on page without card wrapper */}
+      <div className="flex flex-wrap gap-4 justify-center py-6">
+        {!isFit && (
+          <Button 
+            onClick={() => navigate('/app/experiences')}
+            size="lg"
+            variant="default"
+            className="flex items-center gap-2"
+          >
+            <Users className="w-4 h-4" />
+            Add/Edit Experiences
+          </Button>
+        )}
+        
+        <Button 
+          onClick={() => navigate('/app/job-description')}
+          variant="outline" 
+          size="lg"
+        >
+          <Target className="w-4 h-4 mr-2" />
+          Analyze Another Job
+        </Button>
+      </div>
     </div>
   );
 };
