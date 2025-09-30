@@ -229,42 +229,50 @@ const JobDescription = () => {
                 </div>
               </div>
 
-              {/* Keyword Matching Dropdown */}
+              {/* Keyword Matching Strategy */}
               <div className="space-y-3">
-                <Label htmlFor="keywordMatchType" className="text-base font-semibold text-foreground">
+                <Label className="text-base font-semibold text-foreground">
                   Keyword Matching Strategy
                 </Label>
                 <p className="text-sm text-muted-foreground mb-2">
                   Choose how precisely keywords should match between your experience and the job description
                 </p>
-                <Select
-                  value={keywordMatchType}
-                  onValueChange={handleKeywordMatchTypeChange}
-                >
-                  <SelectTrigger className="w-full max-w-md h-[55px]">
-                    <SelectValue placeholder="Select matching strategy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="exact">
-                      <div className="py-1">
-                        <div className="font-medium">Exact Match</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Matches words precisely (e.g., 'manage' ≠ 'managing')
-                          <br />Best for: Technical roles, compliance positions
-                        </div>
+                
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant={keywordMatchType === "exact" ? "default" : "outline"}
+                    className="flex-1 h-auto py-4 px-4"
+                    onClick={() => handleKeywordMatchTypeChange("exact")}
+                  >
+                    <div className="text-left w-full">
+                      <div className="font-semibold mb-1">Exact Match</div>
+                      <div className="text-xs font-normal opacity-90">
+                        Matches words precisely (e.g., 'manage' ≠ 'managing')
                       </div>
-                    </SelectItem>
-                    <SelectItem value="word-stem">
-                      <div className="py-1">
-                        <div className="font-medium">Word-Stem Match</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Matches word roots (e.g., 'manage' = 'managing', 'management')
-                          <br />Best for: Most roles, creative flexibility
-                        </div>
+                      <div className="text-xs font-normal opacity-75 mt-1">
+                        Best for: Technical roles, compliance positions
                       </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                    </div>
+                  </Button>
+                  
+                  <Button
+                    type="button"
+                    variant={keywordMatchType === "word-stem" ? "default" : "outline"}
+                    className="flex-1 h-auto py-4 px-4"
+                    onClick={() => handleKeywordMatchTypeChange("word-stem")}
+                  >
+                    <div className="text-left w-full">
+                      <div className="font-semibold mb-1">Word-Stem Match</div>
+                      <div className="text-xs font-normal opacity-90">
+                        Matches word roots (e.g., 'manage' = 'managing', 'management')
+                      </div>
+                      <div className="text-xs font-normal opacity-75 mt-1">
+                        Best for: Most roles, creative flexibility
+                      </div>
+                    </div>
+                  </Button>
+                </div>
                 
                 {errors.keywordMatchType && (
                   <div className="flex items-start gap-2 text-sm text-destructive">
