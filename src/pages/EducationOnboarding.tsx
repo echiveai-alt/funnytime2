@@ -83,17 +83,8 @@ const EducationOnboarding = () => {
           return;
         }
 
-        // Check if user has already completed education onboarding
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("education_onboarding_completed")
-          .eq("user_id", session.user.id)
-          .single();
-
-        if (profile?.education_onboarding_completed) {
-          navigate("/app/experiences");
-          return;
-        }
+        // Allow returning users to manage their education by not redirecting
+        // if they've already completed onboarding
       } catch (error) {
         console.error("Auth check error:", error);
         navigate("/signup");
