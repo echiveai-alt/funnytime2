@@ -243,35 +243,40 @@ export const JobAnalysisResult = () => {
               </>
             )}
 
-            {/* For Non-Fit Candidates: Show Matchable vs Unmatchable */}
-            {!isFit && analysisResult.matchableKeywords && (
+            {/* For Non-Fit Candidates: Only show if there are actual matchable/unmatchable keywords */}
+            {!isFit && analysisResult.matchableKeywords && analysisResult.unmatchableKeywords && 
+             (analysisResult.matchableKeywords.length > 0 || analysisResult.unmatchableKeywords.length > 0) && (
               <>
                 <Separator />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 text-green-600">
-                      Matchable to Your Experience ({analysisResult.matchableKeywords.length})
-                    </h4>
-                    <div className="flex flex-wrap gap-1">
-                      {analysisResult.matchableKeywords.map((keyword, index) => (
-                        <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-300">
-                          {keyword}
-                        </Badge>
-                      ))}
+                  {analysisResult.matchableKeywords.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2 text-green-600">
+                        Matchable to Your Experience ({analysisResult.matchableKeywords.length})
+                      </h4>
+                      <div className="flex flex-wrap gap-1">
+                        {analysisResult.matchableKeywords.map((keyword, index) => (
+                          <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-300">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 text-red-600">
-                      Not Found in Experience ({analysisResult.unmatchableKeywords?.length || 0})
-                    </h4>
-                    <div className="flex flex-wrap gap-1">
-                      {analysisResult.unmatchableKeywords?.map((keyword, index) => (
-                        <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-800 border-red-300">
-                          {keyword}
-                        </Badge>
-                      ))}
+                  )}
+                  {analysisResult.unmatchableKeywords.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2 text-red-600">
+                        Not Found in Experience ({analysisResult.unmatchableKeywords.length})
+                      </h4>
+                      <div className="flex flex-wrap gap-1">
+                        {analysisResult.unmatchableKeywords.map((keyword, index) => (
+                          <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-800 border-red-300">
+                            {keyword}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </>
             )}
@@ -461,7 +466,9 @@ export const JobAnalysisResult = () => {
               </div>
             )}
 
-            {analysisResult.recommendations?.forCandidate && (
+            {/* Only show recommendations section if there are actual recommendations */}
+            {analysisResult.recommendations?.forCandidate && 
+             analysisResult.recommendations.forCandidate.length > 0 && (
               <div className="mt-4">
                 <h4 className="font-medium mb-2">Recommended Actions:</h4>
                 <div className="space-y-2">
