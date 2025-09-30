@@ -83,8 +83,40 @@ const EducationOnboarding = () => {
           return;
         }
 
-        // Allow returning users to manage their education by not redirecting
-        // if they've already completed onboarding
+        // Load existing education data
+        const { data: existingEducation, error } = await supabase
+          .from("education")
+          .select("*")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: true });
+
+        if (error) {
+          console.error("Error loading education:", error);
+        } else if (existingEducation && existingEducation.length > 0) {
+          // Pre-populate form with existing data
+          const educationData = existingEducation.map(edu => {
+            let graduationMonth = "";
+            let graduationYear = "";
+            
+            if (edu.graduation_date) {
+              const date = new Date(edu.graduation_date);
+              graduationMonth = String(date.getMonth() + 1);
+              graduationYear = String(date.getFullYear());
+            }
+
+            return {
+              degree: edu.degree || "",
+              school: edu.school || "",
+              graduationMonth,
+              graduationYear,
+              isExpectedDate: edu.is_expected_graduation
+            };
+          });
+
+          setValue("education", educationData);
+          setEducationEntries(educationData.length);
+          setValue("isNotApplicable", false);
+        }
       } catch (error) {
         console.error("Auth check error:", error);
         navigate("/signup");
@@ -94,7 +126,7 @@ const EducationOnboarding = () => {
     };
 
     checkAuth();
-  }, [navigate]);
+  }, [navigate, setValue]);
 
   const onSubmit = async (data: EducationFormData) => {
     setIsLoading(true);
@@ -103,6 +135,16 @@ const EducationOnboarding = () => {
       
       if (!session?.user) {
         throw new Error("No authenticated user");
+      }
+
+      // Delete existing education records first
+      const { error: deleteError } = await supabase
+        .from("education")
+        .delete()
+        .eq("user_id", session.user.id);
+
+      if (deleteError) {
+        throw deleteError;
       }
 
       if (!data.isNotApplicable && data.education) {
