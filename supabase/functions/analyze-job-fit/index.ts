@@ -92,6 +92,7 @@ Return JSON in this EXACT format:
 function createStage2Prompt(
   stage1Results: any,
   experiencesByRole: Record<string, any[]>,
+  educationText: string,
   keywordMatchType: string
 ): string {
   const keywordInstruction = keywordMatchType === 'exact' 
@@ -114,7 +115,7 @@ ${exps.map((exp, i) => `
 `).join('')}`;
     }).join('\n');
 
-  return `You are matching a candidate's experiences against job requirements that were already extracted from a job description.
+  return `You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
 
 JOB REQUIREMENTS (extracted in previous stage):
 ${JSON.stringify(stage1Results.jobRequirements, null, 2)}
@@ -125,17 +126,23 @@ ${JSON.stringify(stage1Results.allKeywords, null, 2)}
 CANDIDATE EXPERIENCES (GROUPED BY ROLE):
 ${experiencesText}
 
+${educationText}
+
 MATCHING RULES - BE EXTREMELY STRICT BUT FAIR:
 
 1. WHAT COUNTS AS A MATCH:
    ✓ The experience explicitly mentions the skill/tool/technology
    ✓ The experience describes performing the exact responsibility
    ✓ The experience shows clear evidence of the capability
+   ✓ Education requirements match degree type (Bachelor's, Master's, etc.)
    
    Examples of VALID matches:
    - Requirement: "SQL experience" + Experience: "Wrote SQL queries to analyze customer data" = MATCH
    - Requirement: "Team leadership" + Experience: "Led a team of 5 engineers" = MATCH
    - Requirement: "Python" + Experience: "Developed Python scripts for automation" = MATCH
+   - Requirement: "Bachelor's degree" + Education: "B.Sc in Computer Science" = MATCH
+   - Requirement: "Bachelor's degree" + Education: "Bachelor of Arts in Economics" = MATCH
+   - Requirement: "Bachelor's degree" + Education: "B.Sc in Actuarial Science" = MATCH
 
 2. WHAT DOES NOT COUNT AS A MATCH:
    ✗ Generic statements without specifics
@@ -146,15 +153,24 @@ MATCHING RULES - BE EXTREMELY STRICT BUT FAIR:
    - Requirement: "SQL" + Experience: "Analyzed data" = NO MATCH (SQL not mentioned)
    - Requirement: "Team leadership" + Experience: "Worked with team" = NO MATCH (no leadership evidence)
    - Requirement: "Salesforce" + Experience: "CRM experience" = NO MATCH (Salesforce not specified)
+   - Requirement: "Master's degree" + Education: "Bachelor's degree" = NO MATCH (different level)
 
 3. FOR EACH REQUIREMENT:
-   - Check ALL candidate experiences
-   - If ANY experience provides explicit evidence → MATCHED
-   - Record the specific experience and evidence found
-   - If NO experience mentions it → UNMATCHED
+   - Check ALL candidate experiences AND education
+   - If ANY experience OR education provides explicit evidence → MATCHED
+   - Record the specific experience/education and evidence found
+   - If NO experience or education mentions it → UNMATCHED
    - Be thorough - don't skip requirements
 
-4. SCORING CALCULATION:
+4. EDUCATION MATCHING RULES:
+   - "Bachelor's degree" or "Bachelor's" or "undergraduate degree" matches ANY Bachelor degree (B.A., B.S., B.Sc., B.Eng., etc.)
+   - "Master's degree" or "Master's" matches any Master degree (M.A., M.S., MBA, M.Eng., etc.)
+   - "PhD" or "Doctorate" matches doctoral degrees
+   - Match the LEVEL, not necessarily the field (unless field is specifically required)
+   - For education matches, use format in experienceSource: "Education: [Degree] from [School]"
+   - Example: Requirement "Bachelor's degree" + Education "B.Sc in Actuarial Science from University X" = MATCH
+
+5. SCORING CALCULATION:
    - Score = (Number of Matched Requirements / Total Requirements) × 100
    - Round DOWN to nearest whole number
    - If missing ANY critical requirements, cap score at 65%
@@ -164,6 +180,9 @@ MATCHING RULES - BE EXTREMELY STRICT BUT FAIR:
 
 CRITICAL: YOU MUST POPULATE BOTH matchedRequirements AND unmatchedRequirements ARRAYS FOR ALL SCORES.
 Even if score is low, show which requirements were matched and which were not.
+
+CRITICAL: YOU MUST ALWAYS PROVIDE recommendations.forCandidate array for scores < 80%.
+Provide 3-5 specific, actionable recommendations for improving the candidate's profile.
 
 Return JSON in this EXACT format:
 
@@ -177,6 +196,11 @@ FOR SCORES >= 80% (Fit candidates):
       "jobRequirement": "SQL experience",
       "experienceEvidence": "Wrote complex SQL queries to analyze customer behavior patterns",
       "experienceSource": "TechCorp - Data Analyst: Customer Analysis Project"
+    },
+    {
+      "jobRequirement": "Bachelor's degree",
+      "experienceEvidence": "B.Sc in Actuarial Science",
+      "experienceSource": "Education: B.Sc in Actuarial Science from University X"
     }
   ],
   "unmatchedRequirements": [
@@ -211,6 +235,11 @@ FOR SCORES < 80% (Not fit candidates):
       "experienceSource": "StartupCo - Analyst: Market Research"
     },
     {
+      "jobRequirement": "Bachelor's degree",
+      "experienceEvidence": "B.Sc in Actuarial Science",
+      "experienceSource": "Education: B.Sc in Actuarial Science from University X"
+    },
+    {
       "jobRequirement": "Excel proficiency",
       "experienceEvidence": "Created Excel dashboards with pivot tables and vlookups",
       "experienceSource": "StartupCo - Analyst: Financial Reporting"
@@ -234,15 +263,16 @@ FOR SCORES < 80% (Not fit candidates):
       "importance": "medium"
     }
   ],
-  "matchableKeywords": ["data analysis", "Excel", "trends", "patterns"],
-  "unmatchableKeywords": ["SQL", "Python", "Tableau", "machine learning"],
+  "matchableKeywords": [],
+  "unmatchableKeywords": [],
   "criticalGaps": ["SQL experience", "Python programming"],
   "recommendations": {
     "forCandidate": [
-      "Gain SQL experience through online courses or personal projects",
-      "Learn Python basics for data analysis (pandas, numpy)",
-      "Consider entry-level positions that don't require Python/SQL",
-      "Highlight your strong Excel and analytical skills in applications"
+      "Gain SQL experience through online courses (Coursera, DataCamp) or personal projects analyzing public datasets",
+      "Learn Python basics for data analysis - focus on pandas, numpy, and matplotlib libraries",
+      "Build a portfolio project using SQL and Python to demonstrate these skills to employers",
+      "Consider entry-level data analyst positions that emphasize Excel and analytical skills while allowing you to learn SQL on the job",
+      "Highlight your strong Excel skills and actuarial background in your applications as these are valuable analytical foundations"
     ]
   }
 }
@@ -260,8 +290,9 @@ BULLET GENERATION RULES (ONLY IF SCORE >= 80%):
 REMEMBER: 
 - Always provide matchedRequirements array (even if empty for very low scores)
 - Always provide unmatchedRequirements array (even if empty for perfect scores)
-- Be specific about which experience provides evidence for each match
-- For unmatched requirements, include the importance level from the job requirements`;
+- Be specific about which experience OR education provides evidence for each match
+- For unmatched requirements, include the importance level from the job requirements
+- For scores < 80%, ALWAYS provide 3-5 specific recommendations in recommendations.forCandidate array`;
 }
 
 async function callOpenAI(apiKey: string, messages: any[], maxTokens: number) {
@@ -365,9 +396,15 @@ function validateStage2Response(stage2Results: any): void {
       console.warn('Non-fit candidate missing criticalGaps array, setting default');
       stage2Results.criticalGaps = [];
     }
-    if (!stage2Results.recommendations?.forCandidate) {
-      console.warn('Non-fit candidate missing recommendations, setting default');
-      stage2Results.recommendations = { forCandidate: [] };
+    if (!stage2Results.recommendations?.forCandidate || !Array.isArray(stage2Results.recommendations.forCandidate)) {
+      console.warn('Non-fit candidate missing or invalid recommendations.forCandidate array, setting default');
+      stage2Results.recommendations = { 
+        forCandidate: [
+          'Review the unmatched requirements and consider how to gain experience in those areas',
+          'Add more detailed STAR-format experiences that demonstrate relevant skills',
+          'Consider taking online courses or certifications in key missing areas'
+        ]
+      };
     }
   }
 
@@ -375,7 +412,8 @@ function validateStage2Response(stage2Results: any): void {
     score: stage2Results.overallScore,
     isFit: stage2Results.isFit,
     matchedCount: stage2Results.matchedRequirements.length,
-    unmatchedCount: stage2Results.unmatchedRequirements.length
+    unmatchedCount: stage2Results.unmatchedRequirements.length,
+    hasRecommendations: !stage2Results.isFit ? stage2Results.recommendations?.forCandidate?.length > 0 : 'N/A'
   });
 }
 
@@ -416,7 +454,7 @@ async function callOpenAIWithRetry(
       });
       messages.push({
         role: 'user',
-        content: 'CRITICAL: Your previous response was incomplete or invalid. You MUST include both matchedRequirements and unmatchedRequirements arrays with proper structure. Even if the score is low, show what was matched (with evidence) and what was not matched (with importance level). Return valid JSON only.'
+        content: 'CRITICAL: Your previous response was incomplete or invalid. You MUST include:\n1. Both matchedRequirements and unmatchedRequirements arrays with proper structure\n2. For scores < 80%, you MUST include recommendations.forCandidate array with 3-5 specific recommendations\n3. Even if the score is low, show what was matched (with evidence from experiences OR education) and what was not matched (with importance level)\n4. Return valid JSON only.'
       });
       
       console.log('Retrying with enhanced prompt...');
@@ -484,6 +522,28 @@ serve(async (req) => {
       throw new AnalysisError('No experiences found', 'NO_EXPERIENCES', 400);
     }
 
+    // Fetch user education
+    const { data: education, error: eduError } = await supabase
+      .from('education')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (eduError) {
+      console.warn('Error fetching education:', eduError);
+    }
+
+    const educationInfo = education?.map(edu => ({
+      degree: edu.degree,
+      school: edu.school,
+      graduationDate: edu.graduation_date,
+      isExpected: edu.is_expected_graduation
+    })) || [];
+
+    console.log('User education:', {
+      count: educationInfo.length,
+      degrees: educationInfo.map(e => e.degree)
+    });
+
     // Format and group experiences
     const formattedExperiences = experiences.map(exp => ({
       id: exp.id,
@@ -509,6 +569,19 @@ serve(async (req) => {
       role: key,
       count: experiencesByRole[key].length
     })));
+
+    // Format education text
+    const educationText = educationInfo.length > 0 
+      ? `
+CANDIDATE EDUCATION:
+${educationInfo.map((edu, i) => `
+  Education ${i + 1}:
+  - Degree: ${edu.degree}
+  - School: ${edu.school}
+  ${edu.isExpected ? '- Status: Expected graduation' : '- Status: Completed'}
+  ${edu.graduationDate ? `- Graduation Date: ${edu.graduationDate}` : ''}
+`).join('')}`
+      : 'CANDIDATE EDUCATION: None provided';
 
     // ===== STAGE 1: Extract requirements from job description =====
     console.log('STAGE 1: Extracting requirements and keywords from job description...');
@@ -556,18 +629,18 @@ serve(async (req) => {
     }
 
     // ===== STAGE 2: Match to experiences and generate bullets =====
-    console.log('STAGE 2: Matching requirements to experiences...');
+    console.log('STAGE 2: Matching requirements to experiences and education...');
     
     const stage2Results = await callOpenAIWithRetry(
       openaiApiKey,
       [
         {
           role: 'system',
-          content: 'You are a strict resume analyzer. Match candidate experiences against pre-extracted job requirements. Be critical and honest. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays, regardless of score. Only high-quality matches should score 80%+.'
+          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. Be critical and honest. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays, regardless of score. For scores < 80%, ALWAYS provide 3-5 specific recommendations. Check education for degree requirements. Only high-quality matches should score 80%+.'
         },
         {
           role: 'user',
-          content: createStage2Prompt(stage1Results, experiencesByRole, keywordMatchType)
+          content: createStage2Prompt(stage1Results, experiencesByRole, educationText, keywordMatchType)
         }
       ],
       8000
@@ -580,6 +653,7 @@ serve(async (req) => {
       totalRequirements: stage1Results.jobRequirements.length,
       matchedCount: stage2Results.matchedRequirements?.length || 0,
       unmatchedCount: stage2Results.unmatchedRequirements?.length || 0,
+      hasRecommendations: !stage2Results.isFit ? stage2Results.recommendations?.forCandidate?.length > 0 : 'N/A',
       matchedSample: stage2Results.matchedRequirements?.[0],
       unmatchedSample: stage2Results.unmatchedRequirements?.[0]
     });
@@ -604,7 +678,8 @@ serve(async (req) => {
         const lowerKeyword = keyword.toLowerCase();
         
         if (matchType === 'exact') {
-          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\  if (!response.ok) {
+    throw new AnalysisError(`OpenAI API error: ${response')}\\b`, 'i');
           return regex.test(text);
         } else {
           const keywordWords = lowerKeyword.split(/\s+/).filter(w => w.length > 0);
@@ -625,7 +700,8 @@ serve(async (req) => {
               return lowerText.includes(word);
             }
             
-            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\w*\\b`, 'i');
+            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\  if (!response.ok) {
+    throw new AnalysisError(`OpenAI API error: ${response')}\\w*\\b`, 'i');
             return stemRegex.test(text);
           });
         }
