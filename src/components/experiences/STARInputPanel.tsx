@@ -32,7 +32,9 @@ export const STARInputPanel = ({
   });
   const [tagsDisplayValue, setTagsDisplayValue] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isAutosaving, setIsAutosaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout>();
   const situationRef = useRef<HTMLInputElement>(null);
 
   // Focus situation input when new experience is created
@@ -70,6 +72,33 @@ export const STARInputPanel = ({
     }
   }, [experience]);
 
+  // Debounced autosave
+  useEffect(() => {
+    if (hasUnsavedChanges && experience) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = setTimeout(async () => {
+        setIsAutosaving(true);
+        try {
+          await onSave(formData);
+          setHasUnsavedChanges(false);
+          setLastSaved(new Date());
+        } catch (error) {
+          console.error("Autosave failed:", error);
+        } finally {
+          setIsAutosaving(false);
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [hasUnsavedChanges, formData, experience, onSave]);
 
   const handleInputChange = (field: keyof STARFormData, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -147,13 +176,19 @@ export const STARInputPanel = ({
         <CardTitle className="flex items-center justify-between">
           Experience Details
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {lastSaved && !hasUnsavedChanges && (
+            {isAutosaving && (
+              <span className="flex items-center gap-1">
+                <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                Saving...
+              </span>
+            )}
+            {lastSaved && !isAutosaving && !hasUnsavedChanges && (
               <span className="flex items-center gap-1 text-green-600">
                 <Check className="w-3 h-3" />
                 Saved
               </span>
             )}
-            {hasUnsavedChanges && (
+            {hasUnsavedChanges && !isAutosaving && (
               <span className="text-orange-600">Unsaved changes</span>
             )}
           </div>
