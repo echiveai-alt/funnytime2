@@ -251,7 +251,7 @@ const JobDescription = () => {
                         Matches words precisely (e.g., 'manage' ≠ 'managing')
                       </div>
                       <div className="text-xs font-normal opacity-75 break-words">
-                        Best for: Technical roles, compliance positions
+                        Best for: Workday, Greenhouse, and Lever
                       </div>
                     </div>
                   </Button>
@@ -268,7 +268,7 @@ const JobDescription = () => {
                         Matches word roots (e.g., 'manage' = 'managing')
                       </div>
                       <div className="text-xs font-normal opacity-75 break-words">
-                        Best for: Most roles, creative flexibility
+                        Best for: Workfold, Eightfold, most AI based ATS
                       </div>
                     </div>
                   </Button>
