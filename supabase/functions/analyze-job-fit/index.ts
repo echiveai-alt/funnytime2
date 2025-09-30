@@ -42,14 +42,61 @@ function calculateVisualWidth(text: string): number {
   return score;
 }
 
-function createUnifiedPrompt(
-  jobDescription: string, 
-  experiencesByRole: Record<string, any[]>, 
+// STAGE 1: Extract requirements and keywords from job description ONLY
+function createStage1Prompt(jobDescription: string): string {
+  return `You are analyzing a job description to extract requirements and keywords. You will NOT see any candidate information in this stage.
+
+JOB DESCRIPTION:
+${jobDescription}
+
+TASK: Extract requirements and keywords from the job description above. Do NOT invent requirements. Only extract what is explicitly stated or clearly implied.
+
+EXTRACTION RULES:
+1. Break down compound requirements:
+   - "Experience with Salesforce and HubSpot" = 2 requirements
+   - "3+ years in product management" = 2 requirements: "product management experience" AND "3+ years experience"
+   
+2. Each distinct skill, tool, technology, certification, or responsibility = separate requirement
+
+3. Mark importance levels:
+   - critical: Must-have, required, essential (explicitly stated in job description)
+   - high: Preferred, strongly desired
+   - medium: Nice to have, plus if you have
+   - low: Bonus, additional
+
+4. Extract ALL keywords and phrases that appear in the job description:
+   - Technical terms (e.g., "Salesforce", "Python", "A/B testing")
+   - Skills (e.g., "data analysis", "project management")
+   - Domain terms (e.g., "SaaS", "B2B", "customer acquisition")
+   - Action verbs (e.g., "optimize", "scale", "implement")
+   - Industry jargon (e.g., "funnel optimization", "user journeys")
+
+CRITICAL: Do NOT extract any company names, project names, dates, or specific details that could only come from a candidate's background. Only extract information from the job description.
+
+Return JSON in this EXACT format:
+{
+  "jobRequirements": [
+    {
+      "requirement": "Specific requirement text from job description",
+      "importance": "critical|high|medium|low",
+      "category": "technical_skill|soft_skill|experience|education|domain_knowledge"
+    }
+  ],
+  "allKeywords": ["keyword1", "keyword2", "keyword3"],
+  "jobTitle": "Job title from description",
+  "companySummary": "Brief summary of company/role from job description"
+}`;
+}
+
+// STAGE 2: Match requirements to experiences and generate bullets
+function createStage2Prompt(
+  stage1Results: any,
+  experiencesByRole: Record<string, any[]>,
   keywordMatchType: string
 ): string {
   const keywordInstruction = keywordMatchType === 'exact' 
-    ? 'Use keywords EXACTLY as they appear in the job description'
-    : 'Use keywords and their variations (different tenses, forms, related terms like "managed" for "led", "collaborated" for "worked with")';
+    ? 'Use keywords EXACTLY as they appear in the provided keyword list'
+    : 'Use keywords and their variations (different tenses, forms, related terms like "managed" for "led")';
 
   const experiencesText = Object.entries(experiencesByRole)
     .map(([roleKey, exps]) => {
@@ -67,155 +114,114 @@ ${exps.map((exp, i) => `
 `).join('')}`;
     }).join('\n');
 
-  return `You are a professional resume analyzer and writer. Analyze if the candidate matches the job, and if they score 80% or higher, generate optimized resume bullets.
+  return `You are matching a candidate's experiences against job requirements that were already extracted from a job description.
 
-JOB DESCRIPTION:
-${jobDescription}
+JOB REQUIREMENTS (extracted in previous stage):
+${JSON.stringify(stage1Results.jobRequirements, null, 2)}
+
+KEYWORDS TO EMBED (extracted in previous stage):
+${JSON.stringify(stage1Results.allKeywords, null, 2)}
 
 CANDIDATE EXPERIENCES (GROUPED BY ROLE):
 ${experiencesText}
 
-SCORING METHODOLOGY - BE EXTREMELY STRICT:
-1. Extract ALL meaningful requirements from the job description:
-   - Break down compound requirements into separate items
-   - Example: "experience with Salesforce and HubSpot" = 2 separate requirements
-   - Example: "3+ years in product management" = 2 requirements: "product management experience" AND "3+ years duration"
-   - Each technical tool/platform = separate requirement
-   - Each certification or degree = separate requirement
-   - Each specific responsibility or achievement mentioned = separate requirement
-   
-2. For EACH requirement, apply STRICT matching rules:
-   - EXACT MATCH ONLY: If job says "Salesforce", candidate needs "Salesforce" (not just "CRM experience")
-   - EXACT MATCH ONLY: If job says "5+ years", candidate needs evidence of 5+ years (not "several years")
-   - NO ASSUMPTIONS: If experience doesn't explicitly mention a requirement, it's NOT matched
-   - NO GENEROUS INTERPRETATION: "Analyzed data" ≠ "SQL experience" unless SQL is mentioned
-   - NO PARTIAL CREDIT: Either the requirement is met with clear evidence, or it's not matched
-   
-3. Calculate: (exactly matched requirements / total requirements) × 100
-   - Round DOWN, not up
-   - A score of 40-60% is NORMAL and EXPECTED for most candidates
-   - Scores of 70-79% indicate a strong candidate with minor gaps
-   - Scores of 80%+ should be RARE - only for candidates who clearly meet or exceed nearly all requirements
-   - Scores of 90%+ should be EXCEPTIONAL - candidate is overqualified
-   
-4. CRITICAL REQUIREMENTS: If missing ANY must-have/required items explicitly marked in job description, cap score at 65% maximum
+MATCHING RULES - BE EXTREMELY STRICT:
+1. For each requirement, check if candidate's experiences provide EXPLICIT evidence
+2. NO ASSUMPTIONS: If the experience doesn't explicitly mention it, it's NOT matched
+3. NO GENEROUS INTERPRETATION: 
+   - "Analyzed data" ≠ "SQL experience" unless SQL is mentioned
+   - "Worked with teams" ≠ "Led teams" unless leadership is clear
+   - "CRM experience" ≠ "Salesforce" unless Salesforce is mentioned
+4. NO PARTIAL CREDIT: Either matched with clear evidence, or not matched
 
-5. VERIFICATION CHECKLIST before finalizing score:
-   - Did I extract every distinct requirement from the job description?
-   - Did I verify each matched requirement has EXPLICIT evidence in experiences (not inferred)?
-   - Would a hiring manager reviewing these experiences agree the candidate meets this requirement?
-   - Am I being strict enough, or am I being generous to avoid disappointing the candidate?
-   - If the candidate scored 80%+, do they truly meet almost all requirements with clear evidence?
-
-REMEMBER: Your job is ACCURACY, not kindness. A 50% score means the candidate meets half the requirements - that's valuable, honest feedback. Don't inflate scores.
-
-KEYWORD EXTRACTION:
-- Extract a comprehensive list of ALL keywords from the job description (no categorization needed)
-- Keywords include: skills, tools, technologies, methodologies, qualifications, action verbs, domain terms
-- For scores < 80%: divide keywords into "matchable" (found in experiences) and "unmatchable" (not found)
+SCORING:
+- Calculate: (matched requirements / total requirements) × 100
+- Round DOWN, not up
+- 40-60% is NORMAL for most candidates
+- 70-79% is a strong candidate with minor gaps
+- 80%+ should be RARE - only when nearly all requirements clearly met
+- If missing ANY critical requirements, cap at 65%
 
 BULLET GENERATION (ONLY IF SCORE >= 80%):
-CRITICAL RULES - READ CAREFULLY:
-1. YOU MUST create SEPARATE entries for EACH unique "Company Name - Role Title" combination shown above
-2. For each role, generate bullets ONLY from experiences that belong to that specific role
-3. YOU MUST generate EXACTLY ONE bullet for EVERY SINGLE experience listed for that role
-4. ABSOLUTELY NO SKIPPING: If Role A has 7 experiences, you MUST create 7 bullets. If Role B has 3 experiences, you MUST create 3 bullets.
-5. Each bullet MUST use the experienceId from the specific experience it's based on
-6. COUNT YOUR BULLETS: Verify you've created the exact number shown above for each role
+1. Create EXACTLY ONE bullet for EVERY experience
+2. Create SEPARATE entries for EACH "Company - Role" combination
+3. Order bullets by relevance (most relevant first)
+4. Structure: "Result (with numbers) + Action verb + context" OR "Action verb + context + quantified result" OR "Result + Action verb"
+5. Target width: ${CONSTANTS.VISUAL_WIDTH_TARGET} chars (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
+6. ${keywordInstruction}
+7. ONLY embed keywords if they naturally fit based on the experience content
+8. Track which keywords were embedded and which couldn't fit
 
-EXAMPLE - If you see:
-=== Company X - Role Y ===
-Number of experiences for this role: 5
-  Experience 1: ID: abc-123 ...
-  Experience 2: ID: def-456 ...
-  Experience 3: ID: ghi-789 ...
-  Experience 4: ID: jkl-012 ...
-  Experience 5: ID: mno-345 ...
-
-YOU MUST OUTPUT:
-"Company X - Role Y": [
-  {"text": "...", "experienceId": "abc-123", ...},
-  {"text": "...", "experienceId": "def-456", ...},
-  {"text": "...", "experienceId": "ghi-789", ...},
-  {"text": "...", "experienceId": "jkl-012", ...},
-  {"text": "...", "experienceId": "mno-345", ...}
-]
-
-FORMATTING:
-- Order bullets from most relevant to least relevant based on job description alignment
-- Use one of these structures:
-  * "Result (with numbers if available) + Action verb + context"
-  * "Action verb + context + quantified result"
-  * "Result (with numbers if available) + Action verb"
-- Target visual width: ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (acceptable range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
-- IMPORTANT: Generate bullets even if they fall outside the target range - we will display them with warnings
-- KEYWORD MATCHING: ${keywordInstruction}
-- Use ONLY real information from experiences - never invent details
-- Embed keywords naturally where supported by experience
-- Track which keywords were used in bullets and which couldn't be embedded
-
-Return JSON in this EXACT format:
-
+Return JSON:
 IF SCORE >= 80%:
 {
-  "overallScore": 85,
+  "overallScore": 75,
   "isFit": true,
-  "fitLevel": "Good",
-  "jobRequirements": [
-    {"requirement": "text", "importance": "critical|high|medium|low"}
-  ],
+  "fitLevel": "Good|Strong|Excellent",
   "matchedRequirements": [
     {
-      "jobRequirement": "requirement text",
-      "experienceEvidence": "evidence from experience",
+      "jobRequirement": "requirement from stage 1",
+      "experienceEvidence": "specific evidence from experience",
       "experienceSource": "Company - Role: Experience Title"
     }
   ],
   "unmatchedRequirements": [
-    {"requirement": "text", "importance": "level"}
+    {
+      "requirement": "requirement from stage 1",
+      "importance": "level"
+    }
   ],
-  "allKeywords": ["comprehensive", "list", "of", "all", "keywords", "from", "job", "description"],
   "bulletPoints": {
-    "Company Name - Role Title": [
+    "Company - Role": [
       {
-        "text": "bullet point text",
-        "experienceId": "exp_id_from_that_role",
+        "text": "bullet text",
+        "experienceId": "exp_id",
         "keywordsUsed": ["keywords in this bullet"],
         "relevanceScore": 10
       }
-    ],
-    "Another Company - Another Role": [
-      {
-        "text": "another bullet",
-        "experienceId": "exp_id_from_this_other_role",
-        "keywordsUsed": ["keywords"],
-        "relevanceScore": 9
-      }
     ]
   },
-  "keywordsUsed": ["keywords successfully embedded in bullets"],
-  "keywordsNotUsed": ["keywords that couldn't fit naturally in bullets"]
+  "keywordsUsed": ["keywords embedded in bullets"],
+  "keywordsNotUsed": ["keywords not embedded"]
 }
 
 IF SCORE < 80%:
 {
-  "overallScore": 65,
+  "overallScore": 55,
   "isFit": false,
-  "fitLevel": "Poor",
-  "jobRequirements": [...],
+  "fitLevel": "Poor|Fair",
   "matchedRequirements": [...],
   "unmatchedRequirements": [...],
-  "allKeywords": ["comprehensive", "list", "of", "all", "keywords"],
-  "matchableKeywords": ["keywords found in candidate experiences"],
-  "unmatchableKeywords": ["keywords NOT found in candidate experiences"],
+  "matchableKeywords": ["keywords found in experiences"],
+  "unmatchableKeywords": ["keywords NOT in experiences"],
   "criticalGaps": ["critical requirements missing"],
   "recommendations": {
-    "forCandidate": [
-      "Add relevant experience in missing areas",
-      "Consider training in critical requirements"
-    ]
+    "forCandidate": ["specific recommendations"]
   }
 }`;
+}
+
+async function callOpenAI(apiKey: string, messages: any[], maxTokens: number) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: messages,
+      max_tokens: maxTokens,
+      temperature: 0.1
+    })
+  });
+
+  if (!response.ok) {
+    throw new AnalysisError(`OpenAI API error: ${response.status}`, 'OPENAI_ERROR', 500);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
 
 serve(async (req) => {
@@ -258,7 +264,7 @@ serve(async (req) => {
 
     const keywordMatchType = req.headers.get('x-keyword-match-type') || 'exact';
 
-    console.log(`Starting unified analysis for user ${user.id}`);
+    console.log(`Starting two-stage analysis for user ${user.id}`);
 
     // Fetch user experiences
     const { data: experiences, error: expError } = await supabase
@@ -276,12 +282,12 @@ serve(async (req) => {
       throw new AnalysisError('No experiences found', 'NO_EXPERIENCES', 400);
     }
 
-    // Format experiences with explicit role grouping
+    // Format and group experiences
     const formattedExperiences = experiences.map(exp => ({
       id: exp.id,
       company: exp.roles.companies.name,
       role: exp.roles.title,
-      roleKey: `${exp.roles.companies.name} - ${exp.roles.title}`, // Add explicit role key
+      roleKey: `${exp.roles.companies.name} - ${exp.roles.title}`,
       title: exp.title,
       action: exp.action,
       result: exp.result,
@@ -289,7 +295,6 @@ serve(async (req) => {
       task: exp.task
     }));
 
-    // Group experiences by role for the prompt
     const experiencesByRole = formattedExperiences.reduce((acc, exp) => {
       if (!acc[exp.roleKey]) {
         acc[exp.roleKey] = [];
@@ -303,52 +308,96 @@ serve(async (req) => {
       count: experiencesByRole[key].length
     })));
 
-    // Call OpenAI with unified prompt
-    console.log('Calling OpenAI with unified analysis and generation...');
+    // ===== STAGE 1: Extract requirements from job description =====
+    console.log('STAGE 1: Extracting requirements and keywords from job description...');
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a strict, objective resume analyzer. Your job is to provide ACCURATE fit scores, not to make candidates feel good. Be critical and honest. A 50% match is normal. Only exceptional candidates should score above 80%.'
-          },
-          { 
-            role: 'user', 
-            content: createUnifiedPrompt(jobDescription.trim(), experiencesByRole, keywordMatchType)
-          }
-        ],
-        max_tokens: 8000,
-        temperature: 0.1
-      })
+    const stage1Response = await callOpenAI(
+      openaiApiKey,
+      [
+        {
+          role: 'system',
+          content: 'You extract requirements and keywords from job descriptions. You never see candidate information. Only extract what is in the job description.'
+        },
+        {
+          role: 'user',
+          content: createStage1Prompt(jobDescription.trim())
+        }
+      ],
+      2000
+    );
+
+    const stage1Match = stage1Response.match(/\{[\s\S]*\}/);
+    if (!stage1Match) {
+      throw new AnalysisError('Invalid Stage 1 response format', 'INVALID_RESPONSE', 500);
+    }
+
+    const stage1Results = JSON.parse(stage1Match[0]);
+    
+    console.log('Stage 1 complete:', {
+      requirementsExtracted: stage1Results.jobRequirements?.length || 0,
+      keywordsExtracted: stage1Results.allKeywords?.length || 0
     });
 
-    if (!response.ok) {
-      throw new AnalysisError(`OpenAI API error: ${response.status}`, 'OPENAI_ERROR', 500);
+    // Validate stage 1 - ensure no candidate contamination
+    const candidateTerms = formattedExperiences.flatMap(exp => [
+      exp.company.toLowerCase(),
+      exp.role.toLowerCase(),
+      exp.title.toLowerCase()
+    ]);
+    
+    const contaminated = stage1Results.jobRequirements.filter((req: any) =>
+      candidateTerms.some(term => req.requirement.toLowerCase().includes(term))
+    );
+    
+    if (contaminated.length > 0) {
+      console.warn('WARNING: Detected candidate data contamination in requirements:', contaminated);
     }
 
-    const aiData = await response.json();
-    const aiResponse = aiData.choices[0].message.content;
+    // ===== STAGE 2: Match to experiences and generate bullets =====
+    console.log('STAGE 2: Matching requirements to experiences...');
+    
+    const stage2Response = await callOpenAI(
+      openaiApiKey,
+      [
+        {
+          role: 'system',
+          content: 'You are a strict resume analyzer. Match candidate experiences against pre-extracted job requirements. Be critical and honest. Only high-quality matches should score 80%+.'
+        },
+        {
+          role: 'user',
+          content: createStage2Prompt(stage1Results, experiencesByRole, keywordMatchType)
+        }
+      ],
+      8000
+    );
 
-    // Parse AI response
-    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new AnalysisError('Invalid AI response format', 'INVALID_RESPONSE', 500);
+    const stage2Match = stage2Response.match(/\{[\s\S]*\}/);
+    if (!stage2Match) {
+      throw new AnalysisError('Invalid Stage 2 response format', 'INVALID_RESPONSE', 500);
     }
 
-    const analysis = JSON.parse(jsonMatch[0]);
+    const stage2Results = JSON.parse(stage2Match[0]);
+    
+    console.log('Stage 2 complete:', {
+      score: stage2Results.overallScore,
+      isFit: stage2Results.isFit,
+      matched: stage2Results.matchedRequirements?.length || 0,
+      unmatched: stage2Results.unmatchedRequirements?.length || 0
+    });
 
-    // Validate and process bullet points if fit
+    // Merge stage 1 and stage 2 results
+    const analysis = {
+      ...stage2Results,
+      jobRequirements: stage1Results.jobRequirements,
+      allKeywords: stage1Results.allKeywords,
+      jobTitle: stage1Results.jobTitle,
+      companySummary: stage1Results.companySummary
+    };
+
+    // Process and validate bullets if fit
     if (analysis.isFit && analysis.bulletPoints) {
       const processedBullets: any = {};
       const allKeywordsInBullets = new Set<string>();
-      const keywordMatchType = req.headers.get('x-keyword-match-type') || 'exact';
       
       // Helper function to check if keyword is actually in text
       const isKeywordInText = (text: string, keyword: string, matchType: string): boolean => {
@@ -356,76 +405,34 @@ serve(async (req) => {
         const lowerKeyword = keyword.toLowerCase();
         
         if (matchType === 'exact') {
-          // Exact phrase match with word boundaries
-          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\      // Helper function to check if keyword is actually in text
-      const isKeywordInText = (text: string, keyword: string, matchType: string): boolean => {
-        const lowerText = text.toLowerCase();
-        const lowerKeyword = keyword.toLowerCase();
-        
-        if (matchType === 'exact') {
-          // Exact phrase match
-          return lowerText.includes(lowerKeyword);
-        } else {
-          // Word-stem: check if root words are present
-          const keywordWords = lowerKeyword.split(/\s+/);
-          return keywordWords.every(word => {
-            // Remove common suffixes for stem matching
-            const stem = word.replace(/(ing|ed|s|es|tion|ment|ly)$/i, '');
-            return lowerText.includes(stem) || lowerText.includes(word);
-          });
-        }
-      };')}\\b`, 'i');
+          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
           return regex.test(text);
         } else {
-          // Word-stem: ALL words in the keyword must have stems present in text
           const keywordWords = lowerKeyword.split(/\s+/).filter(w => w.length > 0);
           
-          // Skip very short keywords that would match everywhere
           if (keywordWords.length === 1 && keywordWords[0].length <= 2) {
             return false;
           }
           
           return keywordWords.every(word => {
-            // For short words (<=3 chars), require exact match
             if (word.length <= 3) {
               const regex = new RegExp(`\\b${word}\\b`, 'i');
               return regex.test(lowerText);
             }
             
-            // For longer words, check stem (remove common suffixes)
             const stem = word.replace(/(ing|ed|s|es|tion|ment|ly|ize|ise|ization|isation)$/i, '');
             
-            // Stem must be at least 3 characters to avoid false positives
             if (stem.length < 3) {
               return lowerText.includes(word);
             }
             
-            // Check if stem appears as part of a word
-            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\      // Helper function to check if keyword is actually in text
-      const isKeywordInText = (text: string, keyword: string, matchType: string): boolean => {
-        const lowerText = text.toLowerCase();
-        const lowerKeyword = keyword.toLowerCase();
-        
-        if (matchType === 'exact') {
-          // Exact phrase match
-          return lowerText.includes(lowerKeyword);
-        } else {
-          // Word-stem: check if root words are present
-          const keywordWords = lowerKeyword.split(/\s+/);
-          return keywordWords.every(word => {
-            // Remove common suffixes for stem matching
-            const stem = word.replace(/(ing|ed|s|es|tion|ment|ly)$/i, '');
-            return lowerText.includes(stem) || lowerText.includes(word);
-          });
-        }
-      };')}\\w*\\b`, 'i');
+            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\w*\\b`, 'i');
             return stemRegex.test(text);
           });
         }
       };
       
       Object.entries(analysis.bulletPoints).forEach(([roleKey, bullets]: [string, any]) => {
-        // Sort by relevanceScore (highest first) if provided
         const sortedBullets = bullets.sort((a: any, b: any) => 
           (b.relevanceScore || 0) - (a.relevanceScore || 0)
         );
@@ -435,21 +442,17 @@ serve(async (req) => {
           const isWithinRange = visualWidth >= CONSTANTS.VISUAL_WIDTH_MIN && 
                                 visualWidth <= CONSTANTS.VISUAL_WIDTH_MAX;
           
-          // Validate keywords are actually in the bullet text
           const claimedKeywords = bullet.keywordsUsed || [];
           const verifiedKeywords = claimedKeywords.filter((kw: string) => 
             isKeywordInText(bullet.text, kw, keywordMatchType)
           );
           
-          // Collect verified keywords
           verifiedKeywords.forEach((kw: string) => allKeywordsInBullets.add(kw));
           
-          // Log discrepancies
           if (claimedKeywords.length !== verifiedKeywords.length) {
             const unverified = claimedKeywords.filter((kw: string) => !verifiedKeywords.includes(kw));
-            console.log(`Bullet keyword mismatch: AI claimed ${claimedKeywords.length}, verified ${verifiedKeywords.length}`, {
-              bulletStart: bullet.text.substring(0, 50),
-              unverifiedKeywords: unverified
+            console.log(`Keyword mismatch in bullet: claimed ${claimedKeywords.length}, verified ${verifiedKeywords.length}`, {
+              unverified
             });
           }
           
@@ -460,41 +463,31 @@ serve(async (req) => {
             belowMin: visualWidth < CONSTANTS.VISUAL_WIDTH_MIN,
             isWithinRange: isWithinRange,
             experienceId: bullet.experienceId,
-            keywordsUsed: verifiedKeywords, // Use verified keywords only
-            keywordsClaimed: claimedKeywords.length,
-            keywordsVerified: verifiedKeywords.length,
+            keywordsUsed: verifiedKeywords,
             relevanceScore: bullet.relevanceScore || 0
           };
         });
       });
 
-      // Override the AI's keywordsUsed with actual verified keywords found in bullets
       const actualKeywordsUsed = Array.from(allKeywordsInBullets);
-      const allKeywords = analysis.allKeywords || [];
-      const actualKeywordsNotUsed = allKeywords.filter((kw: string) => !allKeywordsInBullets.has(kw));
+      const actualKeywordsNotUsed = stage1Results.allKeywords.filter((kw: string) => !allKeywordsInBullets.has(kw));
 
       console.log('Keyword validation:', {
-        totalKeywords: allKeywords.length,
-        aiReportedUsed: analysis.keywordsUsed?.length || 0,
-        actualVerifiedUsed: actualKeywordsUsed.length,
-        aiReportedNotUsed: analysis.keywordsNotUsed?.length || 0,
-        actualNotUsed: actualKeywordsNotUsed.length
+        total: stage1Results.allKeywords.length,
+        verified: actualKeywordsUsed.length,
+        notUsed: actualKeywordsNotUsed.length
       });
 
       analysis.bulletPoints = processedBullets;
       analysis.keywordsUsed = actualKeywordsUsed;
       analysis.keywordsNotUsed = actualKeywordsNotUsed;
 
-      // Format for frontend compatibility - group by company, then roles
+      // Format for frontend
       const companyRoleMap: Record<string, any[]> = {};
       
       Object.entries(processedBullets).forEach(([roleKey, bullets]: [string, any]) => {
-        // Split on ' - ' to get company and role
         const dashIndex = roleKey.indexOf(' - ');
-        if (dashIndex === -1) {
-          console.error(`Invalid roleKey format: ${roleKey}`);
-          return;
-        }
+        if (dashIndex === -1) return;
         
         const company = roleKey.substring(0, dashIndex).trim();
         const role = roleKey.substring(dashIndex + 3).trim();
@@ -509,12 +502,6 @@ serve(async (req) => {
         });
       });
 
-      console.log('Company-Role mapping:', Object.keys(companyRoleMap).map(company => ({
-        company,
-        roleCount: companyRoleMap[company].length,
-        roles: companyRoleMap[company].map(r => r.title)
-      })));
-
       const bulletOrganization = Object.entries(companyRoleMap).map(([company, roles]) => ({
         name: company,
         roles: roles
@@ -522,8 +509,8 @@ serve(async (req) => {
 
       analysis.resumeBullets = {
         bulletOrganization,
-        keywordsUsed: analysis.keywordsUsed || [],
-        keywordsNotUsed: analysis.keywordsNotUsed || [],
+        keywordsUsed: actualKeywordsUsed,
+        keywordsNotUsed: actualKeywordsNotUsed,
         generatedFrom: {
           totalExperiences: experiences.length,
           keywordMatchType: keywordMatchType,
@@ -545,16 +532,13 @@ serve(async (req) => {
     };
 
     console.log(`Analysis completed: ${analysis.overallScore}% (${analysis.isFit ? 'FIT' : 'NOT FIT'})`);
-    if (analysis.isFit) {
-      console.log('Bullets generated in same call');
-    }
 
     return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Unified analysis error:', error);
+    console.error('Two-stage analysis error:', error);
     
     let statusCode = 500;
     let errorCode = 'UNKNOWN_ERROR';
