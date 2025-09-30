@@ -325,6 +325,27 @@ serve(async (req) => {
     // Validate and process bullet points if fit
     if (analysis.isFit && analysis.bulletPoints) {
       const processedBullets: any = {};
+      const allKeywordsInBullets = new Set<string>();
+      const keywordMatchType = req.headers.get('x-keyword-match-type') || 'exact';
+      
+      // Helper function to check if keyword is actually in text
+      const isKeywordInText = (text: string, keyword: string, matchType: string): boolean => {
+        const lowerText = text.toLowerCase();
+        const lowerKeyword = keyword.toLowerCase();
+        
+        if (matchType === 'exact') {
+          // Exact phrase match
+          return lowerText.includes(lowerKeyword);
+        } else {
+          // Word-stem: check if root words are present
+          const keywordWords = lowerKeyword.split(/\s+/);
+          return keywordWords.every(word => {
+            // Remove common suffixes for stem matching
+            const stem = word.replace(/(ing|ed|s|es|tion|ment|ly)$/i, '');
+            return lowerText.includes(stem) || lowerText.includes(word);
+          });
+        }
+      };
       
       Object.entries(analysis.bulletPoints).forEach(([roleKey, bullets]: [string, any]) => {
         // Sort by relevanceScore (highest first) if provided
@@ -337,6 +358,24 @@ serve(async (req) => {
           const isWithinRange = visualWidth >= CONSTANTS.VISUAL_WIDTH_MIN && 
                                 visualWidth <= CONSTANTS.VISUAL_WIDTH_MAX;
           
+          // Validate keywords are actually in the bullet text
+          const claimedKeywords = bullet.keywordsUsed || [];
+          const verifiedKeywords = claimedKeywords.filter((kw: string) => 
+            isKeywordInText(bullet.text, kw, keywordMatchType)
+          );
+          
+          // Collect verified keywords
+          verifiedKeywords.forEach((kw: string) => allKeywordsInBullets.add(kw));
+          
+          // Log discrepancies
+          if (claimedKeywords.length !== verifiedKeywords.length) {
+            const unverified = claimedKeywords.filter((kw: string) => !verifiedKeywords.includes(kw));
+            console.log(`Bullet keyword mismatch: AI claimed ${claimedKeywords.length}, verified ${verifiedKeywords.length}`, {
+              bulletStart: bullet.text.substring(0, 50),
+              unverifiedKeywords: unverified
+            });
+          }
+          
           return {
             text: bullet.text,
             visualWidth: Math.round(visualWidth),
@@ -344,13 +383,30 @@ serve(async (req) => {
             belowMin: visualWidth < CONSTANTS.VISUAL_WIDTH_MIN,
             isWithinRange: isWithinRange,
             experienceId: bullet.experienceId,
-            keywordsUsed: bullet.keywordsUsed || [],
+            keywordsUsed: verifiedKeywords, // Use verified keywords only
+            keywordsClaimed: claimedKeywords.length,
+            keywordsVerified: verifiedKeywords.length,
             relevanceScore: bullet.relevanceScore || 0
           };
         });
       });
 
+      // Override the AI's keywordsUsed with actual verified keywords found in bullets
+      const actualKeywordsUsed = Array.from(allKeywordsInBullets);
+      const allKeywords = analysis.allKeywords || [];
+      const actualKeywordsNotUsed = allKeywords.filter((kw: string) => !allKeywordsInBullets.has(kw));
+
+      console.log('Keyword validation:', {
+        totalKeywords: allKeywords.length,
+        aiReportedUsed: analysis.keywordsUsed?.length || 0,
+        actualVerifiedUsed: actualKeywordsUsed.length,
+        aiReportedNotUsed: analysis.keywordsNotUsed?.length || 0,
+        actualNotUsed: actualKeywordsNotUsed.length
+      });
+
       analysis.bulletPoints = processedBullets;
+      analysis.keywordsUsed = actualKeywordsUsed;
+      analysis.keywordsNotUsed = actualKeywordsNotUsed;
 
       // Format for frontend compatibility - group by company, then roles
       const companyRoleMap: Record<string, any[]> = {};
