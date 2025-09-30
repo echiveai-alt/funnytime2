@@ -265,7 +265,7 @@ const JobDescription = () => {
                     <div className="text-left w-full space-y-2">
                       <div className="font-semibold">Word-Stem Match</div>
                       <div className="text-xs font-normal opacity-90 break-words">
-                        Matches word roots (e.g., 'manage' = 'managing', 'management')
+                        Matches word roots (e.g., 'manage' = 'managing')
                       </div>
                       <div className="text-xs font-normal opacity-75 break-words">
                         Best for: Most roles, creative flexibility
