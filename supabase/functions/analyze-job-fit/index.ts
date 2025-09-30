@@ -91,7 +91,7 @@ SCORING METHODOLOGY:
 4. CRITICAL REQUIREMENTS RULE: If ANY critical/required items are missing, cap score at 70% maximum
 5. BE STRICT: A 50-60% score is common and acceptable. Don't inflate scores to be kind.
 
-IMPORTANT: Extract specific requirements from the job description. More granular requirements = more accurate scoring.
+IMPORTANT: Extract 15-30 specific requirements from the job description. More granular requirements = more accurate scoring.
 
 KEYWORD EXTRACTION:
 - Extract a comprehensive list of ALL keywords from the job description (no categorization needed)
@@ -99,13 +99,31 @@ KEYWORD EXTRACTION:
 - For scores < 80%: divide keywords into "matchable" (found in experiences) and "unmatchable" (not found)
 
 BULLET GENERATION (ONLY IF SCORE >= 80%):
-CRITICAL RULES:
-1. Create SEPARATE entries for EACH unique "Company Name - Role Title" combination shown above
+CRITICAL RULES - READ CAREFULLY:
+1. YOU MUST create SEPARATE entries for EACH unique "Company Name - Role Title" combination shown above
 2. For each role, generate bullets ONLY from experiences that belong to that specific role
-3. Generate EXACTLY ONE bullet for EVERY SINGLE experience in that role - NO EXCEPTIONS
-4. IMPORTANT: If a role has 12 experiences, create 12 bullets. If it has 2 experiences, create 2 bullets.
+3. YOU MUST generate EXACTLY ONE bullet for EVERY SINGLE experience listed for that role
+4. ABSOLUTELY NO SKIPPING: If Role A has 7 experiences, you MUST create 7 bullets. If Role B has 3 experiences, you MUST create 3 bullets.
 5. Each bullet MUST use the experienceId from the specific experience it's based on
-6. DO NOT skip any experiences - every experience must be converted into a bullet point
+6. COUNT YOUR BULLETS: Verify you've created the exact number shown above for each role
+
+EXAMPLE - If you see:
+=== Company X - Role Y ===
+Number of experiences for this role: 5
+  Experience 1: ID: abc-123 ...
+  Experience 2: ID: def-456 ...
+  Experience 3: ID: ghi-789 ...
+  Experience 4: ID: jkl-012 ...
+  Experience 5: ID: mno-345 ...
+
+YOU MUST OUTPUT:
+"Company X - Role Y": [
+  {"text": "...", "experienceId": "abc-123", ...},
+  {"text": "...", "experienceId": "def-456", ...},
+  {"text": "...", "experienceId": "ghi-789", ...},
+  {"text": "...", "experienceId": "jkl-012", ...},
+  {"text": "...", "experienceId": "mno-345", ...}
+]
 
 FORMATTING:
 - Order bullets from most relevant to least relevant based on job description alignment
@@ -114,8 +132,7 @@ FORMATTING:
   * "Action verb + context + quantified result"
   * "Result (with numbers if available) + Action verb"
 - Target visual width: ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (acceptable range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
-- If too short, fill with more context if possible or more actions
-- If too long, create more concise sentences as much as possible or shorten context
+- IMPORTANT: Generate bullets even if they fall outside the target range - we will display them with warnings
 - KEYWORD MATCHING: ${keywordInstruction}
 - Use ONLY real information from experiences - never invent details
 - Embed keywords naturally where supported by experience
@@ -285,7 +302,7 @@ serve(async (req) => {
           role: 'user', 
           content: createUnifiedPrompt(jobDescription.trim(), experiencesByRole, keywordMatchType)
         }],
-        max_tokens: 4000,
+        max_tokens: 8000,
         temperature: 0.1
       })
     });
