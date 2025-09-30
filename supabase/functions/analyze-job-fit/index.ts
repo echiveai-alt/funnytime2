@@ -75,23 +75,39 @@ ${jobDescription}
 CANDIDATE EXPERIENCES (GROUPED BY ROLE):
 ${experiencesText}
 
-SCORING METHODOLOGY:
-1. Extract ALL specific, measurable requirements from job description:
-   - Required skills, tools, and technologies (be specific: "React" not just "frontend")
-   - Years of experience required
-   - Specific certifications or degrees
-   - Industry-specific knowledge
-   - Required responsibilities and achievements
-2. For EACH requirement, strictly evaluate if candidate's experiences demonstrate it:
-   - Exact matches: Full credit
-   - Close equivalents: Full credit (e.g., "managed" = "led", "collaborated" = "worked with")
-   - Partial matches: NO credit (e.g., "React" experience doesn't count for "Vue.js" requirement)
-   - No evidence: NO credit
-3. Calculate score: (matched requirements / total requirements) × 100
-4. CRITICAL REQUIREMENTS RULE: If ANY critical/required items are missing, cap score at 70% maximum
-5. BE STRICT: A 50-60% score is common and acceptable. Don't inflate scores to be kind.
+SCORING METHODOLOGY - BE EXTREMELY STRICT:
+1. Extract ALL meaningful requirements from the job description:
+   - Break down compound requirements into separate items
+   - Example: "experience with Salesforce and HubSpot" = 2 separate requirements
+   - Example: "3+ years in product management" = 2 requirements: "product management experience" AND "3+ years duration"
+   - Each technical tool/platform = separate requirement
+   - Each certification or degree = separate requirement
+   - Each specific responsibility or achievement mentioned = separate requirement
+   
+2. For EACH requirement, apply STRICT matching rules:
+   - EXACT MATCH ONLY: If job says "Salesforce", candidate needs "Salesforce" (not just "CRM experience")
+   - EXACT MATCH ONLY: If job says "5+ years", candidate needs evidence of 5+ years (not "several years")
+   - NO ASSUMPTIONS: If experience doesn't explicitly mention a requirement, it's NOT matched
+   - NO GENEROUS INTERPRETATION: "Analyzed data" ≠ "SQL experience" unless SQL is mentioned
+   - NO PARTIAL CREDIT: Either the requirement is met with clear evidence, or it's not matched
+   
+3. Calculate: (exactly matched requirements / total requirements) × 100
+   - Round DOWN, not up
+   - A score of 40-60% is NORMAL and EXPECTED for most candidates
+   - Scores of 70-79% indicate a strong candidate with minor gaps
+   - Scores of 80%+ should be RARE - only for candidates who clearly meet or exceed nearly all requirements
+   - Scores of 90%+ should be EXCEPTIONAL - candidate is overqualified
+   
+4. CRITICAL REQUIREMENTS: If missing ANY must-have/required items explicitly marked in job description, cap score at 65% maximum
 
-IMPORTANT: Extract 15-30 specific requirements from the job description. More granular requirements = more accurate scoring.
+5. VERIFICATION CHECKLIST before finalizing score:
+   - Did I extract every distinct requirement from the job description?
+   - Did I verify each matched requirement has EXPLICIT evidence in experiences (not inferred)?
+   - Would a hiring manager reviewing these experiences agree the candidate meets this requirement?
+   - Am I being strict enough, or am I being generous to avoid disappointing the candidate?
+   - If the candidate scored 80%+, do they truly meet almost all requirements with clear evidence?
+
+REMEMBER: Your job is ACCURACY, not kindness. A 50% score means the candidate meets half the requirements - that's valuable, honest feedback. Don't inflate scores.
 
 KEYWORD EXTRACTION:
 - Extract a comprehensive list of ALL keywords from the job description (no categorization needed)
@@ -298,10 +314,16 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages: [{ 
-          role: 'user', 
-          content: createUnifiedPrompt(jobDescription.trim(), experiencesByRole, keywordMatchType)
-        }],
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a strict, objective resume analyzer. Your job is to provide ACCURATE fit scores, not to make candidates feel good. Be critical and honest. A 50% match is normal. Only exceptional candidates should score above 80%.'
+          },
+          { 
+            role: 'user', 
+            content: createUnifiedPrompt(jobDescription.trim(), experiencesByRole, keywordMatchType)
+          }
+        ],
         max_tokens: 8000,
         temperature: 0.1
       })
@@ -334,6 +356,13 @@ serve(async (req) => {
         const lowerKeyword = keyword.toLowerCase();
         
         if (matchType === 'exact') {
+          // Exact phrase match with word boundaries
+          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\      // Helper function to check if keyword is actually in text
+      const isKeywordInText = (text: string, keyword: string, matchType: string): boolean => {
+        const lowerText = text.toLowerCase();
+        const lowerKeyword = keyword.toLowerCase();
+        
+        if (matchType === 'exact') {
           // Exact phrase match
           return lowerText.includes(lowerKeyword);
         } else {
@@ -343,6 +372,54 @@ serve(async (req) => {
             // Remove common suffixes for stem matching
             const stem = word.replace(/(ing|ed|s|es|tion|ment|ly)$/i, '');
             return lowerText.includes(stem) || lowerText.includes(word);
+          });
+        }
+      };')}\\b`, 'i');
+          return regex.test(text);
+        } else {
+          // Word-stem: ALL words in the keyword must have stems present in text
+          const keywordWords = lowerKeyword.split(/\s+/).filter(w => w.length > 0);
+          
+          // Skip very short keywords that would match everywhere
+          if (keywordWords.length === 1 && keywordWords[0].length <= 2) {
+            return false;
+          }
+          
+          return keywordWords.every(word => {
+            // For short words (<=3 chars), require exact match
+            if (word.length <= 3) {
+              const regex = new RegExp(`\\b${word}\\b`, 'i');
+              return regex.test(lowerText);
+            }
+            
+            // For longer words, check stem (remove common suffixes)
+            const stem = word.replace(/(ing|ed|s|es|tion|ment|ly|ize|ise|ization|isation)$/i, '');
+            
+            // Stem must be at least 3 characters to avoid false positives
+            if (stem.length < 3) {
+              return lowerText.includes(word);
+            }
+            
+            // Check if stem appears as part of a word
+            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\      // Helper function to check if keyword is actually in text
+      const isKeywordInText = (text: string, keyword: string, matchType: string): boolean => {
+        const lowerText = text.toLowerCase();
+        const lowerKeyword = keyword.toLowerCase();
+        
+        if (matchType === 'exact') {
+          // Exact phrase match
+          return lowerText.includes(lowerKeyword);
+        } else {
+          // Word-stem: check if root words are present
+          const keywordWords = lowerKeyword.split(/\s+/);
+          return keywordWords.every(word => {
+            // Remove common suffixes for stem matching
+            const stem = word.replace(/(ing|ed|s|es|tion|ment|ly)$/i, '');
+            return lowerText.includes(stem) || lowerText.includes(word);
+          });
+        }
+      };')}\\w*\\b`, 'i');
+            return stemRegex.test(text);
           });
         }
       };
