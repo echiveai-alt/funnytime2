@@ -238,20 +238,22 @@ const JobDescription = () => {
                   Choose how precisely keywords should match between your experience and the job description
                 </p>
                 
-                <div className="flex gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <Button
                     type="button"
                     variant={keywordMatchType === "exact" ? "default" : "outline"}
-                    className="flex-1 h-auto py-4 px-4"
+                    className="h-[120px] w-full"
                     onClick={() => handleKeywordMatchTypeChange("exact")}
                   >
-                    <div className="text-left w-full">
-                      <div className="font-semibold mb-1">Exact Match</div>
-                      <div className="text-xs font-normal opacity-90">
-                        Matches words precisely (e.g., 'manage' ≠ 'managing')
-                      </div>
-                      <div className="text-xs font-normal opacity-75 mt-1">
-                        Best for: Technical roles, compliance positions
+                    <div className="text-left w-full flex flex-col h-full justify-between">
+                      <div className="font-semibold mb-2">Exact Match</div>
+                      <div className="space-y-1.5 flex-1">
+                        <div className="text-xs font-normal opacity-90">
+                          Matches words precisely (e.g., 'manage' ≠ 'managing')
+                        </div>
+                        <div className="text-xs font-normal opacity-75">
+                          Best for: Technical roles, compliance positions
+                        </div>
                       </div>
                     </div>
                   </Button>
@@ -259,16 +261,18 @@ const JobDescription = () => {
                   <Button
                     type="button"
                     variant={keywordMatchType === "word-stem" ? "default" : "outline"}
-                    className="flex-1 h-auto py-4 px-4"
+                    className="h-[120px] w-full"
                     onClick={() => handleKeywordMatchTypeChange("word-stem")}
                   >
-                    <div className="text-left w-full">
-                      <div className="font-semibold mb-1">Word-Stem Match</div>
-                      <div className="text-xs font-normal opacity-90">
-                        Matches word roots (e.g., 'manage' = 'managing', 'management')
-                      </div>
-                      <div className="text-xs font-normal opacity-75 mt-1">
-                        Best for: Most roles, creative flexibility
+                    <div className="text-left w-full flex flex-col h-full justify-between">
+                      <div className="font-semibold mb-2">Word-Stem Match</div>
+                      <div className="space-y-1.5 flex-1">
+                        <div className="text-xs font-normal opacity-90">
+                          Matches word roots (e.g., 'manage' = 'managing', 'management')
+                        </div>
+                        <div className="text-xs font-normal opacity-75">
+                          Best for: Most roles, creative flexibility
+                        </div>
                       </div>
                     </div>
                   </Button>
@@ -283,12 +287,12 @@ const JobDescription = () => {
               </div>
 
               {/* Action Button */}
-              <div className="flex justify-center pt-2">
+              <div className="flex justify-center items-center py-6">
                 <Button
                   type="submit"
                   disabled={isAnalyzing || characterCount < constants.MIN_JOB_DESCRIPTION_LENGTH}
                   size="lg"
-                  className="min-w-[200px]"
+                  className="min-w-[240px]"
                 >
                   {isAnalyzing ? (
                     <>
