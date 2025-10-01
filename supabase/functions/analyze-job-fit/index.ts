@@ -25,6 +25,78 @@ class AnalysisError extends Error {
   }
 }
 
+// Enhanced requirement structure
+interface JobRequirement {
+  requirement: string;
+  importance: "critical" | "high" | "medium" | "low";
+  category: "education_degree" | "education_field" | "years_experience" | 
+            "role_title" | "technical_skill" | "soft_skill" | "domain_knowledge";
+  
+  // For education_degree
+  minimumDegreeLevel?: "Associate" | "Bachelor's" | "Master's" | "PhD";
+  
+  // For education_field
+  requiredField?: string;
+  fieldCriteria?: string; // e.g., "STEM", "Business-related", "Technical field"
+  
+  // For years_experience
+  minimumYears?: number;
+  specificRole?: string; // e.g., "product management", "software engineering"
+  
+  // For role_title
+  requiredTitleKeywords?: string[];
+}
+
+// Helper function to calculate role duration in months
+function calculateRoleDuration(startDate: string, endDate: string | null): number {
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : new Date();
+  
+  const months = (end.getFullYear() - start.getFullYear()) * 12 + 
+                 (end.getMonth() - start.getMonth());
+  
+  return Math.max(0, months);
+}
+
+// Helper function to calculate total experience months
+function calculateTotalExperienceMonths(roles: any[]): number {
+  return roles.reduce((total, role) => {
+    return total + calculateRoleDuration(role.start_date, role.end_date);
+  }, 0);
+}
+
+// Helper function to format education summary
+function formatEducationSummary(educationInfo: any[]): string {
+  if (educationInfo.length === 0) {
+    return "No formal education provided";
+  }
+
+  const degreeHierarchy = {
+    "PhD": 4,
+    "Master's": 3,
+    "Bachelor's": 2,
+    "Associate": 1,
+    "Diploma": 0,
+    "Other": 0
+  };
+
+  // Find highest degree
+  const highestDegree = educationInfo.reduce((highest, edu) => {
+    const currentLevel = degreeHierarchy[edu.degree as keyof typeof degreeHierarchy] || 0;
+    const highestLevel = degreeHierarchy[highest.degree as keyof typeof degreeHierarchy] || 0;
+    return currentLevel > highestLevel ? edu : highest;
+  }, educationInfo[0]);
+
+  const summary = educationInfo.map(edu => 
+    `- ${edu.degree}${edu.field ? ` in ${edu.field}` : ''} from ${edu.school}`
+  ).join('\n');
+
+  return `Highest Degree: ${highestDegree.degree}${highestDegree.field ? ` in ${highestDegree.field}` : ''}
+
+All Education:
+${summary}`;
+}
+
 // Visual width calculation
 function calculateVisualWidth(text: string): number {
   let score = 0;
@@ -52,40 +124,86 @@ ${jobDescription}
 TASK: Extract requirements and keywords from the job description above. Do NOT invent requirements. Only extract what is explicitly stated or clearly implied.
 
 EXTRACTION RULES:
-1. Break down compound requirements with "or":
-   - "Bachelor's degree or equivalent practical experience" = 2 SEPARATE requirements:
-     * "Bachelor's degree" (importance: critical)
-     * "Equivalent practical experience" (importance: medium)
-   - "Experience with Salesforce and HubSpot" = 2 requirements
-   - "3+ years in product management" = 2 requirements: "product management experience" AND "3+ years experience"
-   
-2. Each distinct skill, tool, technology, certification, or responsibility = separate requirement
 
-3. Mark importance levels:
-   - critical: Must-have, required, essential (explicitly stated in job description)
+1. EDUCATION REQUIREMENTS:
+   - DEGREE LEVEL: Extract as "education_degree" category
+     * "Bachelor's degree" → minimumDegreeLevel: "Bachelor's"
+     * "Master's degree" → minimumDegreeLevel: "Master's"
+     * "PhD" or "Doctorate" → minimumDegreeLevel: "PhD"
+     * "Associate degree" → minimumDegreeLevel: "Associate"
+   
+   - FIELD REQUIREMENTS: Extract as "education_field" category if specified
+     * "Bachelor's in Computer Science" → requiredField: "Computer Science"
+     * "STEM degree" → fieldCriteria: "STEM"
+     * "Technical degree" → fieldCriteria: "Technical field"
+   
+   - CRITICAL: IGNORE "or equivalent experience" alternatives
+     * "Bachelor's degree or equivalent practical experience" → Extract ONLY "Bachelor's degree"
+     * Do NOT create separate requirement for "equivalent experience"
+
+2. YEARS OF EXPERIENCE:
+   - Extract as "years_experience" category
+   - "5+ years of experience" → minimumYears: 5, specificRole: null (general experience)
+   - "3+ years in product management" → minimumYears: 3, specificRole: "product management"
+   - "2-4 years as software engineer" → minimumYears: 2, specificRole: "software engineering"
+
+3. ROLE/TITLE REQUIREMENTS:
+   - Extract as "role_title" category
+   - "Experience as a Product Manager" → requiredTitleKeywords: ["Product Manager"]
+   - "Background in data science or analytics" → requiredTitleKeywords: ["data science", "analytics"]
+
+4. SKILLS AND COMPETENCIES:
+   - technical_skill: Tools, technologies, programming languages, certifications
+   - soft_skill: Leadership, communication, problem-solving
+   - domain_knowledge: Industry-specific knowledge, methodologies
+
+5. IMPORTANCE LEVELS:
+   - critical: Must-have, required, essential (explicitly stated)
    - high: Preferred, strongly desired
    - medium: Nice to have, plus if you have
    - low: Bonus, additional
 
-4. Extract ALL keywords and phrases that appear in the job description:
-   - Technical terms (e.g., "Salesforce", "Python", "A/B testing")
-   - Skills (e.g., "data analysis", "project management")
-   - Domain terms (e.g., "SaaS", "B2B", "customer acquisition")
-   - Action verbs (e.g., "optimize", "scale", "implement")
-   - Industry jargon (e.g., "funnel optimization", "user journeys")
+6. KEYWORDS: Extract ALL relevant terms from job description (technical terms, skills, domain terms, action verbs, industry jargon)
 
-CRITICAL: 
-- Do NOT extract any company names, project names, dates, or specific details that could only come from a candidate's background
-- Always split "X or Y" into TWO separate requirements
-- Only extract information from the job description
+CRITICAL RULES:
+- Do NOT extract "equivalent experience" as an alternative to education
+- Split compound requirements (e.g., "SQL and Python" = 2 requirements)
+- Do NOT extract company names, project names, or candidate-specific details
+- Only extract what is in the job description
 
 Return JSON in this EXACT format:
 {
   "jobRequirements": [
     {
-      "requirement": "Specific requirement text from job description",
-      "importance": "critical|high|medium|low",
-      "category": "technical_skill|soft_skill|experience|education|domain_knowledge"
+      "requirement": "Bachelor's degree",
+      "importance": "critical",
+      "category": "education_degree",
+      "minimumDegreeLevel": "Bachelor's"
+    },
+    {
+      "requirement": "Degree in Computer Science or related field",
+      "importance": "high",
+      "category": "education_field",
+      "requiredField": "Computer Science",
+      "fieldCriteria": "Computer Science or related technical field"
+    },
+    {
+      "requirement": "5+ years of professional experience",
+      "importance": "critical",
+      "category": "years_experience",
+      "minimumYears": 5
+    },
+    {
+      "requirement": "3+ years in product management",
+      "importance": "critical",
+      "category": "years_experience",
+      "minimumYears": 3,
+      "specificRole": "product management"
+    },
+    {
+      "requirement": "SQL proficiency",
+      "importance": "high",
+      "category": "technical_skill"
     }
   ],
   "allKeywords": ["keyword1", "keyword2", "keyword3"],
@@ -98,13 +216,28 @@ Return JSON in this EXACT format:
 function createStage2Prompt(
   stage1Results: any,
   experiencesByRole: Record<string, any[]>,
-  educationSummary: string,
-  educationText: string,
+  educationInfo: any[],
+  userRoles: any[],
   keywordMatchType: string
 ): string {
   const keywordInstruction = keywordMatchType === 'exact' 
     ? 'Use keywords EXACTLY as they appear in the provided keyword list'
     : 'Use keywords and their variations (different tenses, forms, related terms like "managed" for "led")';
+
+  // Calculate total experience duration
+  const totalMonths = calculateTotalExperienceMonths(userRoles);
+  const totalYears = Math.floor(totalMonths / 12);
+
+  // Format education data
+  const educationSummary = formatEducationSummary(educationInfo);
+  
+  // Format role durations
+  const roleDurations = userRoles.map(role => ({
+    title: role.title,
+    company: role.company,
+    months: calculateRoleDuration(role.start_date, role.end_date),
+    years: Math.floor(calculateRoleDuration(role.start_date, role.end_date) / 12)
+  }));
 
   const experiencesText = Object.entries(experiencesByRole)
     .map(([roleKey, exps]) => {
@@ -122,7 +255,16 @@ ${exps.map((exp, i) => `
 `).join('')}`;
     }).join('\n');
 
-  return `${educationSummary}
+  return `CANDIDATE PROFILE SUMMARY:
+
+EDUCATION:
+${educationSummary}
+
+TOTAL PROFESSIONAL EXPERIENCE:
+- Total Duration: ${totalYears} years (${totalMonths} months)
+
+ROLE-SPECIFIC EXPERIENCE:
+${roleDurations.map(rd => `- ${rd.title} at ${rd.company}: ${rd.years} years (${rd.months} months)`).join('\n')}
 
 You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
 
@@ -135,61 +277,72 @@ ${JSON.stringify(stage1Results.allKeywords, null, 2)}
 CANDIDATE EXPERIENCES (GROUPED BY ROLE):
 ${experiencesText}
 
-${educationText}
+MATCHING RULES - STRUCTURED AND PRECISE:
 
-MATCHING RULES - BE EXTREMELY STRICT BUT FAIR:
-
-1. WHAT COUNTS AS A MATCH:
-   ✓ The experience explicitly mentions the skill/tool/technology
-   ✓ The experience describes performing the exact responsibility
-   ✓ The experience shows clear evidence of the capability
-   ✓ Education requirements match degree type (Bachelor's, Master's, etc.)
+1. EDUCATION DEGREE MATCHING:
+   Degree Hierarchy: Associate < Bachelor's < Master's < PhD
    
-   Examples of VALID matches:
-   - Requirement: "SQL experience" + Experience: "Wrote SQL queries to analyze customer data" = MATCH
-   - Requirement: "Team leadership" + Experience: "Led a team of 5 engineers" = MATCH
-   - Requirement: "Python" + Experience: "Developed Python scripts for automation" = MATCH
-   - Requirement: "Bachelor's degree" + Education: "B.Sc in Computer Science" = MATCH
-   - Requirement: "Bachelor's degree" + Education: "B.Sc in Actuarial Science" = MATCH
-
-2. WHAT DOES NOT COUNT AS A MATCH:
-   ✗ Generic statements without specifics
-   ✗ Assumptions or inferences
-   ✗ Tangentially related skills
+   Rule: If candidate's degree level >= required degree level → MATCH
    
-   Examples of INVALID matches:
-   - Requirement: "SQL" + Experience: "Analyzed data" = NO MATCH (SQL not mentioned)
-   - Requirement: "Team leadership" + Experience: "Worked with team" = NO MATCH (no leadership evidence)
-   - Requirement: "Salesforce" + Experience: "CRM experience" = NO MATCH (Salesforce not specified)
-   - Requirement: "Master's degree" + Education: "Bachelor's degree" = NO MATCH (different level)
+   Examples:
+   ✓ Required: Bachelor's, Has: Bachelor's → MATCH
+   ✓ Required: Bachelor's, Has: Master's → MATCH (exceeds requirement)
+   ✓ Required: Bachelor's, Has: PhD → MATCH (exceeds requirement)
+   ✗ Required: Master's, Has: Bachelor's → NO MATCH (below requirement)
+   ✗ Required: Bachelor's, Has: Associate → NO MATCH (below requirement)
+   
+   For matches, use format in experienceSource: "Education: [Degree] from [School]"
 
-3. FOR EACH REQUIREMENT:
-   - Check ALL candidate experiences AND education
-   - If ANY experience OR education provides explicit evidence → MATCHED
-   - Record the specific experience/education and evidence found
-   - If NO experience or education mentions it → UNMATCHED
-   - Be thorough - don't skip requirements
+2. EDUCATION FIELD MATCHING:
+   If job requires a specific field or field criteria (e.g., "Computer Science", "STEM", "Technical field"):
+   
+   - Use your knowledge to determine if candidate's field meets the criteria
+   - "Actuarial Science" for "STEM" requirement → likely MATCH
+   - "Computer Science" for "Computer Science or related" → MATCH
+   - "English Literature" for "STEM" → NO MATCH
+   
+   Be reasonable in your interpretation of related fields.
 
-4. EDUCATION MATCHING RULES:
-   - "Bachelor's degree" or "Bachelor's" matches ANY Bachelor degree (B.A., B.S., B.Sc., B.Eng., Bachelor of Arts, Bachelor of Science, etc.)
-   - "Master's degree" or "Master's" matches any Master degree (M.A., M.S., MBA, M.Eng., etc.)
-   - "PhD" or "Doctorate" matches doctoral degrees
-   - Match the LEVEL, not necessarily the field (unless field is specifically required)
-   - For education matches, use format in experienceSource: "Education: [Degree] from [School]"
+3. YEARS OF EXPERIENCE MATCHING:
+   Two types of experience requirements:
+   
+   A) GENERAL EXPERIENCE (no specificRole):
+      - Use Total Professional Experience duration
+      - Example: Requires 5 years, candidate has ${totalYears} years → ${totalYears >= 5 ? 'MATCH' : 'NO MATCH'}
+   
+   B) ROLE-SPECIFIC EXPERIENCE (has specificRole):
+      - Sum durations of RELATED roles
+      - Be flexible with role matching (e.g., "Product Analyst" can count toward "Product Management")
+      - Consider role titles and the nature of work described in experiences
+      - Example: Requires "3 years in product management"
+        * Look for roles with titles like: Product Manager, Product Analyst, Product Owner, Associate Product Manager
+        * Sum their durations and compare to requirement
+   
+   For matches, cite the specific role(s) and their combined duration.
 
-5. SCORING CALCULATION:
+4. ROLE TITLE REQUIREMENTS:
+   - Check if candidate has held a role with matching or similar title
+   - Be flexible: "Software Engineer" matches "Software Developer"
+   - Cite the role title and company as evidence
+
+5. TECHNICAL SKILLS:
+   - Experience must explicitly mention the skill/tool/technology
+   - "Wrote SQL queries" → matches "SQL" requirement
+   - "Analyzed data" → does NOT match "SQL" requirement (too generic)
+
+6. SOFT SKILLS:
+   - Must have explicit evidence of the skill
+   - "Led team of 5" → matches "team leadership"
+   - "Worked with team" → does NOT match "leadership"
+
+7. SCORING CALCULATION:
    - Score = (Number of Matched Requirements / Total Requirements) × 100
    - Round DOWN to nearest whole number
    - If missing ANY critical requirements, cap score at 65%
-   - 40-60% is NORMAL and expected for most candidates
-   - 70-79% means strong candidate with minor gaps
-   - 80%+ should be RARE - only when nearly all requirements clearly met
 
 CRITICAL: YOU MUST POPULATE BOTH matchedRequirements AND unmatchedRequirements ARRAYS FOR ALL SCORES.
-Even if score is low, show which requirements were matched and which were not.
 
 CRITICAL: YOU MUST ALWAYS PROVIDE recommendations.forCandidate array for scores < 80%.
-Provide 3-5 specific, actionable recommendations for improving the candidate's profile.
 
 Return JSON in this EXACT format:
 
@@ -200,14 +353,19 @@ FOR SCORES >= 80% (Fit candidates):
   "fitLevel": "Excellent",
   "matchedRequirements": [
     {
-      "jobRequirement": "SQL experience",
-      "experienceEvidence": "Wrote complex SQL queries to analyze customer behavior patterns",
-      "experienceSource": "TechCorp - Data Analyst: Customer Analysis Project"
+      "jobRequirement": "Bachelor's degree",
+      "experienceEvidence": "Bachelor of Science in Actuarial Science",
+      "experienceSource": "Education: B.Sc in Actuarial Science from University X"
     },
     {
-      "jobRequirement": "Bachelor's degree",
-      "experienceEvidence": "B.Sc in Actuarial Science",
-      "experienceSource": "Education: B.Sc in Actuarial Science from University X"
+      "jobRequirement": "5+ years of experience",
+      "experienceEvidence": "Total ${totalYears} years of professional experience",
+      "experienceSource": "All professional roles combined"
+    },
+    {
+      "jobRequirement": "3+ years in product management",
+      "experienceEvidence": "4 years combined in product management roles",
+      "experienceSource": "Product Manager at TechCorp (2 years) + Product Analyst at StartupCo (2 years)"
     }
   ],
   "unmatchedRequirements": [
@@ -226,8 +384,8 @@ FOR SCORES >= 80% (Fit candidates):
       }
     ]
   },
-  "keywordsUsed": ["SQL", "customer retention", "analysis"],
-  "keywordsNotUsed": ["Tableau", "certification"]
+  "keywordsUsed": ["SQL", "customer retention"],
+  "keywordsNotUsed": ["Tableau"]
 }
 
 FOR SCORES < 80% (Not fit candidates):
@@ -237,49 +395,29 @@ FOR SCORES < 80% (Not fit candidates):
   "fitLevel": "Fair",
   "matchedRequirements": [
     {
-      "jobRequirement": "Data analysis",
-      "experienceEvidence": "Analyzed customer data to identify trends and patterns",
-      "experienceSource": "StartupCo - Analyst: Market Research"
-    },
-    {
       "jobRequirement": "Bachelor's degree",
-      "experienceEvidence": "B.Sc in Actuarial Science",
+      "experienceEvidence": "Bachelor of Science in Actuarial Science",
       "experienceSource": "Education: B.Sc in Actuarial Science from University X"
-    },
-    {
-      "jobRequirement": "Excel proficiency",
-      "experienceEvidence": "Created Excel dashboards with pivot tables and vlookups",
-      "experienceSource": "StartupCo - Analyst: Financial Reporting"
     }
   ],
   "unmatchedRequirements": [
     {
-      "requirement": "SQL experience",
+      "requirement": "Master's degree",
       "importance": "critical"
     },
     {
-      "requirement": "Python programming",
-      "importance": "high"
-    },
-    {
-      "requirement": "Tableau expertise",
-      "importance": "high"
-    },
-    {
-      "requirement": "Machine learning knowledge",
-      "importance": "medium"
+      "requirement": "5+ years of experience",
+      "importance": "critical"
     }
   ],
   "matchableKeywords": [],
   "unmatchableKeywords": [],
-  "criticalGaps": ["SQL experience", "Python programming"],
+  "criticalGaps": ["Master's degree", "5+ years of experience"],
   "recommendations": {
     "forCandidate": [
-      "Gain SQL experience through online courses (Coursera, DataCamp) or personal projects analyzing public datasets",
-      "Learn Python basics for data analysis - focus on pandas, numpy, and matplotlib libraries",
-      "Build a portfolio project using SQL and Python to demonstrate these skills to employers",
-      "Consider entry-level data analyst positions that emphasize Excel and analytical skills while allowing you to learn SQL on the job",
-      "Highlight your strong Excel skills and actuarial background in your applications as these are valuable analytical foundations"
+      "Consider pursuing a Master's degree to meet the educational requirement",
+      "Gain ${5 - totalYears} more years of professional experience",
+      "Focus on roles that will build toward the required experience level"
     ]
   }
 }
@@ -292,14 +430,7 @@ BULLET GENERATION RULES (ONLY IF SCORE >= 80%):
 5. Target width: ${CONSTANTS.VISUAL_WIDTH_TARGET} chars (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
 6. ${keywordInstruction}
 7. ONLY embed keywords if they naturally fit based on the experience content
-8. Track which keywords were embedded and which couldn't fit
-
-REMEMBER: 
-- Always provide matchedRequirements array (even if empty for very low scores)
-- Always provide unmatchedRequirements array (even if empty for perfect scores)
-- Be specific about which experience OR education provides evidence for each match
-- For unmatched requirements, include the importance level from the job requirements
-- For scores < 80%, ALWAYS provide 3-5 specific recommendations in recommendations.forCandidate array`;
+8. Track which keywords were embedded and which couldn't fit`;
 }
 
 async function callOpenAI(apiKey: string, messages: any[], maxTokens: number) {
@@ -420,122 +551,6 @@ function validateStage2Response(stage2Results: any): void {
   });
 }
 
-// Post-processing validation layer to fix education mismatches
-function validateEducationMatches(
-  stage2Results: any,
-  educationInfo: any[],
-  stage1Results: any
-): void {
-  console.log('Running education validation layer...');
-  
-  // Helper function to check if user has a specific degree level
-  const hasDegreeLevel = (level: string): boolean => {
-    return educationInfo.some(edu => {
-      const degreeLower = edu.degree.toLowerCase();
-      if (level === 'bachelor') {
-        return degreeLower.includes('bachelor') || 
-               degreeLower.startsWith('b.') || 
-               degreeLower.startsWith('b.a') ||
-               degreeLower.startsWith('b.s') ||
-               degreeLower.match(/^b\.\w/);
-      } else if (level === 'master') {
-        return degreeLower.includes('master') || 
-               degreeLower.startsWith('m.') || 
-               degreeLower.includes('mba');
-      } else if (level === 'phd' || level === 'doctorate') {
-        return degreeLower.includes('phd') || 
-               degreeLower.includes('ph.d') ||
-               degreeLower.includes('doctorate');
-      }
-      return false;
-    });
-  };
-
-  // Check each unmatched requirement for education mismatches
-  const fixedRequirements: any[] = [];
-  
-  stage2Results.unmatchedRequirements = stage2Results.unmatchedRequirements.filter((req: any) => {
-    const reqLower = req.requirement.toLowerCase();
-    
-    // Check for Bachelor's degree requirements
-    if (reqLower.includes("bachelor") && hasDegreeLevel('bachelor')) {
-      const edu = educationInfo.find(e => 
-        e.degree.toLowerCase().includes('bachelor') || 
-        e.degree.toLowerCase().startsWith('b.')
-      );
-      
-      if (edu) {
-        console.log(`Education validation: Moving "${req.requirement}" to matched`);
-        fixedRequirements.push({
-          jobRequirement: req.requirement,
-          experienceEvidence: edu.degree,
-          experienceSource: `Education: ${edu.degree} from ${edu.school}`
-        });
-        return false; // Remove from unmatched
-      }
-    }
-    
-    // Check for Master's degree requirements
-    if (reqLower.includes("master") && hasDegreeLevel('master')) {
-      const edu = educationInfo.find(e => 
-        e.degree.toLowerCase().includes('master') || 
-        e.degree.toLowerCase().startsWith('m.')
-      );
-      
-      if (edu) {
-        console.log(`Education validation: Moving "${req.requirement}" to matched`);
-        fixedRequirements.push({
-          jobRequirement: req.requirement,
-          experienceEvidence: edu.degree,
-          experienceSource: `Education: ${edu.degree} from ${edu.school}`
-        });
-        return false; // Remove from unmatched
-      }
-    }
-    
-    // Check for PhD requirements
-    if ((reqLower.includes("phd") || reqLower.includes("doctorate")) && hasDegreeLevel('phd')) {
-      const edu = educationInfo.find(e => 
-        e.degree.toLowerCase().includes('phd') || 
-        e.degree.toLowerCase().includes('doctorate')
-      );
-      
-      if (edu) {
-        console.log(`Education validation: Moving "${req.requirement}" to matched`);
-        fixedRequirements.push({
-          jobRequirement: req.requirement,
-          experienceEvidence: edu.degree,
-          experienceSource: `Education: ${edu.degree} from ${edu.school}`
-        });
-        return false; // Remove from unmatched
-      }
-    }
-    
-    return true; // Keep in unmatched
-  });
-
-  // Add fixed requirements to matched list
-  if (fixedRequirements.length > 0) {
-    stage2Results.matchedRequirements.push(...fixedRequirements);
-    
-    // Recalculate score
-    const totalRequirements = stage1Results.jobRequirements.length;
-    const matchedCount = stage2Results.matchedRequirements.length;
-    const newScore = Math.floor((matchedCount / totalRequirements) * 100);
-    
-    console.log(`Education validation: Fixed ${fixedRequirements.length} requirements`);
-    console.log(`Score updated: ${stage2Results.overallScore}% → ${newScore}%`);
-    
-    stage2Results.overallScore = newScore;
-    
-    // Update fit status if score changed significantly
-    if (newScore >= CONSTANTS.FIT_THRESHOLD && !stage2Results.isFit) {
-      console.log('Score now meets threshold, but keeping isFit=false (bullets not generated by AI)');
-      // Keep isFit as false since we didn't generate bullets
-    }
-  }
-}
-
 // Call OpenAI with retry logic for invalid responses
 async function callOpenAIWithRetry(
   apiKey: string, 
@@ -573,7 +588,25 @@ async function callOpenAIWithRetry(
       });
       messages.push({
         role: 'user',
-        content: 'CRITICAL: Your previous response was incomplete or invalid. You MUST include:\n1. Both matchedRequirements and unmatchedRequirements arrays with proper structure\n2. For scores < 80%, you MUST include recommendations.forCandidate array with 3-5 specific recommendations\n3. Even if the score is low, show what was matched (with evidence from experiences OR education) and what was not matched (with importance level)\n4. Check education carefully - if candidate has a Bachelor\'s degree (B.Sc, B.A., B.S., etc.), it matches "Bachelor\'s degree" requirements\n5. Return valid JSON only.'
+        content: `CRITICAL: Your previous response was incomplete or invalid. You MUST include:
+
+1. Both matchedRequirements and unmatchedRequirements arrays with proper structure
+2. For scores < 80%, you MUST include recommendations.forCandidate array with 3-5 specific recommendations
+
+3. STRUCTURED MATCHING RULES:
+   - education_degree: Use degree hierarchy (Associate < Bachelor's < Master's < PhD)
+   - education_field: Use AI reasoning to determine if field meets criteria
+   - years_experience: Calculate from role dates, consider role similarity for specific roles
+   - All other categories: Require explicit evidence
+
+4. For matched requirements, show:
+   - What requirement was matched
+   - Evidence from experience OR education OR role duration
+   - Source (experience, education, or role summary)
+
+5. For unmatched requirements, include the importance level
+
+6. Return valid JSON only with all required fields.`
       });
       
       console.log('Retrying with enhanced prompt...');
@@ -625,13 +658,16 @@ serve(async (req) => {
 
     console.log(`Starting two-stage analysis for user ${user.id}`);
 
-    // Fetch user experiences
+    // Fetch user experiences with role information
     const { data: experiences, error: expError } = await supabase
       .from('experiences')
       .select(`
         *,
         roles!inner(
+          id,
           title,
+          start_date,
+          end_date,
           companies!inner(name)
         )
       `)
@@ -641,7 +677,7 @@ serve(async (req) => {
       throw new AnalysisError('No experiences found', 'NO_EXPERIENCES', 400);
     }
 
-    // Fetch user education
+    // Fetch user education with structured degree field
     const { data: education, error: eduError } = await supabase
       .from('education')
       .select('*')
@@ -652,7 +688,8 @@ serve(async (req) => {
     }
 
     const educationInfo = education?.map(edu => ({
-      degree: edu.degree,
+      degree: edu.degree, // Now structured: Bachelor's, Master's, PhD, Associate, Diploma, Other
+      field: edu.field,
       school: edu.school,
       graduationDate: edu.graduation_date,
       isExpected: edu.is_expected_graduation
@@ -660,28 +697,33 @@ serve(async (req) => {
 
     console.log('User education:', {
       count: educationInfo.length,
-      degrees: educationInfo.map(e => e.degree)
+      degrees: educationInfo.map(e => ({ degree: e.degree, field: e.field }))
     });
 
-    // Create education summary for top of prompt
-    const hasBachelors = educationInfo.some(edu => 
-      edu.degree.toLowerCase().includes('bachelor') || 
-      edu.degree.toLowerCase().startsWith('b.')
-    );
-    const hasMasters = educationInfo.some(edu => 
-      edu.degree.toLowerCase().includes('master') || 
-      edu.degree.toLowerCase().startsWith('m.')
-    );
-    const hasPhD = educationInfo.some(edu => 
-      edu.degree.toLowerCase().includes('phd') || 
-      edu.degree.toLowerCase().includes('doctorate')
-    );
+    // Extract unique roles with their durations
+    const rolesMap = new Map<string, any>();
+    experiences.forEach(exp => {
+      const roleKey = `${exp.roles.id}`;
+      if (!rolesMap.has(roleKey)) {
+        rolesMap.set(roleKey, {
+          id: exp.roles.id,
+          title: exp.roles.title,
+          company: exp.roles.companies.name,
+          start_date: exp.roles.start_date,
+          end_date: exp.roles.end_date
+        });
+      }
+    });
+    const userRoles = Array.from(rolesMap.values());
 
-    const educationSummary = `CANDIDATE EDUCATION SUMMARY:
-- Has Bachelor's degree: ${hasBachelors ? 'YES' : 'NO'}${hasBachelors ? ` (${educationInfo.find(e => e.degree.toLowerCase().includes('bachelor') || e.degree.toLowerCase().startsWith('b.'))?.degree})` : ''}
-- Has Master's degree: ${hasMasters ? 'YES' : 'NO'}${hasMasters ? ` (${educationInfo.find(e => e.degree.toLowerCase().includes('master') || e.degree.toLowerCase().startsWith('m.'))?.degree})` : ''}
-- Has PhD/Doctorate: ${hasPhD ? 'YES' : 'NO'}${hasPhD ? ` (${educationInfo.find(e => e.degree.toLowerCase().includes('phd') || e.degree.toLowerCase().includes('doctorate'))?.degree})` : ''}
-`;
+    console.log('User roles:', {
+      count: userRoles.length,
+      roles: userRoles.map(r => ({
+        title: r.title,
+        company: r.company,
+        months: calculateRoleDuration(r.start_date, r.end_date)
+      }))
+    });
 
     // Format and group experiences
     const formattedExperiences = experiences.map(exp => ({
@@ -709,19 +751,6 @@ serve(async (req) => {
       count: experiencesByRole[key].length
     })));
 
-    // Format education text for detailed section
-    const educationText = educationInfo.length > 0 
-      ? `
-CANDIDATE EDUCATION (DETAILED):
-${educationInfo.map((edu, i) => `
-  Education ${i + 1}:
-  - Degree: ${edu.degree}
-  - School: ${edu.school}
-  ${edu.isExpected ? '- Status: Expected graduation' : '- Status: Completed'}
-  ${edu.graduationDate ? `- Graduation Date: ${edu.graduationDate}` : ''}
-`).join('')}`
-      : 'CANDIDATE EDUCATION: None provided';
-
     // ===== STAGE 1: Extract requirements from job description =====
     console.log('STAGE 1: Extracting requirements and keywords from job description...');
     
@@ -730,14 +759,14 @@ ${educationInfo.map((edu, i) => `
       [
         {
           role: 'system',
-          content: 'You extract requirements and keywords from job descriptions. You never see candidate information. Only extract what is in the job description. CRITICAL: Split any "X or Y" requirements into TWO separate requirements.'
+          content: 'You extract requirements and keywords from job descriptions. You never see candidate information. CRITICAL: Do NOT extract "equivalent experience" alternatives to degrees. Extract degree requirements, field requirements, years of experience (general and role-specific), skills, and keywords. Use structured categories.'
         },
         {
           role: 'user',
           content: createStage1Prompt(jobDescription.trim())
         }
       ],
-      2000
+      3000
     );
 
     const stage1Match = stage1Response.match(/\{[\s\S]*\}/);
@@ -749,23 +778,12 @@ ${educationInfo.map((edu, i) => `
     
     console.log('Stage 1 complete:', {
       requirementsExtracted: stage1Results.jobRequirements?.length || 0,
-      keywordsExtracted: stage1Results.allKeywords?.length || 0
+      keywordsExtracted: stage1Results.allKeywords?.length || 0,
+      requirementsByCategory: stage1Results.jobRequirements?.reduce((acc: any, req: any) => {
+        acc[req.category] = (acc[req.category] || 0) + 1;
+        return acc;
+      }, {})
     });
-
-    // Validate stage 1 - ensure no candidate contamination
-    const candidateTerms = formattedExperiences.flatMap(exp => [
-      exp.company.toLowerCase(),
-      exp.role.toLowerCase(),
-      exp.title.toLowerCase()
-    ]);
-    
-    const contaminated = stage1Results.jobRequirements.filter((req: any) =>
-      candidateTerms.some(term => req.requirement.toLowerCase().includes(term))
-    );
-    
-    if (contaminated.length > 0) {
-      console.warn('WARNING: Detected candidate data contamination in requirements:', contaminated);
-    }
 
     // ===== STAGE 2: Match to experiences and generate bullets =====
     console.log('STAGE 2: Matching requirements to experiences and education...');
@@ -775,11 +793,11 @@ ${educationInfo.map((edu, i) => `
       [
         {
           role: 'system',
-          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. CRITICAL: The candidate education summary shows if they have Bachelor\'s/Master\'s/PhD - use this to match degree requirements immediately. Be critical and honest. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays, regardless of score. For scores < 80%, ALWAYS provide 3-5 specific recommendations. Only high-quality matches should score 80%+.'
+          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. Use structured matching: degree hierarchy for education_degree, AI reasoning for education_field, date calculations for years_experience, role similarity for role_title, explicit evidence for skills. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays. For scores < 80%, ALWAYS provide recommendations.'
         },
         {
           role: 'user',
-          content: createStage2Prompt(stage1Results, experiencesByRole, educationSummary, educationText, keywordMatchType)
+          content: createStage2Prompt(stage1Results, experiencesByRole, educationInfo, userRoles, keywordMatchType)
         }
       ],
       8000
@@ -796,9 +814,6 @@ ${educationInfo.map((edu, i) => `
       matchedSample: stage2Results.matchedRequirements?.[0],
       unmatchedSample: stage2Results.unmatchedRequirements?.[0]
     });
-
-    // ===== VALIDATION LAYER: Fix any education mismatches =====
-    validateEducationMatches(stage2Results, educationInfo, stage1Results);
 
     // Merge stage 1 and stage 2 results
     const analysis = {
