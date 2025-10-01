@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 
 const ANALYSIS_CONSTANTS = {
   MIN_SCORE_FOR_BULLETS: 80,
-  MIN_JOB_DESCRIPTION_LENGTH: 50,
+  MIN_JOB_DESCRIPTION_LENGTH: 400,
   MAX_RETRIES: 2,
   RETRY_DELAY_MS: 1000,
 } as const;
