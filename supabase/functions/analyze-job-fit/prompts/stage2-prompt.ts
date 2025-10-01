@@ -12,9 +12,18 @@ ALWAYS provide both matchedRequirements and unmatchedRequirements arrays. For sc
 function formatExperiencesText(experiencesByRole: Record<string, ExperienceWithRole[]>): string {
   return Object.entries(experiencesByRole)
     .map(([roleKey, exps]) => {
+      // Extract role info from first experience
+      const firstExp = exps[0];
+      const roleTitle = firstExp.roles.title;
+      const roleSpecialty = firstExp.roles.specialty;
+      const companyName = firstExp.roles.companies.name;
+      
       return `
 === ${roleKey} ===
+Role: ${roleTitle}${roleSpecialty ? ` | Specialty: ${roleSpecialty}` : ''}
+Company: ${companyName}
 Number of experiences for this role: ${exps.length}
+
 ${exps.map((exp, i) => `
   Experience ${i + 1}:
   - ID: ${exp.id}
@@ -90,53 +99,56 @@ MATCHING RULES - STRUCTURED AND PRECISE:
       - Example: Requires 5 years, candidate has ${totalYears} years → ${totalYears >= 5 ? 'MATCH' : 'NO MATCH'}
    
    B) ROLE-SPECIFIC EXPERIENCE (has specificRole):
-      - Sum durations of RELATED roles
+      - Sum durations of RELATED roles based on BOTH title AND specialty
+      - SPECIALTY IS CRITICAL - check the "Specialty:" field for each role above
       - Be flexible with role matching (e.g., "Product Analyst" can count toward "Product Management")
-      - Consider BOTH role titles AND specialty field when determining if a role is related
-      - SPECIALTY IS CRITICAL: If JD asks for "product management in subscription products", a role with specialty "Subscription Products" is strong evidence
-      - Examples:
-        * JD: "3 years in product management for B2B SaaS"
-        * Candidate: "Product Manager (B2B SaaS)" → STRONG MATCH (specialty matches)
-        * Candidate: "Product Manager (Consumer Apps)" → PARTIAL MATCH (title matches, specialty different)
-        * Candidate: "Product Analyst (B2B SaaS)" → MATCH (similar title, specialty matches)
-      - Sum their durations and compare to requirement
+      - Examples of matching logic:
+        * JD requires: "3 years in product management for B2B SaaS"
+        * Candidate has: "Product Manager | Specialty: B2B SaaS" → STRONG MATCH (both title and specialty align)
+        * Candidate has: "Product Analyst | Specialty: B2B SaaS" → MATCH (related title, specialty matches)
+        * Candidate has: "Product Manager | Specialty: Consumer Apps" → PARTIAL MATCH (title matches, specialty different)
+      - For growth/subscription product requirements, look for these terms in the Specialty field
+      - Sum ALL related role durations and compare to requirement
    
-   For matches, cite the specific role(s), their specialty if relevant, and their combined duration.
+   For matches, cite the specific role(s) with their specialty and combined duration.
 
 3. ABSOLUTE REQUIREMENTS:
    - If ANY requirement has importance "absolute", it MUST be matched or the score is capped at 79%
-   - Absolute requirements are non-negotiable (e.g., citizenship, security clearance)
+   - Absolute requirements are non-negotiable (e.g., citizenship, security clearance, required certifications)
    - Provide clear explanation if absolute requirement not met
 
 4. ROLE TITLE REQUIREMENTS:
    - Check if candidate has held a role with matching or similar title
    - Be flexible: "Software Engineer" matches "Software Developer"
+   - "Product Analyst" is related to "Product Manager"
    - Cite the role title and company as evidence
 
 5. TECHNICAL SKILLS:
-   - Experience must explicitly mention the skill/tool/technology
+   - Experience must explicitly mention the skill/tool/technology in situation, task, action, or result
    - "Wrote SQL queries" → matches "SQL" requirement
+   - "Used Python for analysis" → matches "Python" requirement
    - "Analyzed data" → does NOT match "SQL" requirement (too generic)
 
 6. SOFT SKILLS & CROSS-FUNCTIONAL WORK:
    - Must have explicit evidence of the skill/collaboration
-   - For "cross-functional" requirements: Look for mentions of working with different departments
+   - For "cross-functional" requirements: LOOK CAREFULLY in ALL fields (situation, task, action, result)
+   - BE GENEROUS: If experience mentions working with ANY other department/function, it counts as cross-functional
    - Examples of cross-functional evidence:
      * "Collaborated with engineering team to..."
      * "Partnered with UX designers..."
      * "Worked with marketing to launch..."
      * "Led stakeholders across product, engineering, and design..."
+     * ANY mention of other departments: engineering, design, marketing, sales, data, legal, etc.
    - "Led team of 5" → matches "team leadership"
-   - "Worked with team" → does NOT match "leadership" (no leadership evidence)
+   - "Worked with team" alone → does NOT match "leadership" (no leadership evidence)
 
 7. SCORING CALCULATION:
    - Score = (Number of Matched Requirements / Total Requirements) × 100
    - Round DOWN to nearest whole number
-   - If missing ANY absolute requirements, cap score at 79%
-   - If missing ANY critical requirements (but no absolute), cap score at 65%
-   - 40-60% is NORMAL and expected for most candidates
-   - 70-79% means strong candidate with minor gaps
-   - 80%+ should be RARE - only when nearly all requirements clearly met
+   - If missing ANY absolute requirements, cap score at 79% and provide absoluteGapExplanation
+   - NO other score caps - calculate based purely on requirements matched
+   - Be objective: if candidate matches 85% of requirements, score should be 85%
+   - Do not artificially lower scores - use the strict matching criteria above to ensure accuracy
 
 CRITICAL: YOU MUST POPULATE BOTH matchedRequirements AND unmatchedRequirements ARRAYS FOR ALL SCORES.
 
@@ -163,12 +175,12 @@ FOR SCORES >= 80% (Fit candidates):
     {
       "jobRequirement": "Experience with growth products",
       "experienceEvidence": "Product management experience in growth domain",
-      "experienceSource": "Product Manager (Growth, B2C, FinTech) at TechCorp"
+      "experienceSource": "Product Manager | Specialty: Growth at TechCorp"
     },
     {
       "jobRequirement": "3+ years in product management",
-      "experienceEvidence": "4 years combined in product management roles",
-      "experienceSource": "Product Manager (B2B SaaS) at TechCorp (2 years) + Product Analyst (Enterprise Software) at StartupCo (2 years)"
+      "experienceEvidence": "5 years combined in product management roles",
+      "experienceSource": "Product Manager | Specialty: B2B SaaS at TechCorp (2 years) + Product Analyst | Specialty: Enterprise Software at StartupCo (3 years)"
     }
   ],
   "unmatchedRequirements": [
