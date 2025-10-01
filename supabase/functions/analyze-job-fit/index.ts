@@ -47,6 +47,66 @@ interface JobRequirement {
   requiredTitleKeywords?: string[];
 }
 
+// Degree hierarchy - numeric for easy comparison
+const DEGREE_HIERARCHY = {
+  "Other": 0,
+  "Diploma": 0,
+  "Associate": 1,
+  "Bachelor's": 2,
+  "Master's": 3,
+  "PhD": 4
+} as const;
+
+type DegreeLevel = keyof typeof DEGREE_HIERARCHY;
+
+// Helper function to get numeric degree level
+function getDegreeLevel(degree: string): number {
+  return DEGREE_HIERARCHY[degree as DegreeLevel] ?? 0;
+}
+
+// Helper function to check if education meets degree requirement
+function meetsEducationRequirement(
+  userEducation: any[], 
+  requiredDegreeLevel: string
+): { meets: boolean; evidence: string; source: string } {
+  if (userEducation.length === 0) {
+    return { meets: false, evidence: "", source: "" };
+  }
+
+  // Get user's highest degree
+  const highestDegree = userEducation.reduce((highest, edu) => {
+    const currentLevel = getDegreeLevel(edu.degree);
+    const highestLevel = getDegreeLevel(highest.degree);
+    return currentLevel > highestLevel ? edu : highest;
+  }, userEducation[0]);
+
+  const userLevel = getDegreeLevel(highestDegree.degree);
+  const requiredLevel = getDegreeLevel(requiredDegreeLevel);
+
+  const meets = userLevel >= requiredLevel;
+
+  return {
+    meets,
+    evidence: `${highestDegree.degree}${highestDegree.field ? ` in ${highestDegree.field}` : ''}`,
+    source: `Education: ${highestDegree.degree}${highestDegree.field ? ` in ${highestDegree.field}` : ''} from ${highestDegree.school}`
+  };
+}
+
+// Helper function to extract lowest degree requirement from JD requirements
+function getLowestDegreeRequirement(jobRequirements: any[]): string | null {
+  const degreeReqs = jobRequirements
+    .filter(req => req.category === 'education_degree')
+    .map(req => req.minimumDegreeLevel)
+    .filter(Boolean);
+
+  if (degreeReqs.length === 0) return null;
+
+  // Return the degree with lowest numeric value (most lenient requirement)
+  return degreeReqs.reduce((lowest, current) => {
+    return getDegreeLevel(current) < getDegreeLevel(lowest) ? current : lowest;
+  });
+}
+
 // Helper function to calculate role duration in months
 function calculateRoleDuration(startDate: string, endDate: string | null): number {
   const start = new Date(startDate);
@@ -231,9 +291,10 @@ function createStage2Prompt(
   // Format education data
   const educationSummary = formatEducationSummary(educationInfo);
   
-  // Format role durations
+  // Format role durations with specialty
   const roleDurations = userRoles.map(role => ({
     title: role.title,
+    specialty: role.specialty,
     company: role.company,
     months: calculateRoleDuration(role.start_date, role.end_date),
     years: Math.floor(calculateRoleDuration(role.start_date, role.end_date) / 12)
@@ -264,7 +325,7 @@ TOTAL PROFESSIONAL EXPERIENCE:
 - Total Duration: ${totalYears} years (${totalMonths} months)
 
 ROLE-SPECIFIC EXPERIENCE:
-${roleDurations.map(rd => `- ${rd.title} at ${rd.company}: ${rd.years} years (${rd.months} months)`).join('\n')}
+${roleDurations.map(rd => `- ${rd.title}${rd.specialty ? ` (${rd.specialty})` : ''} at ${rd.company}: ${rd.years} years (${rd.months} months)`).join('\n')}
 
 You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
 
@@ -279,31 +340,20 @@ ${experiencesText}
 
 MATCHING RULES - STRUCTURED AND PRECISE:
 
-1. EDUCATION DEGREE MATCHING:
-   Degree Hierarchy: Associate < Bachelor's < Master's < PhD
-   
-   Rule: If candidate's degree level >= required degree level → MATCH
-   
-   Examples:
-   ✓ Required: Bachelor's, Has: Bachelor's → MATCH
-   ✓ Required: Bachelor's, Has: Master's → MATCH (exceeds requirement)
-   ✓ Required: Bachelor's, Has: PhD → MATCH (exceeds requirement)
-   ✗ Required: Master's, Has: Bachelor's → NO MATCH (below requirement)
-   ✗ Required: Bachelor's, Has: Associate → NO MATCH (below requirement)
-   
-   For matches, use format in experienceSource: "Education: [Degree] from [School]"
-
-2. EDUCATION FIELD MATCHING:
+1. EDUCATION FIELD MATCHING (if applicable):
    If job requires a specific field or field criteria (e.g., "Computer Science", "STEM", "Technical field"):
    
    - Use your knowledge to determine if candidate's field meets the criteria
+   - Consider ALL of the candidate's education fields (they may have multiple degrees)
    - "Actuarial Science" for "STEM" requirement → likely MATCH
    - "Computer Science" for "Computer Science or related" → MATCH
    - "English Literature" for "STEM" → NO MATCH
    
    Be reasonable in your interpretation of related fields.
+   
+   NOTE: Degree LEVEL requirements (Bachelor's, Master's, etc.) have already been pre-processed and are NOT in your requirements list.
 
-3. YEARS OF EXPERIENCE MATCHING:
+2. YEARS OF EXPERIENCE MATCHING:
    Two types of experience requirements:
    
    A) GENERAL EXPERIENCE (no specificRole):
@@ -313,12 +363,16 @@ MATCHING RULES - STRUCTURED AND PRECISE:
    B) ROLE-SPECIFIC EXPERIENCE (has specificRole):
       - Sum durations of RELATED roles
       - Be flexible with role matching (e.g., "Product Analyst" can count toward "Product Management")
-      - Consider role titles and the nature of work described in experiences
-      - Example: Requires "3 years in product management"
-        * Look for roles with titles like: Product Manager, Product Analyst, Product Owner, Associate Product Manager
-        * Sum their durations and compare to requirement
+      - Consider BOTH role titles AND specialty field when determining if a role is related
+      - SPECIALTY IS CRITICAL: If JD asks for "product management in subscription products", a role with specialty "Subscription Products" is strong evidence
+      - Examples:
+        * JD: "3 years in product management for B2B SaaS"
+        * Candidate: "Product Manager (B2B SaaS)" → STRONG MATCH (specialty matches)
+        * Candidate: "Product Manager (Consumer Apps)" → PARTIAL MATCH (title matches, specialty different)
+        * Candidate: "Product Analyst (B2B SaaS)" → MATCH (similar title, specialty matches)
+      - Sum their durations and compare to requirement
    
-   For matches, cite the specific role(s) and their combined duration.
+   For matches, cite the specific role(s), their specialty if relevant, and their combined duration.
 
 4. ROLE TITLE REQUIREMENTS:
    - Check if candidate has held a role with matching or similar title
@@ -339,6 +393,9 @@ MATCHING RULES - STRUCTURED AND PRECISE:
    - Score = (Number of Matched Requirements / Total Requirements) × 100
    - Round DOWN to nearest whole number
    - If missing ANY critical requirements, cap score at 65%
+   - 40-60% is NORMAL and expected for most candidates
+   - 70-79% means strong candidate with minor gaps
+   - 80%+ should be RARE - only when nearly all requirements clearly met
 
 CRITICAL: YOU MUST POPULATE BOTH matchedRequirements AND unmatchedRequirements ARRAYS FOR ALL SCORES.
 
@@ -353,9 +410,9 @@ FOR SCORES >= 80% (Fit candidates):
   "fitLevel": "Excellent",
   "matchedRequirements": [
     {
-      "jobRequirement": "Bachelor's degree",
-      "experienceEvidence": "Bachelor of Science in Actuarial Science",
-      "experienceSource": "Education: B.Sc in Actuarial Science from University X"
+      "jobRequirement": "Computer Science or related field",
+      "experienceEvidence": "Bachelor of Science in Computer Science",
+      "experienceSource": "Education: B.Sc in Computer Science from University X"
     },
     {
       "jobRequirement": "5+ years of experience",
@@ -365,7 +422,7 @@ FOR SCORES >= 80% (Fit candidates):
     {
       "jobRequirement": "3+ years in product management",
       "experienceEvidence": "4 years combined in product management roles",
-      "experienceSource": "Product Manager at TechCorp (2 years) + Product Analyst at StartupCo (2 years)"
+      "experienceSource": "Product Manager (B2B SaaS) at TechCorp (2 years) + Product Analyst (Enterprise Software) at StartupCo (2 years)"
     }
   ],
   "unmatchedRequirements": [
@@ -395,16 +452,12 @@ FOR SCORES < 80% (Not fit candidates):
   "fitLevel": "Fair",
   "matchedRequirements": [
     {
-      "jobRequirement": "Bachelor's degree",
+      "jobRequirement": "STEM degree",
       "experienceEvidence": "Bachelor of Science in Actuarial Science",
       "experienceSource": "Education: B.Sc in Actuarial Science from University X"
     }
   ],
   "unmatchedRequirements": [
-    {
-      "requirement": "Master's degree",
-      "importance": "critical"
-    },
     {
       "requirement": "5+ years of experience",
       "importance": "critical"
@@ -412,12 +465,12 @@ FOR SCORES < 80% (Not fit candidates):
   ],
   "matchableKeywords": [],
   "unmatchableKeywords": [],
-  "criticalGaps": ["Master's degree", "5+ years of experience"],
+  "criticalGaps": ["5+ years of experience"],
   "recommendations": {
     "forCandidate": [
-      "Consider pursuing a Master's degree to meet the educational requirement",
       "Gain ${5 - totalYears} more years of professional experience",
-      "Focus on roles that will build toward the required experience level"
+      "Focus on roles that will build toward the required experience level",
+      "Highlight your strong educational foundation in your applications"
     ]
   }
 }
@@ -666,6 +719,7 @@ serve(async (req) => {
         roles!inner(
           id,
           title,
+          specialty,
           start_date,
           end_date,
           companies!inner(name)
@@ -708,6 +762,7 @@ serve(async (req) => {
         rolesMap.set(roleKey, {
           id: exp.roles.id,
           title: exp.roles.title,
+          specialty: exp.roles.specialty,
           company: exp.roles.companies.name,
           start_date: exp.roles.start_date,
           end_date: exp.roles.end_date
@@ -720,6 +775,7 @@ serve(async (req) => {
       count: userRoles.length,
       roles: userRoles.map(r => ({
         title: r.title,
+        specialty: r.specialty,
         company: r.company,
         months: calculateRoleDuration(r.start_date, r.end_date)
       }))
@@ -785,23 +841,107 @@ serve(async (req) => {
       }, {})
     });
 
+    // ===== PRE-PROCESSING: Deterministic Education Degree Matching =====
+    console.log('PRE-PROCESSING: Checking education degree requirements...');
+    
+    const preMatchedRequirements: any[] = [];
+    const educationDegreeReqs = stage1Results.jobRequirements.filter(
+      (req: any) => req.category === 'education_degree'
+    );
+
+    if (educationDegreeReqs.length > 0 && educationInfo.length > 0) {
+      // Get the lowest (most lenient) degree requirement from JD
+      const lowestRequiredDegree = getLowestDegreeRequirement(stage1Results.jobRequirements);
+      
+      if (lowestRequiredDegree) {
+        const educationCheck = meetsEducationRequirement(educationInfo, lowestRequiredDegree);
+        
+        if (educationCheck.meets) {
+          // User meets degree requirement - mark ALL education_degree requirements as matched
+          educationDegreeReqs.forEach((req: any) => {
+            preMatchedRequirements.push({
+              jobRequirement: req.requirement,
+              experienceEvidence: educationCheck.evidence,
+              experienceSource: educationCheck.source
+            });
+          });
+          
+          console.log('Education degree requirements PRE-MATCHED:', {
+            required: lowestRequiredDegree,
+            userHas: educationCheck.evidence,
+            matchedCount: educationDegreeReqs.length
+          });
+        } else {
+          console.log('Education degree requirements NOT MET:', {
+            required: lowestRequiredDegree,
+            userHas: educationCheck.evidence
+          });
+        }
+      }
+    }
+
+    // Filter out education_degree requirements from those sent to AI
+    // AI will still handle education_field requirements
+    const requirementsForAI = stage1Results.jobRequirements.filter(
+      (req: any) => req.category !== 'education_degree'
+    );
+
+    console.log('Requirements distribution:', {
+      total: stage1Results.jobRequirements.length,
+      preMatched: preMatchedRequirements.length,
+      sentToAI: requirementsForAI.length
+    });
+
     // ===== STAGE 2: Match to experiences and generate bullets =====
     console.log('STAGE 2: Matching requirements to experiences and education...');
+    
+    // Create modified stage1Results for AI with education_degree removed
+    const stage1ResultsForAI = {
+      ...stage1Results,
+      jobRequirements: requirementsForAI
+    };
     
     const stage2Results = await callOpenAIWithRetry(
       openaiApiKey,
       [
         {
           role: 'system',
-          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. Use structured matching: degree hierarchy for education_degree, AI reasoning for education_field, date calculations for years_experience, role similarity for role_title, explicit evidence for skills. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays. For scores < 80%, ALWAYS provide recommendations.'
+          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. Use structured matching: AI reasoning for education_field, date calculations for years_experience, role similarity for role_title, explicit evidence for skills. NOTE: education_degree requirements have been pre-processed and removed from your requirements list. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays. For scores < 80%, ALWAYS provide recommendations.'
         },
         {
           role: 'user',
-          content: createStage2Prompt(stage1Results, experiencesByRole, educationInfo, userRoles, keywordMatchType)
+          content: createStage2Prompt(stage1ResultsForAI, experiencesByRole, educationInfo, userRoles, keywordMatchType)
         }
       ],
       8000
     );
+
+    // Merge pre-matched education requirements back into results
+    stage2Results.matchedRequirements = [
+      ...preMatchedRequirements,
+      ...(stage2Results.matchedRequirements || [])
+    ];
+
+    // Recalculate score based on ALL requirements (including pre-matched)
+    const totalRequirements = stage1Results.jobRequirements.length;
+    const totalMatched = stage2Results.matchedRequirements.length;
+    const recalculatedScore = Math.floor((totalMatched / totalRequirements) * 100);
+    
+    // Check for critical gaps in unmatched requirements
+    const criticalUnmatched = (stage2Results.unmatchedRequirements || [])
+      .filter((req: any) => req.importance === 'critical');
+    
+    // Apply 65% cap if missing critical requirements
+    if (criticalUnmatched.length > 0) {
+      stage2Results.overallScore = Math.min(recalculatedScore, 65);
+      stage2Results.criticalGaps = criticalUnmatched.map((req: any) => req.requirement);
+      console.log('Score capped at 65% due to missing critical requirements:', criticalUnmatched.length);
+    } else {
+      stage2Results.overallScore = recalculatedScore;
+    }
+    
+    // Update fit status based on final score
+    stage2Results.isFit = stage2Results.overallScore >= CONSTANTS.FIT_THRESHOLD;
 
     console.log('Stage 2 complete - detailed results:', {
       score: stage2Results.overallScore,
