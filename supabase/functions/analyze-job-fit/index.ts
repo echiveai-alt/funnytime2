@@ -156,6 +156,18 @@ serve(async (req) => {
       ''
     );
 
+    logger.info('Extracted roles with durations', {
+      userId: user.id,
+      roles: userRoles.map(r => ({
+        title: r.title,
+        specialty: r.specialty,
+        startDate: r.start_date,
+        endDate: r.end_date,
+        durationMonths: r.durationMonths,
+        durationYears: r.durationYears
+      }))
+    });
+    
     // Group experiences by role
     const experiencesByRole: Record<string, ExperienceWithRole[]> = {};
     experiencesWithRoles.forEach(exp => {
