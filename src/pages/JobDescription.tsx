@@ -65,7 +65,11 @@ const JobDescription = () => {
         newErrors.jobDescription = "Job description is too long. Please provide a more concise version (max 10,000 characters)";
       }
     }
-
+    
+    if (trimmedDescription.length < constants.MIN_JOB_DESCRIPTION_LENGTH) {
+      newErrors.jobDescription = `Job description must be at least ${constants.MIN_JOB_DESCRIPTION_LENGTH} characters (currently ${trimmedDescription.length})`;
+    }
+    
     if (!keywordMatchType) {
       newErrors.keywordMatchType = "Please select a keyword matching type";
     }
