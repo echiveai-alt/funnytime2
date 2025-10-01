@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 const educationEntrySchema = z.object({
   degree: z.string().optional(),
+  field: z.string().optional(),
   school: z.string().optional(),
   graduationMonth: z.string().optional(),
   graduationYear: z.string().optional(),
@@ -27,21 +28,29 @@ const educationSchema = z.object({
   isNotApplicable: z.boolean(),
 }).refine((data) => {
   if (data.isNotApplicable) return true;
-  return data.education.some(entry => entry.degree && entry.school);
+  return data.education.some(entry => entry.degree && entry.field && entry.school);
 }, {
-  message: "Please enter at least one degree and school, or check 'Not applicable'",
+  message: "Please enter at least one degree, field, and school, or check 'Not applicable'",
   path: ["education"]
 });
 
 type EducationFormData = z.infer<typeof educationSchema>;
 
-const degreeExamples = [
-  "B.Sc. in Computer Science",
-  "B.A. in Economics", 
-  "M.Eng. in Computer Engineering",
-  "B.S. in Mathematics",
-  "M.B.A.",
-  "Ph.D. in Physics"
+const degreeOptions = [
+  { value: "bachelors", label: "Bachelor's" },
+  { value: "masters", label: "Master's" },
+  { value: "phd", label: "PhD" },
+  { value: "associate", label: "Associate" },
+  { value: "diploma", label: "Diploma" },
+  { value: "other", label: "Other (certificate, etc.)" }
+];
+
+const fieldExamples = [
+  "Computer Science",
+  "Economics",
+  "Mathematics",
+  "Business Administration",
+  "Engineering"
 ];
 
 const EducationOnboarding = () => {
@@ -62,6 +71,7 @@ const EducationOnboarding = () => {
     defaultValues: {
       education: [{ 
         degree: "",
+        field: "",
         school: "",
         graduationMonth: "",
         graduationYear: "",
@@ -106,6 +116,7 @@ const EducationOnboarding = () => {
 
             return {
               degree: edu.degree || "",
+              field: edu.field || "",
               school: edu.school || "",
               graduationMonth,
               graduationYear,
@@ -150,7 +161,7 @@ const EducationOnboarding = () => {
       if (!data.isNotApplicable && data.education) {
         // Save all education entries to the new education table
         const educationEntries = data.education
-          .filter(entry => entry.degree && entry.school)
+          .filter(entry => entry.degree && entry.field && entry.school)
           .map(entry => {
             let graduationDate = null;
             if (entry.graduationYear && entry.graduationMonth) {
@@ -160,6 +171,7 @@ const EducationOnboarding = () => {
             return {
               user_id: session.user.id,
               degree: entry.degree,
+              field: entry.field,
               school: entry.school,
               graduation_date: graduationDate,
               is_expected_graduation: entry.isExpectedDate
@@ -288,24 +300,46 @@ const EducationOnboarding = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor={`degree-${index}`}>Degree</Label>
+                    <Select 
+                      onValueChange={(value) => setValue(`education.${index}.degree` as const, value)}
+                      value={education?.[index]?.degree || ""}
+                    >
+                      <SelectTrigger className={errors.education?.[index]?.degree ? "border-destructive" : ""}>
+                        <SelectValue placeholder="Select degree level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {degreeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.education?.[index]?.degree && (
+                      <p className="text-sm text-destructive">{errors.education[index]?.degree?.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor={`field-${index}`}>Field</Label>
                     <Input
-                      id={`degree-${index}`}
-                      placeholder="e.g., B.Sc. in Computer Science"
-                      {...register(`education.${index}.degree` as const)}
-                      className={errors.education?.[index]?.degree ? "border-destructive" : ""}
+                      id={`field-${index}`}
+                      placeholder="e.g., Computer Science, Economics"
+                      {...register(`education.${index}.field` as const)}
+                      className={errors.education?.[index]?.field ? "border-destructive" : ""}
                     />
                     {index === 0 && (
                       <>
                         <div className="text-xs text-muted-foreground">
-                          Examples: {degreeExamples.slice(0, 3).join(", ")}
+                          Examples: {fieldExamples.slice(0, 3).join(", ")}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           You can edit this later.
                         </div>
                       </>
                     )}
-                    {errors.education?.[index]?.degree && (
-                      <p className="text-sm text-destructive">{errors.education[index]?.degree?.message}</p>
+                    {errors.education?.[index]?.field && (
+                      <p className="text-sm text-destructive">{errors.education[index]?.field?.message}</p>
                     )}
                   </div>
 
@@ -397,6 +431,7 @@ const EducationOnboarding = () => {
                         ...currentEducation,
                         { 
                           degree: "",
+                          field: "",
                           school: "",
                           graduationMonth: "",
                           graduationYear: "",

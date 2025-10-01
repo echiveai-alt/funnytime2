@@ -50,7 +50,8 @@ export type Database = {
       education: {
         Row: {
           created_at: string
-          degree: string
+          degree: string | null
+          field: string | null
           graduation_date: string | null
           id: string
           is_expected_graduation: boolean
@@ -60,7 +61,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          degree: string
+          degree?: string | null
+          field?: string | null
           graduation_date?: string | null
           id?: string
           is_expected_graduation?: boolean
@@ -70,7 +72,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          degree?: string
+          degree?: string | null
+          field?: string | null
           graduation_date?: string | null
           id?: string
           is_expected_graduation?: boolean
@@ -164,6 +167,7 @@ export type Database = {
           end_date: string | null
           id: string
           is_current: boolean
+          specialty: string | null
           start_date: string
           title: string
           updated_at: string
@@ -175,6 +179,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_current?: boolean
+          specialty?: string | null
           start_date: string
           title: string
           updated_at?: string
@@ -186,6 +191,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           is_current?: boolean
+          specialty?: string | null
           start_date?: string
           title?: string
           updated_at?: string
