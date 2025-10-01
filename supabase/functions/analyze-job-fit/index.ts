@@ -820,12 +820,7 @@ ${educationInfo.map((edu, i) => `
         const lowerKeyword = keyword.toLowerCase();
         
         if (matchType === 'exact') {
-          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\    // Format education text for detailed section
-    const educationText = educationInfo.length > 0 
-      ? `
-CANDIDATE EDUCATION (DETAILED):
-${educationInfo.map((edu, i) => `
-  Education ${i')}\\b`, 'i');
+          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
           return regex.test(text);
         } else {
           const keywordWords = lowerKeyword.split(/\s+/).filter(w => w.length > 0);
@@ -846,12 +841,7 @@ ${educationInfo.map((edu, i) => `
               return lowerText.includes(word);
             }
             
-            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\    // Format education text for detailed section
-    const educationText = educationInfo.length > 0 
-      ? `
-CANDIDATE EDUCATION (DETAILED):
-${educationInfo.map((edu, i) => `
-  Education ${i')}\\w*\\b`, 'i');
+            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\w*\\b`, 'i');
             return stemRegex.test(text);
           });
         }
