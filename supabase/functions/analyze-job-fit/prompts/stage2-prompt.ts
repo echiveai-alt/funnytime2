@@ -12,26 +12,28 @@ ALWAYS provide both matchedRequirements and unmatchedRequirements arrays. For sc
 function formatExperiencesText(experiencesByRole: Record<string, ExperienceWithRole[]>): string {
   return Object.entries(experiencesByRole)
     .map(([roleKey, exps]) => {
-      // Extract role info from first experience
       const firstExp = exps[0];
       const roleTitle = firstExp.roles.title;
       const roleSpecialty = firstExp.roles.specialty;
       const companyName = firstExp.roles.companies.name;
+      const startDate = firstExp.roles.start_date;
+      const endDate = firstExp.roles.end_date;
       
       return `
 === ${roleKey} ===
 Role: ${roleTitle}${roleSpecialty ? ` | Specialty: ${roleSpecialty}` : ''}
 Company: ${companyName}
+Duration: ${startDate} to ${endDate || 'Present'}
 Number of experiences for this role: ${exps.length}
 
 ${exps.map((exp, i) => `
   Experience ${i + 1}:
   - ID: ${exp.id}
   - Title: ${exp.title}
+  ${exp.situation ? `- Situation: ${exp.situation}` : ''}
+  ${exp.task ? `- Task: ${exp.task}` : ''}
   - Action: ${exp.action}
   - Result: ${exp.result}
-  ${exp.situation ? `- Context: ${exp.situation}` : ''}
-  ${exp.task ? `- Task: ${exp.task}` : ''}
 `).join('')}`;
     }).join('\n');
 }
@@ -62,8 +64,13 @@ ${educationSummary}
 TOTAL PROFESSIONAL EXPERIENCE:
 - Total Duration: ${totalYears} years (${totalMonths} months)
 
-ROLE-SPECIFIC EXPERIENCE:
+ROLE-SPECIFIC EXPERIENCE (WITH DURATIONS):
 ${roleDurationsText}
+
+IMPORTANT: When calculating role-specific experience requirements:
+- Sum ALL roles with related titles (Product Manager, Product Analyst, Product Operations Manager all count toward "product management")
+- Check the Role-Specific Experience section above for exact durations
+- The durations shown above are the source of truth for experience calculations
 
 You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
 
@@ -131,14 +138,13 @@ MATCHING RULES - STRUCTURED AND PRECISE:
 
 6. SOFT SKILLS & CROSS-FUNCTIONAL WORK:
    - Must have explicit evidence of the skill/collaboration
-   - For "cross-functional" requirements: LOOK CAREFULLY in ALL fields (situation, task, action, result)
-   - BE GENEROUS: If experience mentions working with ANY other department/function, it counts as cross-functional
+   - For "cross-functional" requirements: Look carefully in ALL fields (situation, task, action, result)
    - Examples of cross-functional evidence:
      * "Collaborated with engineering team to..."
      * "Partnered with UX designers..."
      * "Worked with marketing to launch..."
      * "Led stakeholders across product, engineering, and design..."
-     * ANY mention of other departments: engineering, design, marketing, sales, data, legal, etc.
+     * Any mention of working with other departments
    - "Led team of 5" → matches "team leadership"
    - "Worked with team" alone → does NOT match "leadership" (no leadership evidence)
 
