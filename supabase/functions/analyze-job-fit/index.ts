@@ -5,14 +5,12 @@ import { Logger } from './utils/logger.ts';
 import { AnalysisError, validateJobDescription } from './validation/response-validator.ts';
 import { extractJobRequirements } from './stages/stage1-extraction.ts';
 import { matchCandidateToJob } from './stages/stage2-matching.ts';
-import { getCachedStage1Results, setCachedStage1Results } from './cache.ts';
 import { enrichRolesWithDuration } from './matching/experience-calculator.ts';
 import { CONSTANTS } from './constants.ts';
 import type { 
   ExperienceWithRole, 
   Education, 
-  UnifiedAnalysisResult,
-  BulletPoint 
+  UnifiedAnalysisResult 
 } from './types.ts';
 
 const logger = new Logger();
@@ -141,7 +139,7 @@ serve(async (req) => {
         rolesMap.set(roleKey, {
           id: exp.roles.id,
           user_id: user.id,
-          company_id: exp.roles.companies.name, // We'll use company name
+          company_id: exp.roles.companies.name,
           title: exp.roles.title,
           specialty: exp.roles.specialty,
           start_date: exp.roles.start_date,
@@ -155,7 +153,7 @@ serve(async (req) => {
     
     const userRoles = enrichRolesWithDuration(
       Array.from(rolesMap.values()),
-      '' // Company name already in role
+      ''
     );
 
     // Group experiences by role
@@ -175,23 +173,12 @@ serve(async (req) => {
       roleGroups: Object.keys(experiencesByRole).length
     });
 
-    // STAGE 1: Extract requirements (with caching)
-    let stage1Results;
-    const cachedStage1 = await getCachedStage1Results(supabase, user.id, jobDescription.trim());
-    
-    if (cachedStage1) {
-      logger.info('Using cached Stage 1 results', { userId: user.id });
-      stage1Results = cachedStage1;
-    } else {
-      stage1Results = await extractJobRequirements(
-        openaiApiKey,
-        jobDescription.trim(),
-        user.id
-      );
-      
-      // Cache the results
-      await setCachedStage1Results(supabase, user.id, jobDescription.trim(), stage1Results);
-    }
+    // STAGE 1: Extract requirements from job description
+    const stage1Results = await extractJobRequirements(
+      openaiApiKey,
+      jobDescription.trim(),
+      user.id
+    );
 
     // STAGE 2: Match candidate to job
     const stage2Results = await matchCandidateToJob(
