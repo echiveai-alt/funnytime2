@@ -384,10 +384,16 @@ MATCHING RULES - STRUCTURED AND PRECISE:
    - "Wrote SQL queries" → matches "SQL" requirement
    - "Analyzed data" → does NOT match "SQL" requirement (too generic)
 
-6. SOFT SKILLS:
-   - Must have explicit evidence of the skill
+6. SOFT SKILLS & CROSS-FUNCTIONAL WORK:
+   - Must have explicit evidence of the skill/collaboration
+   - For "cross-functional" requirements: Look for mentions of working with different departments
+   - Examples of cross-functional evidence:
+     * "Collaborated with engineering team to..."
+     * "Partnered with UX designers..."
+     * "Worked with marketing to launch..."
+     * "Led stakeholders across product, engineering, and design..."
    - "Led team of 5" → matches "team leadership"
-   - "Worked with team" → does NOT match "leadership"
+   - "Worked with team" → does NOT match "leadership" (no leadership evidence)
 
 7. SCORING CALCULATION:
    - Score = (Number of Matched Requirements / Total Requirements) × 100
@@ -418,6 +424,11 @@ FOR SCORES >= 80% (Fit candidates):
       "jobRequirement": "5+ years of experience",
       "experienceEvidence": "Total ${totalYears} years of professional experience",
       "experienceSource": "All professional roles combined"
+    },
+    {
+      "jobRequirement": "Experience with growth products",
+      "experienceEvidence": "Product management experience in growth domain",
+      "experienceSource": "Product Manager (Growth, B2C, FinTech) at TechCorp"
     },
     {
       "jobRequirement": "3+ years in product management",
