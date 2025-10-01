@@ -37,12 +37,12 @@ const educationSchema = z.object({
 type EducationFormData = z.infer<typeof educationSchema>;
 
 const degreeOptions = [
-  { value: "bachelors", label: "Bachelor's" },
-  { value: "masters", label: "Master's" },
-  { value: "phd", label: "PhD" },
-  { value: "associate", label: "Associate" },
-  { value: "diploma", label: "Diploma" },
-  { value: "other", label: "Other (certificate, etc.)" }
+  { value: "Bachelor's", label: "Bachelor's" },
+  { value: "Master's", label: "Master's" },
+  { value: "PhD", label: "PhD" },
+  { value: "Associate", label: "Associate" },
+  { value: "Diploma", label: "Diploma" },
+  { value: "Other", label: "Other (certificate, etc.)" }
 ];
 
 const fieldExamples = [
