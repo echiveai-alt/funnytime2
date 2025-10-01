@@ -144,18 +144,6 @@ MATCHING RULES - STRUCTURED AND PRECISE:
 4. ROLE TITLE AND SPECIALTY REQUIREMENTS:
    - Check if candidate has held a role with matching or similar title
    - Be flexible: "Software Engineer" matches "Software Developer", "Product Analyst" is related to "Product Manager"
-   
-   - SPECIALTY MATCHING FOR PRODUCT TYPE REQUIREMENTS:
-     * When requirement mentions product types: "growth products", "subscription products", "B2B SaaS", "consumer products", etc.
-     * Look at the "Specialty:" field in each role section above
-     * If specialty contains matching keywords, it's a MATCH
-     * Matching examples:
-       - Requirement: "growth products" + Specialty contains "Growth" → MATCH
-       - Requirement: "subscription products" + Specialty contains "Subscription" → MATCH
-       - Requirement: "B2B SaaS experience" + Specialty contains "B2B" and "SaaS" → MATCH
-       - Requirement: "consumer products" + Specialty contains "B2C" or "Consumer" → MATCH
-     * Be flexible with terminology: "B2C" = "Consumer", "EdTech" relates to "education products"
-   
    - Cite the role title, company, and specific specialty terms as evidence
 
 5. TECHNICAL SKILLS:
