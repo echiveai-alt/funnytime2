@@ -90,6 +90,19 @@ export async function matchCandidateToJob(
     sentToAI: requirementsForAI.length
   });
 
+  // Log what AI will receive for debugging
+  logger.debug('Stage 2 AI Input Summary', {
+    userId,
+    rolesProvided: Object.keys(experiencesByRole),
+    roleSpecialties: userRoles.map(r => ({ 
+      title: r.title, 
+      specialty: r.specialty, 
+      months: r.durationMonths,
+      years: r.durationYears
+    })),
+    totalExperiences: Object.values(experiencesByRole).reduce((sum, arr) => sum + arr.length, 0)
+  });
+
   // Call AI for matching
   const messages = [
     {
@@ -127,15 +140,15 @@ export async function matchCandidateToJob(
   const totalMatched = stage2Results.matchedRequirements.length;
   const recalculatedScore = Math.floor((totalMatched / totalRequirements) * 100);
 
-  // Check for absolute gaps (NEW - implements your requirement)
+  // Check for absolute gaps
   const absoluteUnmatched = (stage2Results.unmatchedRequirements || [])
     .filter((req: UnmatchedRequirement) => req.importance === 'absolute');
   
-  // Check for critical gaps
+  // Check for critical gaps (for logging/reporting only - no score cap)
   const criticalUnmatched = (stage2Results.unmatchedRequirements || [])
     .filter((req: UnmatchedRequirement) => req.importance === 'critical');
 
-  // Apply scoring logic with new absolute cap
+  // Apply scoring logic - ONLY absolute requirements cap score
   if (absoluteUnmatched.length > 0) {
     stage2Results.overallScore = Math.min(recalculatedScore, 79);
     stage2Results.absoluteGaps = absoluteUnmatched.map((req: UnmatchedRequirement) => req.requirement);
@@ -147,18 +160,18 @@ export async function matchCandidateToJob(
       absoluteGapsCount: absoluteUnmatched.length,
       absoluteGaps: stage2Results.absoluteGaps
     });
-  } else if (criticalUnmatched.length > 0) {
-    // Remove the 65% cap for critical - let score be what it is
-    stage2Results.overallScore = recalculatedScore;
-    stage2Results.criticalGaps = criticalUnmatched.map((req: UnmatchedRequirement) => req.requirement);
-    
-    logger.info('Critical gaps identified but no score cap applied', {
-      userId,
-      criticalGapsCount: criticalUnmatched.length,
-      score: recalculatedScore
-    });
   } else {
+    // No caps - use calculated score
     stage2Results.overallScore = recalculatedScore;
+    
+    if (criticalUnmatched.length > 0) {
+      stage2Results.criticalGaps = criticalUnmatched.map((req: UnmatchedRequirement) => req.requirement);
+      logger.info('Critical gaps identified (no score cap applied)', {
+        userId,
+        criticalGapsCount: criticalUnmatched.length,
+        score: recalculatedScore
+      });
+    }
   }
 
   // Update fit status
