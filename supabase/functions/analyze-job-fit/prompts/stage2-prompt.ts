@@ -69,8 +69,9 @@ ${roleDurationsText}
 
 IMPORTANT: When calculating role-specific experience requirements:
 - Sum ALL roles with related titles (Product Manager, Product Analyst, Product Operations Manager all count toward "product management")
-- Check the Role-Specific Experience section above for exact durations
-- The durations shown above are the source of truth for experience calculations
+- ALWAYS sum durations in MONTHS first, then convert to years by dividing by 12 and rounding down
+- Check the Role-Specific Experience section above for exact month durations
+- Check the Specialty field in each role for product type matching (growth, subscription, B2B, etc.)
 
 You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
 
@@ -102,33 +103,60 @@ MATCHING RULES - STRUCTURED AND PRECISE:
    Two types of experience requirements:
    
    A) GENERAL EXPERIENCE (no specificRole):
-      - Use Total Professional Experience duration
+      - Use Total Professional Experience duration shown above
       - Example: Requires 5 years, candidate has ${totalYears} years → ${totalYears >= 5 ? 'MATCH' : 'NO MATCH'}
    
    B) ROLE-SPECIFIC EXPERIENCE (has specificRole):
-      - Sum durations of RELATED roles based on BOTH title AND specialty
-      - SPECIALTY IS CRITICAL - check the "Specialty:" field for each role above
-      - Be flexible with role matching (e.g., "Product Analyst" can count toward "Product Management")
-      - Examples of matching logic:
-        * JD requires: "3 years in product management for B2B SaaS"
-        * Candidate has: "Product Manager | Specialty: B2B SaaS" → STRONG MATCH (both title and specialty align)
-        * Candidate has: "Product Analyst | Specialty: B2B SaaS" → MATCH (related title, specialty matches)
-        * Candidate has: "Product Manager | Specialty: Consumer Apps" → PARTIAL MATCH (title matches, specialty different)
-      - For growth/subscription product requirements, look for these terms in the Specialty field
-      - Sum ALL related role durations and compare to requirement
-   
-   For matches, cite the specific role(s) with their specialty and combined duration.
+      - CRITICAL: Sum experience in MONTHS first, then convert to years
+      - DO NOT round individual roles before adding - this causes errors
+      
+      - Step-by-step calculation process:
+        1. Identify ALL related roles (be flexible with titles)
+        2. Extract month duration for each role from "Role-Specific Experience" section
+        3. Sum all months: month1 + month2 + month3 + ...
+        4. Divide total months by 12 to get years
+        5. Round DOWN to nearest whole number
+      
+      - Example for "3 years in product management":
+        * Product Manager: 12 months
+        * Product Analyst: 15 months  
+        * Product Operations Manager: 30 months
+        * Calculation: 12 + 15 + 30 = 57 months ÷ 12 = 4.75 years → 4 years
+      
+      - Role matching flexibility:
+        * "Product Analyst" counts toward "Product Management"
+        * "Product Operations Manager" counts toward "Product Management"
+        * "Software Engineer" and "Software Developer" are equivalent
+        * Use judgment for related titles
+      
+      - For product type requirements (growth, subscription, B2B, SaaS, etc.):
+        * Check BOTH role title AND specialty field
+        * Look in specialty for keywords like "Growth", "Subscription", "B2B", "SaaS"
+        * If specialty contains these terms, include that role's duration
+      
+   For matches, cite specific roles with months and show your calculation clearly.
 
 3. ABSOLUTE REQUIREMENTS:
    - If ANY requirement has importance "absolute", it MUST be matched or the score is capped at 79%
    - Absolute requirements are non-negotiable (e.g., citizenship, security clearance, required certifications)
    - Provide clear explanation if absolute requirement not met
 
-4. ROLE TITLE REQUIREMENTS:
+4. ROLE TITLE AND SPECIALTY REQUIREMENTS:
    - Check if candidate has held a role with matching or similar title
-   - Be flexible: "Software Engineer" matches "Software Developer"
-   - "Product Analyst" is related to "Product Manager"
-   - Cite the role title and company as evidence
+   - Be flexible: "Software Engineer" matches "Software Developer", "Product Analyst" is related to "Product Manager"
+   
+   - SPECIALTY MATCHING FOR PRODUCT TYPE REQUIREMENTS:
+     * When requirement mentions product types: "growth products", "subscription products", "B2B SaaS", "consumer products", etc.
+     * Look at the "Specialty:" field in each role section above
+     * If specialty contains matching keywords, it's a MATCH
+     * Matching examples:
+       - Requirement: "growth products" + Specialty contains "Growth" → MATCH
+       - Requirement: "subscription products" + Specialty contains "Subscription" → MATCH
+       - Requirement: "B2B SaaS experience" + Specialty contains "B2B" and "SaaS" → MATCH
+       - Requirement: "consumer products" + Specialty contains "B2C" or "Consumer" → MATCH
+     * Be flexible with terminology: "B2C" = "Consumer", "EdTech" relates to "education products"
+   
+   - Cite the role title, company, and specific specialty terms as evidence
 
 5. TECHNICAL SKILLS:
    - Experience must explicitly mention the skill/tool/technology in situation, task, action, or result
@@ -181,12 +209,12 @@ FOR SCORES >= 80% (Fit candidates):
     {
       "jobRequirement": "Experience with growth products",
       "experienceEvidence": "Product management experience in growth domain",
-      "experienceSource": "Product Manager | Specialty: Growth at TechCorp"
+      "experienceSource": "Product Analyst | Specialty: Growth, SaaS, Subscription at Codecademy"
     },
     {
       "jobRequirement": "3+ years in product management",
-      "experienceEvidence": "5 years combined in product management roles",
-      "experienceSource": "Product Manager | Specialty: B2B SaaS at TechCorp (2 years) + Product Analyst | Specialty: Enterprise Software at StartupCo (3 years)"
+      "experienceEvidence": "5 years combined: 12 + 15 + 8 + 30 = 65 months = 5 years",
+      "experienceSource": "Product Manager at Cadre (12 months) + Product Analyst at Codecademy (15 months) + Product Analyst at LiveRamp (8 months) + Product Operations Manager at LiveRamp (30 months)"
     }
   ],
   "unmatchedRequirements": [
@@ -237,7 +265,7 @@ FOR SCORES < 80% (Not fit candidates):
   "criticalGaps": ["5+ years of experience"],
   "recommendations": {
     "forCandidate": [
-      "Gain ${5 - totalYears} more years of professional experience",
+      "Gain additional years of professional experience to meet the 5-year requirement",
       "Focus on roles that will build toward the required experience level",
       "Highlight your strong educational foundation in your applications"
     ]
