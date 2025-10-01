@@ -52,7 +52,10 @@ ${jobDescription}
 TASK: Extract requirements and keywords from the job description above. Do NOT invent requirements. Only extract what is explicitly stated or clearly implied.
 
 EXTRACTION RULES:
-1. Break down compound requirements:
+1. Break down compound requirements with "or":
+   - "Bachelor's degree or equivalent practical experience" = 2 SEPARATE requirements:
+     * "Bachelor's degree" (importance: critical)
+     * "Equivalent practical experience" (importance: medium)
    - "Experience with Salesforce and HubSpot" = 2 requirements
    - "3+ years in product management" = 2 requirements: "product management experience" AND "3+ years experience"
    
@@ -71,7 +74,10 @@ EXTRACTION RULES:
    - Action verbs (e.g., "optimize", "scale", "implement")
    - Industry jargon (e.g., "funnel optimization", "user journeys")
 
-CRITICAL: Do NOT extract any company names, project names, dates, or specific details that could only come from a candidate's background. Only extract information from the job description.
+CRITICAL: 
+- Do NOT extract any company names, project names, dates, or specific details that could only come from a candidate's background
+- Always split "X or Y" into TWO separate requirements
+- Only extract information from the job description
 
 Return JSON in this EXACT format:
 {
@@ -92,6 +98,7 @@ Return JSON in this EXACT format:
 function createStage2Prompt(
   stage1Results: any,
   experiencesByRole: Record<string, any[]>,
+  educationSummary: string,
   educationText: string,
   keywordMatchType: string
 ): string {
@@ -115,7 +122,9 @@ ${exps.map((exp, i) => `
 `).join('')}`;
     }).join('\n');
 
-  return `You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
+  return `${educationSummary}
+
+You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
 
 JOB REQUIREMENTS (extracted in previous stage):
 ${JSON.stringify(stage1Results.jobRequirements, null, 2)}
@@ -141,7 +150,6 @@ MATCHING RULES - BE EXTREMELY STRICT BUT FAIR:
    - Requirement: "Team leadership" + Experience: "Led a team of 5 engineers" = MATCH
    - Requirement: "Python" + Experience: "Developed Python scripts for automation" = MATCH
    - Requirement: "Bachelor's degree" + Education: "B.Sc in Computer Science" = MATCH
-   - Requirement: "Bachelor's degree" + Education: "Bachelor of Arts in Economics" = MATCH
    - Requirement: "Bachelor's degree" + Education: "B.Sc in Actuarial Science" = MATCH
 
 2. WHAT DOES NOT COUNT AS A MATCH:
@@ -163,17 +171,11 @@ MATCHING RULES - BE EXTREMELY STRICT BUT FAIR:
    - Be thorough - don't skip requirements
 
 4. EDUCATION MATCHING RULES:
-   - "Bachelor's degree" or "Bachelor's" or "undergraduate degree" or "Bachelor's degree or equivalent" matches ANY Bachelor degree (B.A., B.S., B.Sc., B.Eng., Bachelor of Arts, Bachelor of Science, etc.)
+   - "Bachelor's degree" or "Bachelor's" matches ANY Bachelor degree (B.A., B.S., B.Sc., B.Eng., Bachelor of Arts, Bachelor of Science, etc.)
    - "Master's degree" or "Master's" matches any Master degree (M.A., M.S., MBA, M.Eng., etc.)
    - "PhD" or "Doctorate" matches doctoral degrees
-   - ANY mention of "Bachelor's" in the requirement should match if candidate has ANY Bachelor-level degree
-   - "Equivalent practical experience" alongside a degree requirement does NOT eliminate the match if the candidate HAS the degree
    - Match the LEVEL, not necessarily the field (unless field is specifically required)
    - For education matches, use format in experienceSource: "Education: [Degree] from [School]"
-   - Examples: 
-     * Requirement "Bachelor's degree" + Education "B.Sc in Actuarial Science" = MATCH
-     * Requirement "Bachelor's degree or equivalent practical experience" + Education "B.Sc in Actuarial Science" = MATCH
-     * Requirement "Bachelor's in Computer Science" + Education "B.Sc in Actuarial Science" = NO MATCH (field specific)
 
 5. SCORING CALCULATION:
    - Score = (Number of Matched Requirements / Total Requirements) × 100
@@ -240,7 +242,7 @@ FOR SCORES < 80% (Not fit candidates):
       "experienceSource": "StartupCo - Analyst: Market Research"
     },
     {
-      "jobRequirement": "Bachelor's degree or equivalent practical experience",
+      "jobRequirement": "Bachelor's degree",
       "experienceEvidence": "B.Sc in Actuarial Science",
       "experienceSource": "Education: B.Sc in Actuarial Science from University X"
     },
@@ -390,19 +392,15 @@ function validateStage2Response(stage2Results: any): void {
   // Validate non-fit specific fields (set defaults if missing)
   if (!stage2Results.isFit) {
     if (!Array.isArray(stage2Results.matchableKeywords)) {
-      console.warn('Non-fit candidate missing matchableKeywords array, setting default');
       stage2Results.matchableKeywords = [];
     }
     if (!Array.isArray(stage2Results.unmatchableKeywords)) {
-      console.warn('Non-fit candidate missing unmatchableKeywords array, setting default');
       stage2Results.unmatchableKeywords = [];
     }
     if (!Array.isArray(stage2Results.criticalGaps)) {
-      console.warn('Non-fit candidate missing criticalGaps array, setting default');
       stage2Results.criticalGaps = [];
     }
     if (!stage2Results.recommendations?.forCandidate || !Array.isArray(stage2Results.recommendations.forCandidate)) {
-      console.warn('Non-fit candidate missing or invalid recommendations.forCandidate array, setting default');
       stage2Results.recommendations = { 
         forCandidate: [
           'Review the unmatched requirements and consider how to gain experience in those areas',
@@ -420,6 +418,122 @@ function validateStage2Response(stage2Results: any): void {
     unmatchedCount: stage2Results.unmatchedRequirements.length,
     hasRecommendations: !stage2Results.isFit ? stage2Results.recommendations?.forCandidate?.length > 0 : 'N/A'
   });
+}
+
+// Post-processing validation layer to fix education mismatches
+function validateEducationMatches(
+  stage2Results: any,
+  educationInfo: any[],
+  stage1Results: any
+): void {
+  console.log('Running education validation layer...');
+  
+  // Helper function to check if user has a specific degree level
+  const hasDegreeLevel = (level: string): boolean => {
+    return educationInfo.some(edu => {
+      const degreeLower = edu.degree.toLowerCase();
+      if (level === 'bachelor') {
+        return degreeLower.includes('bachelor') || 
+               degreeLower.startsWith('b.') || 
+               degreeLower.startsWith('b.a') ||
+               degreeLower.startsWith('b.s') ||
+               degreeLower.match(/^b\.\w/);
+      } else if (level === 'master') {
+        return degreeLower.includes('master') || 
+               degreeLower.startsWith('m.') || 
+               degreeLower.includes('mba');
+      } else if (level === 'phd' || level === 'doctorate') {
+        return degreeLower.includes('phd') || 
+               degreeLower.includes('ph.d') ||
+               degreeLower.includes('doctorate');
+      }
+      return false;
+    });
+  };
+
+  // Check each unmatched requirement for education mismatches
+  const fixedRequirements: any[] = [];
+  
+  stage2Results.unmatchedRequirements = stage2Results.unmatchedRequirements.filter((req: any) => {
+    const reqLower = req.requirement.toLowerCase();
+    
+    // Check for Bachelor's degree requirements
+    if (reqLower.includes("bachelor") && hasDegreeLevel('bachelor')) {
+      const edu = educationInfo.find(e => 
+        e.degree.toLowerCase().includes('bachelor') || 
+        e.degree.toLowerCase().startsWith('b.')
+      );
+      
+      if (edu) {
+        console.log(`Education validation: Moving "${req.requirement}" to matched`);
+        fixedRequirements.push({
+          jobRequirement: req.requirement,
+          experienceEvidence: edu.degree,
+          experienceSource: `Education: ${edu.degree} from ${edu.school}`
+        });
+        return false; // Remove from unmatched
+      }
+    }
+    
+    // Check for Master's degree requirements
+    if (reqLower.includes("master") && hasDegreeLevel('master')) {
+      const edu = educationInfo.find(e => 
+        e.degree.toLowerCase().includes('master') || 
+        e.degree.toLowerCase().startsWith('m.')
+      );
+      
+      if (edu) {
+        console.log(`Education validation: Moving "${req.requirement}" to matched`);
+        fixedRequirements.push({
+          jobRequirement: req.requirement,
+          experienceEvidence: edu.degree,
+          experienceSource: `Education: ${edu.degree} from ${edu.school}`
+        });
+        return false; // Remove from unmatched
+      }
+    }
+    
+    // Check for PhD requirements
+    if ((reqLower.includes("phd") || reqLower.includes("doctorate")) && hasDegreeLevel('phd')) {
+      const edu = educationInfo.find(e => 
+        e.degree.toLowerCase().includes('phd') || 
+        e.degree.toLowerCase().includes('doctorate')
+      );
+      
+      if (edu) {
+        console.log(`Education validation: Moving "${req.requirement}" to matched`);
+        fixedRequirements.push({
+          jobRequirement: req.requirement,
+          experienceEvidence: edu.degree,
+          experienceSource: `Education: ${edu.degree} from ${edu.school}`
+        });
+        return false; // Remove from unmatched
+      }
+    }
+    
+    return true; // Keep in unmatched
+  });
+
+  // Add fixed requirements to matched list
+  if (fixedRequirements.length > 0) {
+    stage2Results.matchedRequirements.push(...fixedRequirements);
+    
+    // Recalculate score
+    const totalRequirements = stage1Results.jobRequirements.length;
+    const matchedCount = stage2Results.matchedRequirements.length;
+    const newScore = Math.floor((matchedCount / totalRequirements) * 100);
+    
+    console.log(`Education validation: Fixed ${fixedRequirements.length} requirements`);
+    console.log(`Score updated: ${stage2Results.overallScore}% → ${newScore}%`);
+    
+    stage2Results.overallScore = newScore;
+    
+    // Update fit status if score changed significantly
+    if (newScore >= CONSTANTS.FIT_THRESHOLD && !stage2Results.isFit) {
+      console.log('Score now meets threshold, but keeping isFit=false (bullets not generated by AI)');
+      // Keep isFit as false since we didn't generate bullets
+    }
+  }
 }
 
 // Call OpenAI with retry logic for invalid responses
@@ -459,7 +573,7 @@ async function callOpenAIWithRetry(
       });
       messages.push({
         role: 'user',
-        content: 'CRITICAL: Your previous response was incomplete or invalid. You MUST include:\n1. Both matchedRequirements and unmatchedRequirements arrays with proper structure\n2. For scores < 80%, you MUST include recommendations.forCandidate array with 3-5 specific recommendations\n3. Even if the score is low, show what was matched (with evidence from experiences OR education) and what was not matched (with importance level)\n4. Return valid JSON only.'
+        content: 'CRITICAL: Your previous response was incomplete or invalid. You MUST include:\n1. Both matchedRequirements and unmatchedRequirements arrays with proper structure\n2. For scores < 80%, you MUST include recommendations.forCandidate array with 3-5 specific recommendations\n3. Even if the score is low, show what was matched (with evidence from experiences OR education) and what was not matched (with importance level)\n4. Check education carefully - if candidate has a Bachelor\'s degree (B.Sc, B.A., B.S., etc.), it matches "Bachelor\'s degree" requirements\n5. Return valid JSON only.'
       });
       
       console.log('Retrying with enhanced prompt...');
@@ -549,6 +663,26 @@ serve(async (req) => {
       degrees: educationInfo.map(e => e.degree)
     });
 
+    // Create education summary for top of prompt
+    const hasBachelors = educationInfo.some(edu => 
+      edu.degree.toLowerCase().includes('bachelor') || 
+      edu.degree.toLowerCase().startsWith('b.')
+    );
+    const hasMasters = educationInfo.some(edu => 
+      edu.degree.toLowerCase().includes('master') || 
+      edu.degree.toLowerCase().startsWith('m.')
+    );
+    const hasPhD = educationInfo.some(edu => 
+      edu.degree.toLowerCase().includes('phd') || 
+      edu.degree.toLowerCase().includes('doctorate')
+    );
+
+    const educationSummary = `CANDIDATE EDUCATION SUMMARY:
+- Has Bachelor's degree: ${hasBachelors ? 'YES' : 'NO'}${hasBachelors ? ` (${educationInfo.find(e => e.degree.toLowerCase().includes('bachelor') || e.degree.toLowerCase().startsWith('b.'))?.degree})` : ''}
+- Has Master's degree: ${hasMasters ? 'YES' : 'NO'}${hasMasters ? ` (${educationInfo.find(e => e.degree.toLowerCase().includes('master') || e.degree.toLowerCase().startsWith('m.'))?.degree})` : ''}
+- Has PhD/Doctorate: ${hasPhD ? 'YES' : 'NO'}${hasPhD ? ` (${educationInfo.find(e => e.degree.toLowerCase().includes('phd') || e.degree.toLowerCase().includes('doctorate'))?.degree})` : ''}
+`;
+
     // Format and group experiences
     const formattedExperiences = experiences.map(exp => ({
       id: exp.id,
@@ -575,10 +709,10 @@ serve(async (req) => {
       count: experiencesByRole[key].length
     })));
 
-    // Format education text
+    // Format education text for detailed section
     const educationText = educationInfo.length > 0 
       ? `
-CANDIDATE EDUCATION:
+CANDIDATE EDUCATION (DETAILED):
 ${educationInfo.map((edu, i) => `
   Education ${i + 1}:
   - Degree: ${edu.degree}
@@ -596,7 +730,7 @@ ${educationInfo.map((edu, i) => `
       [
         {
           role: 'system',
-          content: 'You extract requirements and keywords from job descriptions. You never see candidate information. Only extract what is in the job description.'
+          content: 'You extract requirements and keywords from job descriptions. You never see candidate information. Only extract what is in the job description. CRITICAL: Split any "X or Y" requirements into TWO separate requirements.'
         },
         {
           role: 'user',
@@ -641,11 +775,11 @@ ${educationInfo.map((edu, i) => `
       [
         {
           role: 'system',
-          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. CRITICAL: Always check candidate education first for any degree requirements before marking them as unmatched. A B.Sc, B.A., B.S., or any Bachelor-level degree satisfies "Bachelor\'s degree" requirements regardless of field unless field is specified. Be critical and honest. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays, regardless of score. For scores < 80%, ALWAYS provide 3-5 specific recommendations. Only high-quality matches should score 80%+.'
+          content: 'You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. CRITICAL: The candidate education summary shows if they have Bachelor\'s/Master\'s/PhD - use this to match degree requirements immediately. Be critical and honest. ALWAYS provide both matchedRequirements and unmatchedRequirements arrays, regardless of score. For scores < 80%, ALWAYS provide 3-5 specific recommendations. Only high-quality matches should score 80%+.'
         },
         {
           role: 'user',
-          content: createStage2Prompt(stage1Results, experiencesByRole, educationText, keywordMatchType)
+          content: createStage2Prompt(stage1Results, experiencesByRole, educationSummary, educationText, keywordMatchType)
         }
       ],
       8000
@@ -662,6 +796,9 @@ ${educationInfo.map((edu, i) => `
       matchedSample: stage2Results.matchedRequirements?.[0],
       unmatchedSample: stage2Results.unmatchedRequirements?.[0]
     });
+
+    // ===== VALIDATION LAYER: Fix any education mismatches =====
+    validateEducationMatches(stage2Results, educationInfo, stage1Results);
 
     // Merge stage 1 and stage 2 results
     const analysis = {
@@ -683,8 +820,12 @@ ${educationInfo.map((edu, i) => `
         const lowerKeyword = keyword.toLowerCase();
         
         if (matchType === 'exact') {
-          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\  if (!response.ok) {
-    throw new AnalysisError(`OpenAI API error: ${response')}\\b`, 'i');
+          const regex = new RegExp(`\\b${lowerKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\    // Format education text for detailed section
+    const educationText = educationInfo.length > 0 
+      ? `
+CANDIDATE EDUCATION (DETAILED):
+${educationInfo.map((edu, i) => `
+  Education ${i')}\\b`, 'i');
           return regex.test(text);
         } else {
           const keywordWords = lowerKeyword.split(/\s+/).filter(w => w.length > 0);
@@ -705,8 +846,12 @@ ${educationInfo.map((edu, i) => `
               return lowerText.includes(word);
             }
             
-            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\  if (!response.ok) {
-    throw new AnalysisError(`OpenAI API error: ${response')}\\w*\\b`, 'i');
+            const stemRegex = new RegExp(`\\b\\w*${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\    // Format education text for detailed section
+    const educationText = educationInfo.length > 0 
+      ? `
+CANDIDATE EDUCATION (DETAILED):
+${educationInfo.map((edu, i) => `
+  Education ${i')}\\w*\\b`, 'i');
             return stemRegex.test(text);
           });
         }
