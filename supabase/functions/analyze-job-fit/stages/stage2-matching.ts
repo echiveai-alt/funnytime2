@@ -7,7 +7,8 @@ import {
   ExperienceWithRole, 
   Education, 
   RoleWithDuration,
-  MatchedRequirement 
+  MatchedRequirement,
+  UnmatchedRequirement 
 } from '../types.ts';
 import { AI_CONFIG, CONSTANTS } from '../constants.ts';
 import { Logger } from '../utils/logger.ts';
@@ -128,18 +129,18 @@ export async function matchCandidateToJob(
 
   // Check for absolute gaps (NEW - implements your requirement)
   const absoluteUnmatched = (stage2Results.unmatchedRequirements || [])
-    .filter(req => req.importance === 'absolute');
+    .filter((req: UnmatchedRequirement) => req.importance === 'absolute');
   
   // Check for critical gaps
   const criticalUnmatched = (stage2Results.unmatchedRequirements || [])
-    .filter(req => req.importance === 'critical');
+    .filter((req: UnmatchedRequirement) => req.importance === 'critical');
 
   // Apply scoring logic with new absolute cap
   if (absoluteUnmatched.length > 0) {
     stage2Results.overallScore = Math.min(recalculatedScore, 79);
-    stage2Results.absoluteGaps = absoluteUnmatched.map(req => req.requirement);
+    stage2Results.absoluteGaps = absoluteUnmatched.map((req: UnmatchedRequirement) => req.requirement);
     stage2Results.absoluteGapExplanation = 
-      `Cannot proceed: Missing absolute requirements (${absoluteUnmatched.map(r => r.requirement).join(', ')}). These are explicitly required by the employer and non-negotiable.`;
+      `Cannot proceed: Missing absolute requirements (${absoluteUnmatched.map((r: UnmatchedRequirement) => r.requirement).join(', ')}). These are explicitly required by the employer and non-negotiable.`;
     
     logger.warn('Score capped at 79% due to missing absolute requirements', {
       userId,
@@ -149,7 +150,7 @@ export async function matchCandidateToJob(
   } else if (criticalUnmatched.length > 0) {
     // Remove the 65% cap for critical - let score be what it is
     stage2Results.overallScore = recalculatedScore;
-    stage2Results.criticalGaps = criticalUnmatched.map(req => req.requirement);
+    stage2Results.criticalGaps = criticalUnmatched.map((req: UnmatchedRequirement) => req.requirement);
     
     logger.info('Critical gaps identified but no score cap applied', {
       userId,

@@ -1,6 +1,6 @@
 import { Stage1Results, Education, RoleWithDuration, ExperienceWithRole } from '../types.ts';
-import { formatEducationSummary, formatRoleDurations } from '../matching/education-matcher.ts';
-import { calculateTotalExperienceMonths } from '../matching/experience-calculator.ts';
+import { formatEducationSummary } from '../matching/education-matcher.ts';
+import { calculateTotalExperienceMonths, formatRoleDurations } from '../matching/experience-calculator.ts';
 import { CONSTANTS } from '../constants.ts';
 
 const STAGE2_SYSTEM_CONTEXT = `You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. Use structured matching: AI reasoning for education_field, date calculations for years_experience, role similarity for role_title, explicit evidence for skills. 
