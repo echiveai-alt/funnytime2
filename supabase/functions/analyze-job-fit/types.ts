@@ -63,6 +63,7 @@ export interface RoleWithDuration extends Role {
 }
 
 // Job analysis types
+// Weighted scoring: absolute/critical/high = 1.0, medium = 0.75, low = 0.5
 export type ImportanceLevel = "absolute" | "critical" | "high" | "medium" | "low";
 
 export type RequirementCategory = 
