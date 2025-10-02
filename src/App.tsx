@@ -14,7 +14,7 @@ import Experiences from "./pages/Experiences";
 import JobDescription from "./pages/JobDescription";
 import ResumeBulletPoints from "./pages/ResumeBulletPoints";
 import { JobAnalysisResult } from "./pages/JobAnalysisResult";
-
+import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "@/components/AppLayout";
 
@@ -27,6 +27,7 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
