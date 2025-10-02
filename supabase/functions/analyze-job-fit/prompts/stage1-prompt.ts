@@ -20,12 +20,8 @@ const STAGE1_EXTRACTION_RULES = `EXTRACTION RULES:
      * "Bachelor's degree or equivalent practical experience" → Extract ONLY "Bachelor's degree"
      * Do NOT create separate requirement for "equivalent experience"
      * This rule applies ONLY to education requirements, NOT to work experience requirements
-   
-   - FOR WORK EXPERIENCE: Keep "or related/similar" phrases intact
-     * "3 years in product management or related technical role" → Extract the FULL phrase
-     * "5 years in engineering or similar field" → Extract the FULL phrase
 
-2. 2. YEARS OF EXPERIENCE:
+2. YEARS OF EXPERIENCE:
    - Extract as "years_experience" category
    - "5+ years of experience" → minimumYears: 5, specificRole: null (general experience)
    - "3+ years in product management" → minimumYears: 3, specificRole: "product management"
@@ -35,6 +31,10 @@ const STAGE1_EXTRACTION_RULES = `EXTRACTION RULES:
      * "3+ years in X or related role" → minimumYears: 3, specificRole: "X or related role"
      * Keep the full phrase including "or related" to signal flexible matching
      * "5+ years in marketing or similar field" → minimumYears: 5, specificRole: "marketing or similar field"
+   
+   - FOR WORK EXPERIENCE: Keep "or related/similar" phrases intact
+     * "3 years in product management or related technical role" → Extract the FULL phrase including "or related technical role"
+     * "5 years in engineering or similar field" → Extract the FULL phrase
 
 3. ROLE/TITLE REQUIREMENTS:
    - Extract as "role_title" category
@@ -57,6 +57,7 @@ const STAGE1_EXTRACTION_RULES = `EXTRACTION RULES:
 
 CRITICAL RULES:
 - Do NOT extract "equivalent experience" as an alternative to education
+- For work experience, ALWAYS keep "or related/similar/adjacent" phrases in the specificRole field
 - Split compound requirements (e.g., "SQL and Python" = 2 requirements)
 - Do NOT extract company names, project names, or candidate-specific details
 - Only extract what is in the job description
@@ -83,18 +84,6 @@ const STAGE1_OUTPUT_FORMAT = `Return JSON in this EXACT format:
       "requiredField": "Computer Science",
       "fieldCriteria": "Computer Science or related technical field"
     },
-    logger.info('Stage 1 results - job requirements', {
-    userId,
-    jobRequirements: stage1Results.jobRequirements.map(req => ({
-      requirement: req.requirement,
-      category: req.category,
-      importance: req.importance,
-      specificRole: (req as any).specificRole || null,
-      minimumYears: (req as any).minimumYears || null
-    }))
-  });
-
-  return stage1Results;
     {
       "requirement": "5+ years of professional experience",
       "importance": "critical",
@@ -102,11 +91,11 @@ const STAGE1_OUTPUT_FORMAT = `Return JSON in this EXACT format:
       "minimumYears": 5
     },
     {
-      "requirement": "3+ years in product management",
+      "requirement": "3+ years in product management or related technical role",
       "importance": "critical",
       "category": "years_experience",
       "minimumYears": 3,
-      "specificRole": "product management"
+      "specificRole": "product management or related technical role"
     },
     {
       "requirement": "SQL proficiency",
