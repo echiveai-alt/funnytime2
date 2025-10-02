@@ -20,11 +20,16 @@ const STAGE1_EXTRACTION_RULES = `EXTRACTION RULES:
      * "Bachelor's degree or equivalent practical experience" → Extract ONLY "Bachelor's degree"
      * Do NOT create separate requirement for "equivalent experience"
 
-2. YEARS OF EXPERIENCE:
+2. 2. YEARS OF EXPERIENCE:
    - Extract as "years_experience" category
    - "5+ years of experience" → minimumYears: 5, specificRole: null (general experience)
    - "3+ years in product management" → minimumYears: 3, specificRole: "product management"
    - "2-4 years as software engineer" → minimumYears: 2, specificRole: "software engineering"
+   
+   - HANDLING "OR" REQUIREMENTS:
+     * "3+ years in X or related role" → minimumYears: 3, specificRole: "X or related role"
+     * Keep the full phrase including "or related" to signal flexible matching
+     * "5+ years in marketing or similar field" → minimumYears: 5, specificRole: "marketing or similar field"
 
 3. ROLE/TITLE REQUIREMENTS:
    - Extract as "role_title" category
