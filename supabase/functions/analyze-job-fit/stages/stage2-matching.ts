@@ -132,11 +132,11 @@ export async function matchCandidateToJob(
 
   logger.info('Stage 2 AI raw response', {
     userId,
-    matchedRequirements: stage2Results.matchedRequirements.map(m => ({
+    matchedRequirements: stage2Results.matchedRequirements.map((m: MatchedRequirement) => ({
       requirement: m.jobRequirement,
       evidence: m.experienceEvidence.substring(0, 500) // truncate for readability
     })),
-    unmatchedRequirements: stage2Results.unmatchedRequirements.map(u => u.requirement)
+    unmatchedRequirements: stage2Results.unmatchedRequirements.map((u: UnmatchedRequirement) => u.requirement)
   });
   
   // Merge pre-matched education requirements
@@ -150,7 +150,7 @@ export async function matchCandidateToJob(
   
   // Create a map of matched requirements for easy lookup
   const matchedSet = new Set(
-    stage2Results.matchedRequirements.map(m => m.jobRequirement.toLowerCase().trim())
+    stage2Results.matchedRequirements.map((m: MatchedRequirement) => m.jobRequirement.toLowerCase().trim())
   );
   
   // Define weights for each importance level
@@ -277,7 +277,7 @@ export async function matchCandidateToJob(
 
   logger.info('Stage 2 full experienceSource', {
      userId,
-     sources: stage2Results.matchedRequirements.map(m => ({
+     sources: stage2Results.matchedRequirements.map((m: MatchedRequirement) => ({
        req: m.jobRequirement.substring(0, 50),
        source: m.experienceSource
      }))

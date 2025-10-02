@@ -84,7 +84,7 @@ export async function extractJobRequirements(
 
   logger.info('Stage 1 results - job requirements', {
     userId,
-    jobRequirements: stage1Results.jobRequirements.map(req => ({
+    jobRequirements: stage1Results.jobRequirements.map((req: JobRequirement) => ({
       requirement: req.requirement,
       category: req.category,
       importance: req.importance,
