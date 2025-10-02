@@ -120,21 +120,22 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
     }
   };
 
-  const handleManageSubscription = async () => {
+  const handleCancelSubscription = async () => {
     setSubscriptionLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
+      const { data, error } = await supabase.functions.invoke('cancel-subscription');
       
       if (error) throw error;
       
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
+      toast({
+        title: "Subscription Canceled",
+        description: data?.message || "Your subscription will remain active until the end of the billing period",
+      });
     } catch (error: any) {
-      console.error('Portal error:', error);
+      console.error('Cancel subscription error:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to open customer portal",
+        description: error.message || "Failed to cancel subscription",
         variant: "destructive",
       });
     } finally {
@@ -282,11 +283,11 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
               </p>
               <Button 
                 variant="outline"
-                onClick={handleManageSubscription}
+                onClick={handleCancelSubscription}
                 disabled={subscriptionLoading}
                 className="w-full"
               >
-                {subscriptionLoading ? "Loading..." : "Manage Subscription"}
+                {subscriptionLoading ? "Canceling..." : "Cancel Subscription"}
               </Button>
             </div>
 

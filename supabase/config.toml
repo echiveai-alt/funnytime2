@@ -50,3 +50,6 @@ verify_jwt = true
 
 [functions.generate-resume-bullets]
 verify_jwt = true
+
+[functions.cancel-subscription]
+verify_jwt = true
