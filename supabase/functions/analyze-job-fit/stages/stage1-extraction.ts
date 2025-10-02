@@ -1,6 +1,6 @@
 import { callOpenAIWithRetry } from '../utils/openai-client.ts';
 import { buildStage1Prompt, getStage1SystemMessage } from '../prompts/stage1-prompt.ts';
-import { Stage1Results } from '../types.ts';
+import { Stage1Results, JobRequirement } from '../types/index.ts';
 import { AI_CONFIG } from '../constants.ts';
 import { Logger } from '../utils/logger.ts';
 import { AnalysisError } from '../validation/response-validator.ts';
