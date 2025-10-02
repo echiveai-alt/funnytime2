@@ -83,6 +83,18 @@ const STAGE1_OUTPUT_FORMAT = `Return JSON in this EXACT format:
       "requiredField": "Computer Science",
       "fieldCriteria": "Computer Science or related technical field"
     },
+    logger.info('Stage 1 results - job requirements', {
+    userId,
+    jobRequirements: stage1Results.jobRequirements.map(req => ({
+      requirement: req.requirement,
+      category: req.category,
+      importance: req.importance,
+      specificRole: (req as any).specificRole || null,
+      minimumYears: (req as any).minimumYears || null
+    }))
+  });
+
+  return stage1Results;
     {
       "requirement": "5+ years of professional experience",
       "importance": "critical",
