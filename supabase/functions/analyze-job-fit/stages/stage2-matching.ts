@@ -8,7 +8,8 @@ import {
   Education, 
   RoleWithDuration,
   MatchedRequirement,
-  UnmatchedRequirement 
+  UnmatchedRequirement,
+  ImportanceLevel
 } from '../types.ts';
 import { AI_CONFIG, CONSTANTS } from '../constants.ts';
 import { Logger } from '../utils/logger.ts';
@@ -135,41 +136,83 @@ export async function matchCandidateToJob(
     ...(stage2Results.matchedRequirements || [])
   ];
 
-  // Recalculate score
-  const totalRequirements = stage1Results.jobRequirements.length;
-  const totalMatched = stage2Results.matchedRequirements.length;
-  const recalculatedScore = Math.floor((totalMatched / totalRequirements) * 100);
+  // ===== WEIGHTED SCORING CALCULATION =====
+  const allRequirements = stage1Results.jobRequirements;
+  
+  // Create a map of matched requirements for easy lookup
+  const matchedSet = new Set(
+    stage2Results.matchedRequirements.map(m => m.jobRequirement.toLowerCase().trim())
+  );
+  
+  // Define weights for each importance level
+  const IMPORTANCE_WEIGHTS: Record<ImportanceLevel, number> = {
+    absolute: 1.0,
+    critical: 1.0,
+    high: 1.0,
+    medium: 0.75,
+    low: 0.5
+  };
+  
+  // Calculate weighted score
+  let totalWeight = 0;
+  let matchedWeight = 0;
+  
+  allRequirements.forEach(req => {
+    const weight = IMPORTANCE_WEIGHTS[req.importance] || 1.0;
+    totalWeight += weight;
+    
+    // Check if this requirement was matched
+    const isMatched = matchedSet.has(req.requirement.toLowerCase().trim());
+    if (isMatched) {
+      matchedWeight += weight;
+    }
+  });
+  
+  // Calculate weighted percentage and round to nearest
+  const weightedScore = totalWeight > 0 
+    ? Math.round((matchedWeight / totalWeight) * 100)
+    : 0;
+
+  logger.info('Weighted score calculation', {
+    userId,
+    totalWeight: totalWeight.toFixed(2),
+    matchedWeight: matchedWeight.toFixed(2),
+    rawPercentage: totalWeight > 0 ? ((matchedWeight / totalWeight) * 100).toFixed(2) : '0',
+    weightedScore
+  });
 
   // Check for absolute gaps
   const absoluteUnmatched = (stage2Results.unmatchedRequirements || [])
     .filter((req: UnmatchedRequirement) => req.importance === 'absolute');
   
-  // Check for critical gaps (for logging/reporting only - no score cap)
+  // Check for critical gaps (for logging/reporting only)
   const criticalUnmatched = (stage2Results.unmatchedRequirements || [])
     .filter((req: UnmatchedRequirement) => req.importance === 'critical');
 
   // Apply scoring logic - ONLY absolute requirements cap score
   if (absoluteUnmatched.length > 0) {
-    stage2Results.overallScore = Math.min(recalculatedScore, 79);
+    stage2Results.overallScore = Math.min(weightedScore, 79);
     stage2Results.absoluteGaps = absoluteUnmatched.map((req: UnmatchedRequirement) => req.requirement);
     stage2Results.absoluteGapExplanation = 
       `Cannot proceed: Missing absolute requirements (${absoluteUnmatched.map((r: UnmatchedRequirement) => r.requirement).join(', ')}). These are explicitly required by the employer and non-negotiable.`;
     
     logger.warn('Score capped at 79% due to missing absolute requirements', {
       userId,
+      weightedScore,
+      cappedScore: stage2Results.overallScore,
       absoluteGapsCount: absoluteUnmatched.length,
       absoluteGaps: stage2Results.absoluteGaps
     });
   } else {
-    // No caps - use calculated score
-    stage2Results.overallScore = recalculatedScore;
+    // No caps - use weighted score
+    stage2Results.overallScore = weightedScore;
     
     if (criticalUnmatched.length > 0) {
       stage2Results.criticalGaps = criticalUnmatched.map((req: UnmatchedRequirement) => req.requirement);
-      logger.info('Critical gaps identified (no score cap applied)', {
+      logger.info('Critical gaps identified (no score cap applied with weighted scoring)', {
         userId,
         criticalGapsCount: criticalUnmatched.length,
-        score: recalculatedScore
+        weightedScore
       });
     }
   }
