@@ -134,7 +134,7 @@ export async function matchCandidateToJob(
     userId,
     matchedRequirements: stage2Results.matchedRequirements.map(m => ({
       requirement: m.jobRequirement,
-      evidence: m.experienceEvidence.substring(0, 100) // truncate for readability
+      evidence: m.experienceEvidence.substring(0, 500) // truncate for readability
     })),
     unmatchedRequirements: stage2Results.unmatchedRequirements.map(u => u.requirement)
   });
