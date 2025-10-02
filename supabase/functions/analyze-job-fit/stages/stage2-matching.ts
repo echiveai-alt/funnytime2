@@ -130,6 +130,15 @@ export async function matchCandidateToJob(
     validateStage2Response
   );
 
+  logger.info('Stage 2 AI raw response', {
+    userId,
+    matchedRequirements: stage2Results.matchedRequirements.map(m => ({
+      requirement: m.jobRequirement,
+      evidence: m.experienceEvidence.substring(0, 100) // truncate for readability
+    })),
+    unmatchedRequirements: stage2Results.unmatchedRequirements.map(u => u.requirement)
+  });
+  
   // Merge pre-matched education requirements
   stage2Results.matchedRequirements = [
     ...preMatchedRequirements,
