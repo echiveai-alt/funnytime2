@@ -1,4 +1,4 @@
-import { Stage1Results, Education, RoleWithDuration, ExperienceWithRole } from '../types.ts';
+import { Stage1Results, Education, RoleWithDuration, ExperienceWithRole } from '../types/index.ts';
 import { formatEducationSummary } from '../matching/education-matcher.ts';
 import { calculateTotalExperienceMonths, formatRoleDurations } from '../matching/experience-calculator.ts';
 
