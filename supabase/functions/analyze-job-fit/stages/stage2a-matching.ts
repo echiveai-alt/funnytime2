@@ -11,7 +11,7 @@ import {
   MatchedRequirement,
   UnmatchedRequirement,
   ImportanceLevel
-} from '../types.ts';
+} from '../types/index.ts';
 import { AI_CONFIG, CONSTANTS } from '../constants.ts';
 import { Logger } from '../utils/logger.ts';
 import { 
