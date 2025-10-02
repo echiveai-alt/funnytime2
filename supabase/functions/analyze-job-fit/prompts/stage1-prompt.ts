@@ -16,9 +16,14 @@ const STAGE1_EXTRACTION_RULES = `EXTRACTION RULES:
      * "STEM degree" → fieldCriteria: "STEM"
      * "Technical degree" → fieldCriteria: "Technical field"
    
-   - CRITICAL: IGNORE "or equivalent experience" alternatives
+   - CRITICAL: IGNORE "or equivalent experience" alternatives FOR EDUCATION ONLY
      * "Bachelor's degree or equivalent practical experience" → Extract ONLY "Bachelor's degree"
      * Do NOT create separate requirement for "equivalent experience"
+     * This rule applies ONLY to education requirements, NOT to work experience requirements
+   
+   - FOR WORK EXPERIENCE: Keep "or related/similar" phrases intact
+     * "3 years in product management or related technical role" → Extract the FULL phrase
+     * "5 years in engineering or similar field" → Extract the FULL phrase
 
 2. 2. YEARS OF EXPERIENCE:
    - Extract as "years_experience" category
