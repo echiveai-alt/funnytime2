@@ -104,24 +104,42 @@ MATCHING RULES - STRUCTURED AND PRECISE:
       5. Round to NEAREST whole number (0.5 rounds up)
       
       ROLE IDENTIFICATION:
-      - Title matching strategies (use ALL that apply):
-        * Exact or similar titles (e.g., "Software Engineer" ≈ "Software Developer")
-        * Titles sharing key terms (e.g., "Product Manager" and "Product Analyst" both contain "Product")
-        * Titles in the same functional area even with different words (e.g., "Data Scientist" and "Analytics Engineer")
+      Use your semantic understanding of job functions to determine if roles are related.
       
-      - Specialty field matching:
-        * The "Specialty:" field describes the domain, industry, product type, or focus area of that role
-        * Match specialty to ANY relevant terms in the requirement
-        * Examples across different fields:
-          - Engineering: "chemical engineering" specialty matches "chemical engineering" requirement
-          - Music: "classical music" specialty matches "classical" or "orchestral" requirements  
-          - Product: "B2B SaaS" specialty matches "enterprise software" or "B2B" requirements
-          - Industry: "FinTech" specialty matches "financial services" or "fintech" requirements
-        * Be flexible with terminology (e.g., "B2C" = "Consumer", "EdTech" = "Education Technology")
+      A role is relevant to a requirement if ANY of these apply:
       
-      - Combined matching:
-        * A role is relevant if EITHER the title OR the specialty matches
-        * Strongest matches have BOTH title and specialty alignment
+      1. KEYWORD OVERLAP:
+         * Titles sharing significant keywords likely belong to the same function
+         * Look for meaningful shared words (not just generic terms like "Manager" or "Specialist")
+      
+      2. FUNCTIONAL SIMILARITY:
+         * Use your knowledge of professional roles to identify functional groupings
+         * Roles can have different titles but serve similar functions
+         * Consider: What is the primary professional activity of this role?
+      
+      3. CAREER PROGRESSION:
+         * Junior/Associate, Mid-level, Senior, Lead, Principal variants of similar roles
+         * Related roles at different seniority levels within the same function
+      
+      4. ADJACENT ROLES:
+         * Roles that commonly work together or are part of the same discipline
+         * Roles that typically transition between each other in career paths
+      
+      MATCHING APPROACH:
+      - When a requirement specifies "[X] years in [domain/function]"
+      - Identify the core function or discipline being requested
+      - Count ALL roles that belong to that function, regardless of exact title wording
+      - Be generous but logical in your interpretation
+      
+      SPECIALTY FIELD MATCHING:
+      - The "Specialty:" field describes the domain, industry, product type, or focus area
+      - Match specialty to ANY relevant terms in the requirement
+      - Be flexible with terminology and synonyms
+      
+      IMPORTANT PRINCIPLE:
+      - Different companies use different titles for similar roles
+      - Focus on what the person actually DID (the function) rather than exact title matching
+      - Use the specialty, duration, and experience content to understand the role's true function
       
       EVIDENCE FORMAT:
       - Show your calculation clearly
@@ -135,7 +153,7 @@ MATCHING RULES - STRUCTURED AND PRECISE:
 
 4. ROLE TITLE AND SPECIALTY REQUIREMENTS:
    - Check if candidate has held roles with matching or similar titles
-   - Use the same title matching strategies from section 2
+   - Use the same flexible matching approach from section 2
    
    - For requirements mentioning domains, industries, or specialty areas:
      * Check the "Specialty:" field in each role section
