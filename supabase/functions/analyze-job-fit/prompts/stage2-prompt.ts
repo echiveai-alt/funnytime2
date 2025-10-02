@@ -179,9 +179,15 @@ MATCHING RULES - STRUCTURED AND PRECISE:
    - Use the same flexible matching approach from section 2
    
    - For requirements mentioning domains, industries, or specialty areas:
-     * Check the "Specialty:" field in each role section
-     * Match keywords between requirement and specialty
-     * Cite the specialty terms as evidence
+     * Check the "Specialty:" field in EVERY role section
+     * Match keywords between requirement text and specialty field
+     * Requirements can be ANY category - role_title, domain_knowledge, technical_skill, etc.
+     * If specialty contains relevant terms, cite it as evidence
+     
+   - Examples:
+     * Requirement: "Experience with growth products" → Check specialty for "Growth"
+     * Requirement: "Subscription product experience" → Check specialty for "Subscription", "SaaS"
+     * Requirement: "B2B experience" → Check specialty for "B2B", "Enterprise"
 
 5. TECHNICAL SKILLS:
    - Experience must explicitly mention the skill/tool/technology
