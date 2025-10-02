@@ -1,4 +1,4 @@
-import { Education, DegreeLevel, EducationCheckResult, JobRequirement } from '../types.ts';
+import { Education, DegreeLevel, EducationCheckResult, JobRequirement } from '../types/index.ts';
 import { DEGREE_HIERARCHY } from '../constants.ts';
 
 export function getDegreeLevel(degree: string): number {
