@@ -80,6 +80,39 @@ ${experiencesText}
 
 MATCHING RULES - STRUCTURED AND PRECISE:
 
+0. "OR" REQUIREMENTS - PROCESS THESE FIRST BEFORE OTHER RULES:
+   
+   DETECTION:
+   If a requirement contains: "or related", "or similar", "or adjacent", "or equivalent", "or comparable"
+   → This is an OR requirement - candidate needs to meet EITHER option, not both
+   
+   MATCHING PROCESS FOR OR REQUIREMENTS:
+   Step 1: Identify the primary term (words before "or")
+   Step 2: Look at ALL candidate roles in the "Role-Specific Experience" section
+   Step 3: Use your semantic understanding to identify which roles are related to the primary term
+   Step 4: For qualifying roles, extract their month duration
+   Step 5: Sum ALL qualifying role durations in months
+   Step 6: Divide by 12 and round to nearest whole number
+   Step 7: Compare to required years
+   
+   ROLE MATCHING FOR OR REQUIREMENTS:
+   - Use your knowledge of professional functions and career paths
+   - Consider roles that perform similar work even with different titles
+   - The phrase "or related" signals flexible matching - be generous but logical
+   
+   REQUIRED OUTPUT FORMAT FOR MATCHED OR REQUIREMENTS:
+   You MUST include in experienceEvidence and experienceSource:
+   - List EACH qualifying role with its duration in months
+   - Show the calculation: Role1 (Xmo) + Role2 (Ymo) + ... = Total months ÷ 12 = Z years
+   - Explain why roles qualify based on functional similarity
+   
+   Example format:
+   experienceEvidence: "5 years across related roles: [Role A] (12mo), [Role B] (15mo), [Role C] (8mo), [Role D] (30mo). All roles perform similar functions within the same professional domain."
+   
+   experienceSource: "[Role A] at [Company] (12mo) + [Role B] at [Company] (15mo) + [Role C] at [Company] (8mo) + [Role D] at [Company] (30mo) = 65 months ÷ 12 = 5.4 years → 5 years"
+   
+   THEN proceed with the remaining rules below:
+
 1. EDUCATION FIELD MATCHING (if applicable):
    If job requires a specific field or field criteria:
    - Use your knowledge to determine if candidate's field meets the criteria
@@ -88,14 +121,14 @@ MATCHING RULES - STRUCTURED AND PRECISE:
    
    NOTE: Degree LEVEL requirements have been pre-processed and are NOT in your requirements list.
 
-2. YEARS OF EXPERIENCE MATCHING:
+2. YEARS OF EXPERIENCE MATCHING (for non-OR requirements):
    Two types of experience requirements:
    
    A) GENERAL EXPERIENCE (no specificRole):
       - Use Total Professional Experience duration shown above
       - Compare directly to requirement
    
-   B) ROLE-SPECIFIC EXPERIENCE (has specificRole):
+   B) ROLE-SPECIFIC EXPERIENCE (has specificRole, but no "or" in the phrase):
       CALCULATION METHOD:
       1. Identify all roles with related titles or relevant specialties
       2. Extract the month duration for each role from "Role-Specific Experience" section above
@@ -108,50 +141,18 @@ MATCHING RULES - STRUCTURED AND PRECISE:
       
       A role is relevant to a requirement if ANY of these apply:
       
-      1. KEYWORD OVERLAP:
-         * Titles sharing significant keywords likely belong to the same function
-         * Look for meaningful shared words (not just generic terms like "Manager" or "Specialist")
-      
-      2. FUNCTIONAL SIMILARITY:
+      1. FUNCTIONAL SIMILARITY:
          * Use your knowledge of professional roles to identify functional groupings
          * Roles can have different titles but serve similar functions
          * Consider: What is the primary professional activity of this role?
       
-      3. CAREER PROGRESSION:
+      2. CAREER PROGRESSION:
          * Junior/Associate, Mid-level, Senior, Lead, Principal variants of similar roles
          * Related roles at different seniority levels within the same function
       
-      4. ADJACENT ROLES:
+      3. ADJACENT ROLES:
          * Roles that commonly work together or are part of the same discipline
          * Roles that typically transition between each other in career paths
-      
-      MATCHING APPROACH:
-      - When a requirement specifies "[X] years in [domain/function]"
-      - Identify the core function or discipline being requested
-      - Count ALL roles that belong to that function, regardless of exact title wording
-      - Be generous but logical in your interpretation
-      
-      HANDLING "OR" REQUIREMENTS (CRITICAL):
-      - If requirement contains "or related", "or similar", "or adjacent", "or equivalent", "or comparable"
-      - This signals FLEXIBLE matching - candidate satisfies requirement if they have EITHER option
-      - Parse the requirement to identify the alternatives
-      - Examples:
-        * "3 years in product management or related technical role"
-          → Parse as: ["product management"] OR ["related technical role"]
-          → ANY role with "Product" in title counts (Product Manager, Product Analyst, Product Operations Manager)
-          → Technical roles with product focus also count
-        * "5 years in software engineering or related technical field"
-          → Parse as: ["software engineering"] OR ["related technical field"]
-          → Software Engineer, Developer, DevOps, Technical PM, etc. all qualify
-        * "2 years in data science or analytics"
-          → Parse as: ["data science"] OR ["analytics"]
-          → Data Scientist, Data Analyst, Business Analyst, Analytics Engineer all qualify
-      
-      - MATCHING LOGIC FOR "OR" REQUIREMENTS:
-        * Candidate needs to meet EITHER the primary role OR the "related/similar" alternative
-        * Be GENEROUS - "related" means functionally adjacent or in the same domain
-        * If role shares keywords with primary role (e.g., "Product" in "Product Analyst" for "product management"), it counts
-        * If role is technically focused and requirement asks for "technical role", it likely counts
       
       SPECIALTY FIELD MATCHING:
       - The "Specialty:" field describes the domain, industry, product type, or focus area
@@ -166,7 +167,6 @@ MATCHING RULES - STRUCTURED AND PRECISE:
       EVIDENCE FORMAT:
       - Show your calculation clearly
       - List each role with its month contribution
-      - Explain why each role qualifies (especially for "OR" requirements)
       - Show the sum, decimal years, and rounded result
 
 3. ABSOLUTE REQUIREMENTS:
@@ -223,6 +223,8 @@ CRITICAL: Populate BOTH matchedRequirements AND unmatchedRequirements arrays for
 
 CRITICAL: Always provide recommendations.forCandidate array for scores < 80%.
 
+CRITICAL: For ALL OR requirements (containing "or related/similar/adjacent"), you MUST show the detailed calculation in both experienceEvidence and experienceSource fields as specified in Rule 0.
+
 Return JSON in this EXACT format:
 
 FOR SCORES >= 80% (Fit candidates):
@@ -233,8 +235,8 @@ FOR SCORES >= 80% (Fit candidates):
   "matchedRequirements": [
     {
       "jobRequirement": "[requirement text]",
-      "experienceEvidence": "[what evidence shows]",
-      "experienceSource": "[where evidence is from]"
+      "experienceEvidence": "FOR OR REQUIREMENTS: Show detailed calculation with all qualifying roles and months. FOR OTHERS: [what evidence shows]",
+      "experienceSource": "[where evidence is from - for OR requirements include full calculation]"
     }
   ],
   "unmatchedRequirements": [
