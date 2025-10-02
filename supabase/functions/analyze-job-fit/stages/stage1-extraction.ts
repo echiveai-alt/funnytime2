@@ -82,5 +82,16 @@ export async function extractJobRequirements(
     }, {})
   });
 
+  logger.info('Stage 1 results - job requirements', {
+    userId,
+    jobRequirements: stage1Results.jobRequirements.map(req => ({
+      requirement: req.requirement,
+      category: req.category,
+      importance: req.importance,
+      specificRole: (req as any).specificRole || null,
+      minimumYears: (req as any).minimumYears || null
+    }))
+  });
+
   return stage1Results;
 }
