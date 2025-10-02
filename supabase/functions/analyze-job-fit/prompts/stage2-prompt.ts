@@ -151,12 +151,32 @@ MATCHING RULES - STRUCTURED AND PRECISE:
    - Check all experience fields for evidence
    - For "cross-functional" requirements, look for mentions of working with other departments/teams
 
-7. SCORING CALCULATION:
-   - Score = (Matched Requirements / Total Requirements) × 100
-   - Round to NEAREST whole number (0.5 rounds up)
-   - If missing absolute requirements, cap at 79%
-   - Otherwise, use calculated score without artificial caps
-   - Be objective: match requirements based on evidence
+7. SCORING CALCULATION (WEIGHTED):
+   This uses a weighted scoring system where different importance levels contribute different amounts:
+   
+   WEIGHTS:
+   - absolute/critical/high: 1.0 (full weight - required qualifications)
+   - medium: 0.75 (preferred qualifications)
+   - low: 0.5 (nice-to-have qualifications)
+   
+   CALCULATION:
+   1. For each MATCHED requirement, add its weight to the numerator
+   2. For ALL requirements (matched + unmatched), add their weights to the denominator
+   3. Weighted Score = (Sum of matched weights / Sum of all weights) × 100
+   4. Round to NEAREST whole number (0.5 rounds up)
+   
+   SPECIAL RULES:
+   - If missing ANY absolute requirements, cap final score at 79%
+   - Otherwise, use calculated weighted score
+   
+   EXAMPLE:
+   - 3 critical matched (3 × 1.0 = 3.0)
+   - 1 critical missed (adds 1.0 to denominator only)
+   - 2 medium matched (2 × 0.75 = 1.5)
+   - 1 low matched (1 × 0.5 = 0.5)
+   - Score: 5.0 / 6.75 = 74%
+   
+   This means meeting preferred (medium/low) requirements improves your score even if you have some required gaps.
 
 CRITICAL: Populate BOTH matchedRequirements AND unmatchedRequirements arrays for ALL scores.
 
