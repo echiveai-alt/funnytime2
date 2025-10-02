@@ -42,14 +42,14 @@ export class Logger {
     this.log(LogLevel.WARN, message, context);
   }
   
-  error(message: string, error: Error, context?: LogContext) {
+  error(message: string, error: Error | any, context?: LogContext) {
     this.log(LogLevel.ERROR, message, {
       ...context,
-      error: {
+      error: error instanceof Error ? {
         message: error.message,
         stack: error.stack,
         name: error.name
-      }
+      } : String(error)
     });
   }
 }
