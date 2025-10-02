@@ -23,6 +23,7 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
   const [emailLoading, setEmailLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -116,6 +117,28 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
       setPasswordMessageType("error");
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setSubscriptionLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      
+      if (error) throw error;
+      
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error: any) {
+      console.error('Portal error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to open customer portal",
+        variant: "destructive",
+      });
+    } finally {
+      setSubscriptionLoading(false);
     }
   };
 
@@ -248,6 +271,14 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
                 className="w-full"
               >
                 Manage Education
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleManageSubscription}
+                disabled={subscriptionLoading}
+                className="w-full"
+              >
+                {subscriptionLoading ? "Loading..." : "Manage Subscription"}
               </Button>
             </div>
 
