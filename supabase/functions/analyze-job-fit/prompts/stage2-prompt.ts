@@ -131,6 +131,28 @@ MATCHING RULES - STRUCTURED AND PRECISE:
       - Count ALL roles that belong to that function, regardless of exact title wording
       - Be generous but logical in your interpretation
       
+      HANDLING "OR" REQUIREMENTS (CRITICAL):
+      - If requirement contains "or related", "or similar", "or adjacent", "or equivalent", "or comparable"
+      - This signals FLEXIBLE matching - candidate satisfies requirement if they have EITHER option
+      - Parse the requirement to identify the alternatives
+      - Examples:
+        * "3 years in product management or related technical role"
+          → Parse as: ["product management"] OR ["related technical role"]
+          → ANY role with "Product" in title counts (Product Manager, Product Analyst, Product Operations Manager)
+          → Technical roles with product focus also count
+        * "5 years in software engineering or related technical field"
+          → Parse as: ["software engineering"] OR ["related technical field"]
+          → Software Engineer, Developer, DevOps, Technical PM, etc. all qualify
+        * "2 years in data science or analytics"
+          → Parse as: ["data science"] OR ["analytics"]
+          → Data Scientist, Data Analyst, Business Analyst, Analytics Engineer all qualify
+      
+      - MATCHING LOGIC FOR "OR" REQUIREMENTS:
+        * Candidate needs to meet EITHER the primary role OR the "related/similar" alternative
+        * Be GENEROUS - "related" means functionally adjacent or in the same domain
+        * If role shares keywords with primary role (e.g., "Product" in "Product Analyst" for "product management"), it counts
+        * If role is technically focused and requirement asks for "technical role", it likely counts
+      
       SPECIALTY FIELD MATCHING:
       - The "Specialty:" field describes the domain, industry, product type, or focus area
       - Match specialty to ANY relevant terms in the requirement
@@ -144,6 +166,7 @@ MATCHING RULES - STRUCTURED AND PRECISE:
       EVIDENCE FORMAT:
       - Show your calculation clearly
       - List each role with its month contribution
+      - Explain why each role qualifies (especially for "OR" requirements)
       - Show the sum, decimal years, and rounded result
 
 3. ABSOLUTE REQUIREMENTS:
