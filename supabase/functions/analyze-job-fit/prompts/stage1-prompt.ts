@@ -36,12 +36,12 @@ const STAGE1_EXTRACTION_RULES = `EXTRACTION RULES:
    - soft_skill: Leadership, communication, problem-solving
    - domain_knowledge: Industry-specific knowledge, methodologies
 
-5. IMPORTANCE LEVELS:
-   - absolute: Explicitly required with no flexibility (e.g., "Must be US citizen", "Security clearance required")
-   - critical: Must-have, required, essential (explicitly stated)
-   - high: Preferred, strongly desired
-   - medium: Nice to have, plus if you have
-   - low: Bonus, additional
+5. IMPORTANCE LEVELS (with scoring weights):
+   - absolute: Explicitly non-negotiable (e.g., "Must be US citizen", "Security clearance required") (weight: 1.0, caps score at 79% if missing)
+   - critical: Must-have, required, essential (explicitly stated as required) (weight: 1.0)
+   - high: Required qualification (weight: 1.0)
+   - medium: Preferred, strongly desired, somewhat important (weight: 0.75)
+   - low: Nice to have, plus if you have, bonus qualification (weight: 0.5)
 
 6. KEYWORDS: Extract ALL relevant terms from job description (technical terms, skills, domain terms, action verbs, industry jargon)
 
@@ -49,7 +49,8 @@ CRITICAL RULES:
 - Do NOT extract "equivalent experience" as an alternative to education
 - Split compound requirements (e.g., "SQL and Python" = 2 requirements)
 - Do NOT extract company names, project names, or candidate-specific details
-- Only extract what is in the job description`;
+- Only extract what is in the job description
+- Be precise with importance levels - only use "absolute" for explicitly non-negotiable items`;
 
 const STAGE1_OUTPUT_FORMAT = `Return JSON in this EXACT format:
 {
@@ -88,6 +89,16 @@ const STAGE1_OUTPUT_FORMAT = `Return JSON in this EXACT format:
     {
       "requirement": "SQL proficiency",
       "importance": "high",
+      "category": "technical_skill"
+    },
+    {
+      "requirement": "Experience with Tableau",
+      "importance": "medium",
+      "category": "technical_skill"
+    },
+    {
+      "requirement": "Familiarity with R programming",
+      "importance": "low",
       "category": "technical_skill"
     }
   ],
