@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI from 'https://esm.sh/openai@4';
 import { Logger } from './logger.ts';
 import { AnalysisError } from '../validation/response-validator.ts';
 
