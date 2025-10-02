@@ -67,12 +67,6 @@ TOTAL PROFESSIONAL EXPERIENCE:
 ROLE-SPECIFIC EXPERIENCE (WITH DURATIONS):
 ${roleDurationsText}
 
-IMPORTANT: When calculating role-specific experience requirements:
-- Sum ALL roles with related titles (Product Manager, Product Analyst, Product Operations Manager all count toward "product management")
-- ALWAYS sum durations in MONTHS first, then convert to years by dividing by 12 and rounding down
-- Check the Role-Specific Experience section above for exact month durations
-- Check the Specialty field in each role for product type matching (growth, subscription, B2B, etc.)
-
 You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
 
 JOB REQUIREMENTS (extracted in previous stage):
@@ -87,80 +81,70 @@ ${experiencesText}
 MATCHING RULES - STRUCTURED AND PRECISE:
 
 1. EDUCATION FIELD MATCHING (if applicable):
-   If job requires a specific field or field criteria (e.g., "Computer Science", "STEM", "Technical field"):
-   
+   If job requires a specific field or field criteria:
    - Use your knowledge to determine if candidate's field meets the criteria
    - Consider ALL of the candidate's education fields (they may have multiple degrees)
-   - "Actuarial Science" for "STEM" requirement → likely MATCH
-   - "Computer Science" for "Computer Science or related" → MATCH
-   - "English Literature" for "STEM" → NO MATCH
+   - Be reasonable in your interpretation of related fields
    
-   Be reasonable in your interpretation of related fields.
-   
-   NOTE: Degree LEVEL requirements (Bachelor's, Master's, etc.) have already been pre-processed and are NOT in your requirements list.
+   NOTE: Degree LEVEL requirements have been pre-processed and are NOT in your requirements list.
 
 2. YEARS OF EXPERIENCE MATCHING:
    Two types of experience requirements:
    
    A) GENERAL EXPERIENCE (no specificRole):
       - Use Total Professional Experience duration shown above
-      - Example: Requires 5 years, candidate has ${totalYears} years → ${totalYears >= 5 ? 'MATCH' : 'NO MATCH'}
+      - Compare directly to requirement
    
    B) ROLE-SPECIFIC EXPERIENCE (has specificRole):
-      - CRITICAL: Sum experience in MONTHS first, then convert to years
-      - DO NOT round individual roles before adding - this causes errors
+      CALCULATION METHOD:
+      1. Identify all roles with related titles or relevant specialties
+      2. Extract the month duration for each role from "Role-Specific Experience" section above
+      3. Sum all months together
+      4. Divide by 12 and round down to get years
       
-      - Step-by-step calculation process:
-        1. Identify ALL related roles (be flexible with titles)
-        2. Extract month duration for each role from "Role-Specific Experience" section
-        3. Sum all months: month1 + month2 + month3 + ...
-        4. Divide total months by 12 to get years
-        5. Round to the nearest whole number (e.g. 4.2 = 4, 4.6 = 5)
+      ROLE IDENTIFICATION:
+      - Be flexible with title matching (similar titles often count toward same requirement)
+      - Check BOTH title and specialty field when determining relevance
+      - For product type requirements (growth, subscription, B2B, etc.), look for matching terms in the specialty field
       
-      - Role matching flexibility:
-        * "Software Engineer" and "Software Developer" are equivalent
-        * Use judgment for related titles
-      
-      - For product type requirements (growth, subscription, B2B, SaaS, etc.):
-        * Check BOTH role title AND specialty field
-        * Look in specialty for industry keywords
-        * If specialty contains these terms, include that role's duration
-      
-   For matches, cite specific roles with months and show your calculation clearly.
+      EVIDENCE FORMAT:
+      - Show your calculation clearly
+      - List each role with its month contribution
+      - Show the sum and final year conversion
 
 3. ABSOLUTE REQUIREMENTS:
-   - If ANY requirement has importance "absolute", it MUST be matched or the score is capped at 79%
-   - Absolute requirements are non-negotiable (e.g., citizenship, security clearance, required certifications)
+   - If ANY requirement has importance "absolute", it MUST be matched or score is capped at 79%
+   - Absolute requirements are non-negotiable
    - Provide clear explanation if absolute requirement not met
 
 4. ROLE TITLE AND SPECIALTY REQUIREMENTS:
-   - Check if candidate has held a role with matching or similar title
-   - Be flexible: "Software Engineer" matches "Software Developer", "Product Analyst" is related to "Product Manager"
-   - Cite the role title, company, and specific specialty terms as evidence
+   - Check if candidate has held roles with matching or similar titles
+   - Be flexible with title variations
+   
+   - For requirements mentioning product types, business models, or domains:
+     * Check the "Specialty:" field in each role section
+     * Match keywords between requirement and specialty
+     * Cite the specialty terms as evidence
 
 5. TECHNICAL SKILLS:
-   - Experience must explicitly mention the skill/tool/technology in situation, task, action, or result
-   - "Wrote SQL queries" → matches "SQL" requirement
-   - "Used Python for analysis" → matches "Python" requirement
-   - "Analyzed data" → does NOT match "SQL" requirement (too generic)
+   - Experience must explicitly mention the skill/tool/technology
+   - Check all experience fields: situation, task, action, result
 
-6. SOFT SKILLS:
+6. SOFT SKILLS & CROSS-FUNCTIONAL WORK:
    - Must have explicit evidence of the skill/collaboration
-   - Look carefully in ALL fields (situation, task, action, result)
-   - "Led team of 5" → matches "team leadership"
-   - "Worked with team" alone → does NOT match "leadership" (no leadership evidence)
+   - Check all experience fields for evidence
+   - For "cross-functional" requirements, look for mentions of working with other departments/teams
 
 7. SCORING CALCULATION:
-   - Score = (Number of Matched Requirements / Total Requirements) × 100
+   - Score = (Matched Requirements / Total Requirements) × 100
    - Round DOWN to nearest whole number
-   - If missing ANY absolute requirements, cap score at 79% and provide absoluteGapExplanation
-   - NO other score caps - calculate based purely on requirements matched
-   - Be objective: if candidate matches 85% of requirements, score should be 85%
-   - Do not artificially lower scores - use the strict matching criteria above to ensure accuracy
+   - If missing absolute requirements, cap at 79%
+   - Otherwise, use calculated score without artificial caps
+   - Be objective: match requirements based on evidence
 
-CRITICAL: YOU MUST POPULATE BOTH matchedRequirements AND unmatchedRequirements ARRAYS FOR ALL SCORES.
+CRITICAL: Populate BOTH matchedRequirements AND unmatchedRequirements arrays for ALL scores.
 
-CRITICAL: YOU MUST ALWAYS PROVIDE recommendations.forCandidate array for scores < 80%.
+CRITICAL: Always provide recommendations.forCandidate array for scores < 80%.
 
 Return JSON in this EXACT format:
 
@@ -171,44 +155,29 @@ FOR SCORES >= 80% (Fit candidates):
   "fitLevel": "Excellent",
   "matchedRequirements": [
     {
-      "jobRequirement": "Computer Science or related field",
-      "experienceEvidence": "Bachelor of Science in Computer Science",
-      "experienceSource": "Education: B.Sc in Computer Science from University X"
-    },
-    {
-      "jobRequirement": "5+ years of experience",
-      "experienceEvidence": "Total ${totalYears} years of professional experience",
-      "experienceSource": "All professional roles combined"
-    },
-    {
-      "jobRequirement": "Experience with growth products",
-      "experienceEvidence": "Product management experience in growth domain",
-      "experienceSource": "Product Analyst | Specialty: Growth, SaaS, Subscription at Codecademy"
-    },
-    {
-      "jobRequirement": "3+ years in product management",
-      "experienceEvidence": "5 years combined: 12 + 15 + 8 + 30 = 65 months = 5 years",
-      "experienceSource": "Product Manager at Cadre (12 months) + Product Analyst at Codecademy (15 months) + Product Analyst at LiveRamp (8 months) + Product Operations Manager at LiveRamp (30 months)"
+      "jobRequirement": "[requirement text]",
+      "experienceEvidence": "[what evidence shows]",
+      "experienceSource": "[where evidence is from]"
     }
   ],
   "unmatchedRequirements": [
     {
-      "requirement": "Tableau certification",
-      "importance": "medium"
+      "requirement": "[requirement text]",
+      "importance": "[importance level]"
     }
   ],
   "bulletPoints": {
     "Company - Role": [
       {
-        "text": "Increased customer retention by 23% through SQL-driven analysis of 50K+ user behaviors",
-        "experienceId": "exp_123",
-        "keywordsUsed": ["SQL", "customer retention", "analysis"],
+        "text": "[bullet text]",
+        "experienceId": "[id]",
+        "keywordsUsed": ["keyword1", "keyword2"],
         "relevanceScore": 10
       }
     ]
   },
-  "keywordsUsed": ["SQL", "customer retention"],
-  "keywordsNotUsed": ["Tableau"]
+  "keywordsUsed": ["keyword1"],
+  "keywordsNotUsed": ["keyword2"]
 }
 
 FOR SCORES < 80% (Not fit candidates):
@@ -216,32 +185,17 @@ FOR SCORES < 80% (Not fit candidates):
   "overallScore": 55,
   "isFit": false,
   "fitLevel": "Fair",
-  "matchedRequirements": [
-    {
-      "jobRequirement": "STEM degree",
-      "experienceEvidence": "Bachelor of Science in Actuarial Science",
-      "experienceSource": "Education: B.Sc in Actuarial Science from University X"
-    }
-  ],
-  "unmatchedRequirements": [
-    {
-      "requirement": "5+ years of experience",
-      "importance": "critical"
-    },
-    {
-      "requirement": "US citizenship",
-      "importance": "absolute"
-    }
-  ],
+  "matchedRequirements": [...],
+  "unmatchedRequirements": [...],
   "matchableKeywords": [],
   "unmatchableKeywords": [],
-  "absoluteGaps": ["US citizenship"],
-  "criticalGaps": ["5+ years of experience"],
+  "absoluteGaps": ["[if any]"],
+  "criticalGaps": ["[if any]"],
   "recommendations": {
     "forCandidate": [
-      "Gain additional years of professional experience to meet the 5-year requirement",
-      "Focus on roles that will build toward the required experience level",
-      "Highlight your strong educational foundation in your applications"
+      "[specific recommendation 1]",
+      "[specific recommendation 2]",
+      "[specific recommendation 3]"
     ]
   }
 }
@@ -250,10 +204,10 @@ BULLET GENERATION RULES (ONLY IF SCORE >= 80%):
 1. Create EXACTLY ONE bullet for EVERY experience
 2. Create SEPARATE entries for EACH "Company - Role" combination
 3. Order bullets by relevance (most relevant first)
-4. Structure: "Result (with numbers) + Action verb + context" OR "Action verb + context + quantified result"
+4. Structure: Result-focused with quantified impact
 5. Target width: ${CONSTANTS.VISUAL_WIDTH_TARGET} chars (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
 6. ${keywordInstruction}
-7. ONLY embed keywords if they naturally fit based on the experience content
+7. ONLY embed keywords if they naturally fit based on experience content
 8. Track which keywords were embedded and which couldn't fit`;
 }
 
