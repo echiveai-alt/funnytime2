@@ -272,6 +272,14 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
               >
                 Manage Education
               </Button>
+            </div>
+
+            {/* Subscription */}
+            <div className="space-y-2 pt-4 border-t">
+              <Label>Subscription</Label>
+              <p className="text-sm text-muted-foreground">
+                Should you cancel, your subscription will remain active until the next billing cycle
+              </p>
               <Button 
                 variant="outline"
                 onClick={handleManageSubscription}
