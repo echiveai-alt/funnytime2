@@ -42,6 +42,19 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Fetch user profile for free tier limits
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('free_analyses_used, free_bullets_generated, has_free_access')
+      .eq('user_id', user.id)
+      .single();
+    
+    logStep("Profile fetched", { 
+      analysesUsed: profile?.free_analyses_used || 0,
+      bulletsGenerated: profile?.free_bullets_generated || 0,
+      hasFreeAccess: profile?.has_free_access || false
+    });
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     
@@ -78,7 +91,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       product_id: productId,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      free_analyses_used: profile?.free_analyses_used || 0,
+      free_bullets_generated: profile?.free_bullets_generated || 0,
+      has_free_access: profile?.has_free_access || false
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

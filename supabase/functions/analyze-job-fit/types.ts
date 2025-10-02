@@ -167,6 +167,10 @@ export interface UnifiedAnalysisResult extends Stage2Results {
     criticalGaps: string[];
     absoluteGaps?: string[];
   };
+  limitReached?: {
+    type: 'bullets' | 'analyses';
+    message: string;
+  };
 }
 
 export interface EducationCheckResult {

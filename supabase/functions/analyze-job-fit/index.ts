@@ -58,6 +58,68 @@ serve(async (req) => {
 
     logger.info('Analysis request received', { userId: user.id });
 
+    // Check subscription status and usage limits
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('free_analyses_used, free_bullets_generated, has_free_access')
+      .eq('user_id', user.id)
+      .single();
+
+    if (profileError) {
+      logger.warn('Error fetching profile', { userId: user.id, error: profileError.message });
+    }
+
+    // Check if user has active subscription
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    let hasActiveSubscription = false;
+    
+    if (stripeKey) {
+      try {
+        const { data: authData } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+        if (authData?.user?.email) {
+          const stripeResponse = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(authData.user.email)}&limit=1`, {
+            headers: { 'Authorization': `Bearer ${stripeKey}` }
+          });
+          const stripeData = await stripeResponse.json();
+          
+          if (stripeData.data?.length > 0) {
+            const subsResponse = await fetch(`https://api.stripe.com/v1/subscriptions?customer=${stripeData.data[0].id}&status=active&limit=1`, {
+              headers: { 'Authorization': `Bearer ${stripeKey}` }
+            });
+            const subsData = await subsResponse.json();
+            hasActiveSubscription = subsData.data?.length > 0;
+          }
+        }
+      } catch (e) {
+        logger.warn('Error checking subscription', { userId: user.id, error: e.message });
+      }
+    }
+
+    // Check free tier limits
+    const hasFreeTierAccess = profile?.has_free_access || false;
+    const freeAnalysesUsed = profile?.free_analyses_used || 0;
+    
+    if (!hasActiveSubscription && !hasFreeTierAccess && freeAnalysesUsed >= 10) {
+      throw new AnalysisError(
+        'Free analysis limit reached. Please subscribe to continue analyzing jobs.',
+        'LIMIT_REACHED',
+        403
+      );
+    }
+
+    // Increment analysis counter
+    if (!hasActiveSubscription && !hasFreeTierAccess) {
+      await supabase
+        .from('profiles')
+        .update({ free_analyses_used: freeAnalysesUsed + 1 })
+        .eq('user_id', user.id);
+      
+      logger.info('Incremented free analyses', { 
+        userId: user.id, 
+        newCount: freeAnalysesUsed + 1 
+      });
+    }
+
     // Get request data
     const { jobDescription } = await req.json();
     
@@ -220,6 +282,37 @@ serve(async (req) => {
 
     // Format resume bullets if fit
     if (analysis.isFit && analysis.bulletPoints) {
+      // Check bullet generation limit for free tier
+      const freeBulletsGenerated = profile?.free_bullets_generated || 0;
+      
+      if (!hasActiveSubscription && !hasFreeTierAccess && freeBulletsGenerated >= 3) {
+        logger.info('Bullet generation limit reached, returning analysis without bullets', {
+          userId: user.id,
+          bulletsGenerated: freeBulletsGenerated
+        });
+        
+        // Return analysis without bullets but indicate limit reached
+        analysis.bulletPoints = undefined;
+        analysis.resumeBullets = undefined;
+        analysis.limitReached = {
+          type: 'bullets',
+          message: 'Free bullet generation limit reached. Subscribe to generate more resume bullets.'
+        };
+      } else {
+        // Increment bullet counter
+        if (!hasActiveSubscription && !hasFreeTierAccess) {
+          await supabase
+            .from('profiles')
+            .update({ free_bullets_generated: freeBulletsGenerated + 1 })
+            .eq('user_id', user.id);
+          
+          logger.info('Incremented free bullets generated', { 
+            userId: user.id, 
+            newCount: freeBulletsGenerated + 1 
+          });
+        }
+      }
+      
       const companyRoleMap: Record<string, any[]> = {};
       
       Object.entries(analysis.bulletPoints).forEach(([roleKey, bullets]) => {

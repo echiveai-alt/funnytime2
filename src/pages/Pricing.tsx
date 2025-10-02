@@ -93,11 +93,11 @@ const Pricing = () => {
             <ul className="space-y-4 mb-8">
               <li className="flex items-start">
                 <Check className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                <span>3 free resume bullet point generations</span>
+                <span>10 free job fit analyses</span>
               </li>
               <li className="flex items-start">
                 <Check className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                <span>10 free AI powered job matching analysis</span>
+                <span>3 resume bullet point generations (when you're a good fit)</span>
               </li>
               <li className="flex items-start">
                 <Check className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />

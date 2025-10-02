@@ -139,6 +139,7 @@ export type Database = {
           education_onboarding_completed: boolean
           email_verified_at: string | null
           free_analyses_used: number
+          free_bullets_generated: number
           has_free_access: boolean
           id: string
           updated_at: string
@@ -149,6 +150,7 @@ export type Database = {
           education_onboarding_completed?: boolean
           email_verified_at?: string | null
           free_analyses_used?: number
+          free_bullets_generated?: number
           has_free_access?: boolean
           id?: string
           updated_at?: string
@@ -159,6 +161,7 @@ export type Database = {
           education_onboarding_completed?: boolean
           email_verified_at?: string | null
           free_analyses_used?: number
+          free_bullets_generated?: number
           has_free_access?: boolean
           id?: string
           updated_at?: string
