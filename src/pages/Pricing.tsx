@@ -97,7 +97,7 @@ const Pricing = () => {
               </li>
               <li className="flex items-start">
                 <Check className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                <span>AI-powered job matching analysis</span>
+                <span>10 free AI powered job matching analysis</span>
               </li>
               <li className="flex items-start">
                 <Check className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
@@ -143,10 +143,6 @@ const Pricing = () => {
               <li className="flex items-start">
                 <Check className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
                 <span>Priority support</span>
-              </li>
-              <li className="flex items-start">
-                <Check className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                <span>Export to multiple formats</span>
               </li>
               <li className="flex items-start">
                 <Check className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
