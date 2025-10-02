@@ -115,23 +115,15 @@ MATCHING RULES - STRUCTURED AND PRECISE:
         2. Extract month duration for each role from "Role-Specific Experience" section
         3. Sum all months: month1 + month2 + month3 + ...
         4. Divide total months by 12 to get years
-        5. Round DOWN to nearest whole number
-      
-      - Example for "3 years in product management":
-        * Product Manager: 12 months
-        * Product Analyst: 15 months  
-        * Product Operations Manager: 30 months
-        * Calculation: 12 + 15 + 30 = 57 months ÷ 12 = 4.75 years → 4 years
+        5. Round to the nearest whole number (e.g. 4.2 = 4, 4.6 = 5)
       
       - Role matching flexibility:
-        * "Product Analyst" counts toward "Product Management"
-        * "Product Operations Manager" counts toward "Product Management"
         * "Software Engineer" and "Software Developer" are equivalent
         * Use judgment for related titles
       
       - For product type requirements (growth, subscription, B2B, SaaS, etc.):
         * Check BOTH role title AND specialty field
-        * Look in specialty for keywords like "Growth", "Subscription", "B2B", "SaaS"
+        * Look in specialty for industry keywords
         * If specialty contains these terms, include that role's duration
       
    For matches, cite specific roles with months and show your calculation clearly.
@@ -152,15 +144,9 @@ MATCHING RULES - STRUCTURED AND PRECISE:
    - "Used Python for analysis" → matches "Python" requirement
    - "Analyzed data" → does NOT match "SQL" requirement (too generic)
 
-6. SOFT SKILLS & CROSS-FUNCTIONAL WORK:
+6. SOFT SKILLS:
    - Must have explicit evidence of the skill/collaboration
-   - For "cross-functional" requirements: Look carefully in ALL fields (situation, task, action, result)
-   - Examples of cross-functional evidence:
-     * "Collaborated with engineering team to..."
-     * "Partnered with UX designers..."
-     * "Worked with marketing to launch..."
-     * "Led stakeholders across product, engineering, and design..."
-     * Any mention of working with other departments
+   - Look carefully in ALL fields (situation, task, action, result)
    - "Led team of 5" → matches "team leadership"
    - "Worked with team" alone → does NOT match "leadership" (no leadership evidence)
 
