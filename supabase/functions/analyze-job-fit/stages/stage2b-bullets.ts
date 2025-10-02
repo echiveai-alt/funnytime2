@@ -4,7 +4,7 @@ import { STAGE2B_BULLETS_SCHEMA } from '../types/json-schemas.ts';
 import { 
   MatchedRequirement,
   ExperienceWithRole
-} from '../types.ts';
+} from '../types/index.ts';
 import { AI_CONFIG, CONSTANTS } from '../constants.ts';
 import { Logger } from '../utils/logger.ts';
 import { calculateVisualWidth } from '../utils/visual-width.ts';
