@@ -275,5 +275,13 @@ export async function matchCandidateToJob(
     hasCriticalGaps: (stage2Results.criticalGaps?.length || 0) > 0
   });
 
+  logger.info('Stage 2 full experienceSource', {
+     userId,
+     sources: stage2Results.matchedRequirements.map(m => ({
+       req: m.jobRequirement.substring(0, 50),
+       source: m.experienceSource
+     }))
+   });
+  
   return stage2Results;
 }
