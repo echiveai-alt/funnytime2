@@ -100,17 +100,33 @@ MATCHING RULES - STRUCTURED AND PRECISE:
       1. Identify all roles with related titles or relevant specialties
       2. Extract the month duration for each role from "Role-Specific Experience" section above
       3. Sum all months together
-      4. Divide by 12 and round down to get years
+      4. Divide by 12 to get years as decimal
+      5. Round to NEAREST whole number (0.5 rounds up)
       
       ROLE IDENTIFICATION:
-      - Be flexible with title matching (similar titles often count toward same requirement)
-      - Check BOTH title and specialty field when determining relevance
-      - For product type requirements (growth, subscription, B2B, etc.), look for matching terms in the specialty field
+      - Title matching strategies (use ALL that apply):
+        * Exact or similar titles (e.g., "Software Engineer" ≈ "Software Developer")
+        * Titles sharing key terms (e.g., "Product Manager" and "Product Analyst" both contain "Product")
+        * Titles in the same functional area even with different words (e.g., "Data Scientist" and "Analytics Engineer")
+      
+      - Specialty field matching:
+        * The "Specialty:" field describes the domain, industry, product type, or focus area of that role
+        * Match specialty to ANY relevant terms in the requirement
+        * Examples across different fields:
+          - Engineering: "chemical engineering" specialty matches "chemical engineering" requirement
+          - Music: "classical music" specialty matches "classical" or "orchestral" requirements  
+          - Product: "B2B SaaS" specialty matches "enterprise software" or "B2B" requirements
+          - Industry: "FinTech" specialty matches "financial services" or "fintech" requirements
+        * Be flexible with terminology (e.g., "B2C" = "Consumer", "EdTech" = "Education Technology")
+      
+      - Combined matching:
+        * A role is relevant if EITHER the title OR the specialty matches
+        * Strongest matches have BOTH title and specialty alignment
       
       EVIDENCE FORMAT:
       - Show your calculation clearly
       - List each role with its month contribution
-      - Show the sum and final year conversion
+      - Show the sum, decimal years, and rounded result
 
 3. ABSOLUTE REQUIREMENTS:
    - If ANY requirement has importance "absolute", it MUST be matched or score is capped at 79%
@@ -119,9 +135,9 @@ MATCHING RULES - STRUCTURED AND PRECISE:
 
 4. ROLE TITLE AND SPECIALTY REQUIREMENTS:
    - Check if candidate has held roles with matching or similar titles
-   - Be flexible with title variations
+   - Use the same title matching strategies from section 2
    
-   - For requirements mentioning product types, business models, or domains:
+   - For requirements mentioning domains, industries, or specialty areas:
      * Check the "Specialty:" field in each role section
      * Match keywords between requirement and specialty
      * Cite the specialty terms as evidence
@@ -137,7 +153,7 @@ MATCHING RULES - STRUCTURED AND PRECISE:
 
 7. SCORING CALCULATION:
    - Score = (Matched Requirements / Total Requirements) × 100
-   - Round DOWN to nearest whole number
+   - Round to NEAREST whole number (0.5 rounds up)
    - If missing absolute requirements, cap at 79%
    - Otherwise, use calculated score without artificial caps
    - Be objective: match requirements based on evidence
