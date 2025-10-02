@@ -1,4 +1,4 @@
-import { MatchedRequirement, ExperienceWithRole } from '../types.ts';
+import { MatchedRequirement, ExperienceWithRole } from '../types/index.ts';
 import { CONSTANTS } from '../constants.ts';
 
 const STAGE2B_SYSTEM_CONTEXT = `You generate resume bullets from candidate experiences. Embed keywords naturally. Temperature is 0.15 for consistent quality with slight variation.`;
