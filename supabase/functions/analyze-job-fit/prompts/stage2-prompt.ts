@@ -3,11 +3,7 @@ import { formatEducationSummary } from '../matching/education-matcher.ts';
 import { calculateTotalExperienceMonths, formatRoleDurations } from '../matching/experience-calculator.ts';
 import { CONSTANTS } from '../constants.ts';
 
-const STAGE2_SYSTEM_CONTEXT = `You are a strict resume analyzer. Match candidate experiences AND education against pre-extracted job requirements. Use structured matching: AI reasoning for education_field, date calculations for years_experience, role similarity for role_title, explicit evidence for skills. 
-
-NOTE: education_degree requirements have been pre-processed and removed from your requirements list. 
-
-ALWAYS provide both matchedRequirements and unmatchedRequirements arrays. For scores < 80%, ALWAYS provide recommendations.`;
+const STAGE2_SYSTEM_CONTEXT = `You match candidates against job requirements using clear evidence. Show your work for experience calculations. Check specialty fields for all requirements.`;
 
 function formatExperiencesText(experiencesByRole: Record<string, ExperienceWithRole[]>): string {
   return Object.entries(experiencesByRole)
@@ -56,244 +52,112 @@ export function buildStage2Prompt(
   const roleDurationsText = formatRoleDurations(userRoles);
   const experiencesText = formatExperiencesText(experiencesByRole);
 
-  return `CANDIDATE PROFILE SUMMARY:
+  return `CANDIDATE DATA:
 
 EDUCATION:
 ${educationSummary}
 
-TOTAL PROFESSIONAL EXPERIENCE:
-- Total Duration: ${totalYears} years (${totalMonths} months)
+TOTAL EXPERIENCE: ${totalYears} years (${totalMonths} months)
 
-ROLE-SPECIFIC EXPERIENCE (WITH DURATIONS):
+ROLES WITH DURATIONS:
 ${roleDurationsText}
 
-You are matching a candidate's experiences and education against job requirements that were already extracted from a job description.
-
-JOB REQUIREMENTS (extracted in previous stage):
-${JSON.stringify(stage1Results.jobRequirements, null, 2)}
-
-KEYWORDS TO EMBED (extracted in previous stage):
-${JSON.stringify(stage1Results.allKeywords, null, 2)}
-
-CANDIDATE EXPERIENCES (GROUPED BY ROLE):
+EXPERIENCES BY ROLE:
 ${experiencesText}
 
-MATCHING RULES - STRUCTURED AND PRECISE:
+JOB REQUIREMENTS:
+${JSON.stringify(stage1Results.jobRequirements, null, 2)}
 
-0. "OR" REQUIREMENTS - PROCESS THESE FIRST BEFORE OTHER RULES:
-   
-   DETECTION:
-   If a requirement contains: "or related", "or similar", "or adjacent", "or equivalent", "or comparable"
-   → This is an OR requirement - candidate needs to meet EITHER option, not both
-   
-   MATCHING PROCESS FOR OR REQUIREMENTS:
-   Step 1: Identify the primary term (words before "or")
-   Step 2: Look at ALL candidate roles in the "Role-Specific Experience" section
-   Step 3: Use your semantic understanding to identify which roles are related to the primary term
-   Step 4: For qualifying roles, extract their month duration
-   Step 5: Sum ALL qualifying role durations in months
-   Step 6: Divide by 12 and round to nearest whole number
-   Step 7: Compare to required years
-   
-   ROLE MATCHING FOR OR REQUIREMENTS:
-   - Use your knowledge of professional functions and career paths
-   - Consider roles that perform similar work even with different titles
-   - The phrase "or related" signals flexible matching - be generous but logical
-   
-   REQUIRED OUTPUT FORMAT FOR MATCHED OR REQUIREMENTS:
-   You MUST include in experienceEvidence and experienceSource:
-   - List EACH qualifying role with its duration in months
-   - Show the calculation: Role1 (Xmo) + Role2 (Ymo) + ... = Total months ÷ 12 = Z years
-   - Explain why roles qualify based on functional similarity
-   
-   Example format:
-   experienceEvidence: "5 years across related roles: [Role A] (12mo), [Role B] (15mo), [Role C] (8mo), [Role D] (30mo). All roles perform similar functions within the same professional domain."
-   
-   experienceSource: "[Role A] at [Company] (12mo) + [Role B] at [Company] (15mo) + [Role C] at [Company] (8mo) + [Role D] at [Company] (30mo) = 65 months ÷ 12 = 5.4 years → 5 years"
-   
-   THEN proceed with the remaining rules below:
+KEYWORDS TO USE IN BULLETS (if candidate qualifies):
+${JSON.stringify(stage1Results.allKeywords, null, 2)}
 
-1. EDUCATION FIELD MATCHING (if applicable):
-   If job requires a specific field or field criteria:
-   - Use your knowledge to determine if candidate's field meets the criteria
-   - Consider ALL of the candidate's education fields (they may have multiple degrees)
-   - Be reasonable in your interpretation of related fields
+---
+
+MATCHING RULES:
+
+1. EDUCATION FIELD
+   If requirement needs specific field: use your knowledge to check if candidate's field qualifies.
+   Note: Degree LEVEL already checked - not in your requirement list.
+
+2. YEARS OF EXPERIENCE
    
-   NOTE: Degree LEVEL requirements have been pre-processed and are NOT in your requirements list.
-
-2. YEARS OF EXPERIENCE MATCHING (for non-OR requirements):
-   Two types of experience requirements:
+   For requirements with "or related/similar/adjacent":
+   - Identify the main term (e.g., "product management" from "product management or related")
+   - Find ALL roles that are functionally related (use semantic understanding)
+   - Check specialty fields - if specialty contains relevant keywords, role likely qualifies
+   - Sum months of qualifying roles → divide by 12 → round to nearest whole number
+   - Show calculation: Role1(Xmo) + Role2(Ymo) = Total ÷ 12 = Y years
    
-   A) GENERAL EXPERIENCE (no specificRole):
-      - Use Total Professional Experience duration shown above
-      - Compare directly to requirement
+   For specific role requirements without "or":
+   - Same process but be stricter about functional similarity
    
-   B) ROLE-SPECIFIC EXPERIENCE (has specificRole, but no "or" in the phrase):
-      CALCULATION METHOD:
-      1. Identify all roles with related titles or relevant specialties
-      2. Extract the month duration for each role from "Role-Specific Experience" section above
-      3. Sum all months together
-      4. Divide by 12 to get years as decimal
-      5. Round to NEAREST whole number (0.5 rounds up)
-      
-      ROLE IDENTIFICATION:
-      Use your semantic understanding of job functions to determine if roles are related.
-      
-      A role is relevant to a requirement if ANY of these apply:
-      
-      1. FUNCTIONAL SIMILARITY:
-         * Use your knowledge of professional roles to identify functional groupings
-         * Roles can have different titles but serve similar functions
-         * Consider: What is the primary professional activity of this role?
-      
-      2. CAREER PROGRESSION:
-         * Junior/Associate, Mid-level, Senior, Lead, Principal variants of similar roles
-         * Related roles at different seniority levels within the same function
-      
-      3. ADJACENT ROLES:
-         * Roles that commonly work together or are part of the same discipline
-         * Roles that typically transition between each other in career paths
-      
-      SPECIALTY FIELD MATCHING:
-      - The "Specialty:" field describes the domain, industry, product type, or focus area
-      - Match specialty to ANY relevant terms in the requirement
-      - Be flexible with terminology and synonyms
-      
-      IMPORTANT PRINCIPLE:
-      - Different companies use different titles for similar roles
-      - Focus on what the person actually DID (the function) rather than exact title matching
-      - Use the specialty, duration, and experience content to understand the role's true function
-      
-      EVIDENCE FORMAT:
-      - Show your calculation clearly
-      - List each role with its month contribution
-      - Show the sum, decimal years, and rounded result
+   For general experience:
+   - Use total experience shown above
 
-3. ABSOLUTE REQUIREMENTS:
-   - If ANY requirement has importance "absolute", it MUST be matched or score is capped at 79%
-   - Absolute requirements are non-negotiable
-   - Provide clear explanation if absolute requirement not met
-
-4. ROLE TITLE AND SPECIALTY REQUIREMENTS:
-   - Check if candidate has held roles with matching or similar titles
-   - Use the same flexible matching approach from section 2
+3. SPECIALTY MATCHING (CRITICAL - APPLIES TO ALL REQUIREMENTS)
    
-   - For requirements mentioning domains, industries, or specialty areas:
-     * Check the "Specialty:" field in EVERY role section
-     * Match keywords between requirement text and specialty field
-     * Requirements can be ANY category - role_title, domain_knowledge, technical_skill, etc.
-     * If specialty contains relevant terms, cite it as evidence
-     
-   - Examples:
-     * Requirement: "Experience with growth products" → Check specialty for "Growth"
-     * Requirement: "Subscription product experience" → Check specialty for "Subscription", "SaaS"
-     * Requirement: "B2B experience" → Check specialty for "B2B", "Enterprise"
-
-5. TECHNICAL SKILLS:
-   - Experience must explicitly mention the skill/tool/technology
-   - Check all experience fields: situation, task, action, result
-
-6. SOFT SKILLS & CROSS-FUNCTIONAL WORK:
-   - Must have explicit evidence of the skill/collaboration
-   - Check all experience fields for evidence
-   - For "cross-functional" requirements, look for mentions of working with other departments/teams
-
-7. SCORING CALCULATION (WEIGHTED):
-   This uses a weighted scoring system where different importance levels contribute different amounts:
+   The "Specialty:" field shows product types, industries, domains for each role.
    
-   WEIGHTS:
-   - absolute/critical/high: 1.0 (full weight - required qualifications)
-   - medium: 0.75 (preferred qualifications)
-   - low: 0.5 (nice-to-have qualifications)
+   For ANY requirement mentioning: growth, subscription, B2B, B2C, SaaS, streaming, specific industries, etc.
+   → Check EVERY role's specialty field
+   → If specialty contains matching keywords, requirement is MET
    
-   CALCULATION:
-   1. For each MATCHED requirement, add its weight to the numerator
-   2. For ALL requirements (matched + unmatched), add their weights to the denominator
-   3. Weighted Score = (Sum of matched weights / Sum of all weights) × 100
-   4. Round to NEAREST whole number (0.5 rounds up)
-   
-   SPECIAL RULES:
-   - If missing ANY absolute requirements, cap final score at 79%
-   - Otherwise, use calculated weighted score
-   
-   EXAMPLE:
-   - 3 critical matched (3 × 1.0 = 3.0)
-   - 1 critical missed (adds 1.0 to denominator only)
-   - 2 medium matched (2 × 0.75 = 1.5)
-   - 1 low matched (1 × 0.5 = 0.5)
-   - Score: 5.0 / 6.75 = 74%
-   
-   This means meeting preferred (medium/low) requirements improves your score even if you have some required gaps.
+   Examples:
+   - Requirement: "subscription products" → Specialty: "SaaS, Subscription" → MATCH
+   - Requirement: "growth experience" → Specialty: "Growth, B2C" → MATCH
+   - Requirement: "B2B software" → Specialty: "B2B, Enterprise, SaaS" → MATCH
 
-CRITICAL: Populate BOTH matchedRequirements AND unmatchedRequirements arrays for ALL scores.
+4. SKILLS & COLLABORATION
+   Technical skills: must appear explicitly in experience text
+   Soft skills / cross-functional: must have clear evidence in experience text
 
-CRITICAL: Always provide recommendations.forCandidate array for scores < 80%.
+5. SCORING
+   Weights: absolute/critical/high = 1.0, medium = 0.75, low = 0.5
+   Score = (sum of matched weights / sum of all weights) × 100, round to nearest
+   If missing absolute requirement: cap at 79%
 
-CRITICAL: For ALL OR requirements (containing "or related/similar/adjacent"), you MUST show the detailed calculation in both experienceEvidence and experienceSource fields as specified in Rule 0.
+---
 
-Return JSON in this EXACT format:
+OUTPUT REQUIREMENTS:
 
-FOR SCORES >= 80% (Fit candidates):
+CRITICAL: For experience requirements, ALWAYS show your calculation in experienceSource.
+CRITICAL: Check specialty fields for ALL requirements, not just role-based ones.
+CRITICAL: Include both matchedRequirements and unmatchedRequirements arrays.
+
+Return JSON:
+
 {
-  "overallScore": 85,
-  "isFit": true,
-  "fitLevel": "Excellent",
+  "overallScore": 67,
+  "isFit": false,
+  "fitLevel": "Fair",
   "matchedRequirements": [
     {
-      "jobRequirement": "[requirement text]",
-      "experienceEvidence": "FOR OR REQUIREMENTS: Show detailed calculation with all qualifying roles and months. FOR OTHERS: [what evidence shows]",
-      "experienceSource": "[where evidence is from - for OR requirements include full calculation]"
+      "jobRequirement": "3 years in product management or related",
+      "experienceEvidence": "Description of why it matches",
+      "experienceSource": "Role1 at Company1 (12mo) + Role2 at Company2 (15mo) + Role3 at Company3 (8mo) + Role4 at Company4 (30mo) = 65mo ÷ 12 = 5.4yr → 5yr"
+    },
+    {
+      "jobRequirement": "Experience with growth products",
+      "experienceEvidence": "Product Analyst role at Codecademy focused on growth",
+      "experienceSource": "Product Analyst specialty: 'B2C, Growth, SaaS, Subscription'"
     }
   ],
   "unmatchedRequirements": [
     {
-      "requirement": "[requirement text]",
-      "importance": "[importance level]"
+      "requirement": "requirement text",
+      "importance": "medium"
     }
   ],
-  "bulletPoints": {
-    "Company - Role": [
-      {
-        "text": "[bullet text]",
-        "experienceId": "[id]",
-        "keywordsUsed": ["keyword1", "keyword2"],
-        "relevanceScore": 10
-      }
-    ]
-  },
-  "keywordsUsed": ["keyword1"],
-  "keywordsNotUsed": ["keyword2"]
-}
-
-FOR SCORES < 80% (Not fit candidates):
-{
-  "overallScore": 55,
-  "isFit": false,
-  "fitLevel": "Fair",
-  "matchedRequirements": [...],
-  "unmatchedRequirements": [...],
-  "matchableKeywords": [],
-  "unmatchableKeywords": [],
-  "absoluteGaps": ["[if any]"],
-  "criticalGaps": ["[if any]"],
   "recommendations": {
-    "forCandidate": [
-      "[specific recommendation 1]",
-      "[specific recommendation 2]",
-      "[specific recommendation 3]"
-    ]
+    "forCandidate": ["recommendation 1", "recommendation 2"]
   }
 }
 
-BULLET GENERATION RULES (ONLY IF SCORE >= 80%):
-1. Create EXACTLY ONE bullet for EVERY experience
-2. Create SEPARATE entries for EACH "Company - Role" combination
-3. Order bullets by relevance (most relevant first)
-4. Structure: Result-focused with quantified impact
-5. Target width: ${CONSTANTS.VISUAL_WIDTH_TARGET} chars (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
-6. ${keywordInstruction}
-7. ONLY embed keywords if they naturally fit based on experience content
-8. Track which keywords were embedded and which couldn't fit`;
+If score >= 80%, also generate bulletPoints using:
+- Create ONE bullet per experience
+- Target ${CONSTANTS.VISUAL_WIDTH_TARGET} chars (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
+- ${keywordInstruction}
+- Only use keywords that naturally fit`;
 }
 
 export function getStage2SystemMessage(): string {
