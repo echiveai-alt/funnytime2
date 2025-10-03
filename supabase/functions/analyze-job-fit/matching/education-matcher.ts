@@ -14,7 +14,11 @@ export function meetsEducationRequirement(
   }
 
   // Filter out education entries with NULL degrees
-  const educationWithDegrees = userEducation.filter(edu => edu.degree !== null && edu.degree !== undefined && edu.degree !== '');
+  const educationWithDegrees = userEducation.filter(edu => 
+    edu.degree !== null && 
+    edu.degree !== undefined && 
+    edu.degree !== ''
+  );
   
   // If no education has a degree level specified, be lenient and check if they have education at all
   if (educationWithDegrees.length === 0) {
@@ -67,7 +71,11 @@ export function formatEducationSummary(educationInfo: Education[]): string {
   }
 
   // Filter education with degree levels
-  const educationWithDegrees = educationInfo.filter(edu => edu.degree !== null && edu.degree !== undefined && edu.degree !== '');
+  const educationWithDegrees = educationInfo.filter(edu => 
+    edu.degree !== null && 
+    edu.degree !== undefined && 
+    edu.degree !== ''
+  );
 
   // If no degrees specified, just show the education
   if (educationWithDegrees.length === 0) {
