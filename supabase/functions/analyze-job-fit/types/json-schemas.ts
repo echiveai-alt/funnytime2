@@ -1,3 +1,73 @@
+export const STAGE1_EXTRACTION_SCHEMA = {
+  type: "object",
+  properties: {
+    jobRequirements: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          requirement: {
+            type: "string",
+            description: "The requirement text"
+          },
+          importance: {
+            type: "string",
+            enum: ["absolute", "critical", "high", "medium", "low"]
+          },
+          category: {
+            type: "string",
+            enum: ["education_degree", "education_field", "years_experience", "role_title", "technical_skill", "soft_skill", "domain_knowledge"]
+          },
+          minimumDegreeLevel: {
+            type: "string",
+            enum: ["Other", "Diploma", "Associate", "Bachelor's", "Master's", "PhD"],
+            description: "Required for education_degree category"
+          },
+          requiredField: {
+            type: "string",
+            description: "Required for education_field category"
+          },
+          fieldCriteria: {
+            type: "string",
+            description: "Field matching criteria for education_field"
+          },
+          minimumYears: {
+            type: "number",
+            description: "Required for years_experience category"
+          },
+          specificRole: {
+            type: "string",
+            description: "For years_experience with specific role requirements"
+          },
+          requiredTitleKeywords: {
+            type: "array",
+            items: {
+              type: "string"
+            },
+            description: "For role_title category"
+          }
+        },
+        required: ["requirement", "importance", "category"],
+        additionalProperties: false
+      }
+    },
+    allKeywords: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    },
+    jobTitle: {
+      type: "string"
+    },
+    companySummary: {
+      type: "string"
+    }
+  },
+  required: ["jobRequirements", "allKeywords", "jobTitle", "companySummary"],
+  additionalProperties: false
+};
+
 export const STAGE2A_MATCHING_SCHEMA = {
   type: "object",
   properties: {
@@ -82,7 +152,6 @@ export const STAGE2A_MATCHING_SCHEMA = {
       additionalProperties: false
     }
   },
-  // ALL properties must be required for OpenAI strict mode
   required: [
     "overallScore", 
     "isFit", 
@@ -102,35 +171,29 @@ export const STAGE2B_BULLETS_SCHEMA = {
     bulletPoints: {
       type: "object",
       description: "Bullets organized by 'Company - Role' keys. Dynamic keys are allowed.",
-      // Remove additionalProperties from here since it conflicts with structured outputs
       patternProperties: {
-        "^.*$": {  // Matches any key
+        "^.*$": {
           type: "array",
           items: {
             type: "object",
             properties: {
               text: {
-                type: "string",
-                description: "The bullet point text"
+                type: "string"
               },
               experienceId: {
-                type: "string",
-                description: "ID of the experience this bullet is based on"
+                type: "string"
               },
               keywordsUsed: {
                 type: "array",
                 items: {
                   type: "string"
-                },
-                description: "Keywords embedded in this bullet"
+                }
               },
               relevanceScore: {
-                type: "number",
-                description: "Relevance score 1-10"
+                type: "number"
               }
             },
-            required: ["text", "experienceId", "keywordsUsed", "relevanceScore"],
-            additionalProperties: false
+            required: ["text", "experienceId", "keywordsUsed", "relevanceScore"]
           }
         }
       }
@@ -139,17 +202,14 @@ export const STAGE2B_BULLETS_SCHEMA = {
       type: "array",
       items: {
         type: "string"
-      },
-      description: "All keywords used across bullets"
+      }
     },
     keywordsNotUsed: {
       type: "array",
       items: {
         type: "string"
-      },
-      description: "Keywords that couldn't be naturally embedded"
+      }
     }
   },
-  required: ["bulletPoints", "keywordsUsed", "keywordsNotUsed"],
-  additionalProperties: false
+  required: ["bulletPoints", "keywordsUsed", "keywordsNotUsed"]
 };
