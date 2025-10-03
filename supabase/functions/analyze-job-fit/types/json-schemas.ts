@@ -58,14 +58,14 @@ export const STAGE2A_MATCHING_SCHEMA = {
       items: {
         type: "string"
       },
-      description: "Missing absolute requirements if any"
+      description: "Missing absolute requirements if any (empty array if none)"
     },
     criticalGaps: {
       type: "array",
       items: {
         type: "string"
       },
-      description: "Missing critical requirements if any"
+      description: "Missing critical requirements if any (empty array if none)"
     },
     recommendations: {
       type: "object",
@@ -75,20 +75,23 @@ export const STAGE2A_MATCHING_SCHEMA = {
           items: {
             type: "string"
           },
-          description: "Recommendations if score < 80%"
+          description: "Recommendations if score < 80% (empty array if score >= 80%)"
         }
       },
       required: ["forCandidate"],
       additionalProperties: false
     }
   },
-  // ONLY require core fields - optional arrays can be empty
+  // ALL properties must be required for OpenAI strict mode
   required: [
     "overallScore", 
     "isFit", 
     "fitLevel", 
     "matchedRequirements", 
-    "unmatchedRequirements"
+    "unmatchedRequirements",
+    "absoluteGaps",
+    "criticalGaps", 
+    "recommendations"
   ],
   additionalProperties: false
 };
