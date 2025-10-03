@@ -43,6 +43,9 @@ export async function callOpenAIWithRetry<T>(
             schema: jsonSchema
           }
         };
+      } else {
+        // Request JSON without strict schema
+        requestParams.response_format = { type: "json_object" };
       }
 
       const completion = await openai.chat.completions.create(requestParams);
@@ -57,14 +60,27 @@ export async function callOpenAIWithRetry<T>(
         );
       }
 
+      // ✅ FIX: Strip markdown code blocks if present
+      // Sometimes OpenAI returns ```json\n{...}\n``` even when we request JSON
+      let cleanedContent = content.trim();
+      if (cleanedContent.startsWith('```')) {
+        logger.info('Stripping markdown code blocks from response', context);
+        // Remove opening ```json or ``` and closing ```
+        cleanedContent = cleanedContent
+          .replace(/^```(?:json)?\n?/, '')  // Remove opening ```json or ```
+          .replace(/\n?```$/, '');           // Remove closing ```
+        cleanedContent = cleanedContent.trim();
+      }
+
       logger.info('OpenAI response received', {
         ...context,
         attempt,
-        contentLength: content.length,
-        tokensUsed: completion.usage?.total_tokens
+        contentLength: cleanedContent.length,
+        tokensUsed: completion.usage?.total_tokens,
+        hadMarkdown: content !== cleanedContent
       });
 
-      const parsed = JSON.parse(content);
+      const parsed = JSON.parse(cleanedContent);
       return validator(parsed);
 
     } catch (error: any) {
