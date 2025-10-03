@@ -13,12 +13,27 @@ export function meetsEducationRequirement(
     return { meets: false, evidence: "", source: "" };
   }
 
-  // Get user's highest degree
-  const highestDegree = userEducation.reduce((highest, edu) => {
+  // Filter out education entries with NULL degrees
+  const educationWithDegrees = userEducation.filter(edu => edu.degree !== null && edu.degree !== undefined && edu.degree !== '');
+  
+  // If no education has a degree level specified, be lenient and check if they have education at all
+  if (educationWithDegrees.length === 0) {
+    // They have education records but no degree level specified
+    // Be lenient - assume they meet the requirement if they have education from a school
+    const firstEducation = userEducation[0];
+    return {
+      meets: true,
+      evidence: `Education from ${firstEducation.school}${firstEducation.field ? ` (${firstEducation.field})` : ''}`,
+      source: `Education: ${firstEducation.school}${firstEducation.field ? ` - ${firstEducation.field}` : ''}`
+    };
+  }
+
+  // Get user's highest degree from entries that have degree levels
+  const highestDegree = educationWithDegrees.reduce((highest, edu) => {
     const currentLevel = getDegreeLevel(edu.degree);
     const highestLevel = getDegreeLevel(highest.degree);
     return currentLevel > highestLevel ? edu : highest;
-  }, userEducation[0]);
+  }, educationWithDegrees[0]);
 
   const userLevel = getDegreeLevel(highestDegree.degree);
   const requiredLevel = getDegreeLevel(requiredDegreeLevel);
@@ -51,16 +66,31 @@ export function formatEducationSummary(educationInfo: Education[]): string {
     return "No formal education provided";
   }
 
+  // Filter education with degree levels
+  const educationWithDegrees = educationInfo.filter(edu => edu.degree !== null && edu.degree !== undefined && edu.degree !== '');
+
+  // If no degrees specified, just show the education
+  if (educationWithDegrees.length === 0) {
+    const summary = educationInfo.map(edu => 
+      `- ${edu.school}${edu.field ? ` (${edu.field})` : ''}`
+    ).join('\n');
+
+    return `Education provided (degree level not specified):
+
+${summary}`;
+  }
+
   // Find highest degree
-  const highestDegree = educationInfo.reduce((highest, edu) => {
+  const highestDegree = educationWithDegrees.reduce((highest, edu) => {
     const currentLevel = getDegreeLevel(edu.degree);
     const highestLevel = getDegreeLevel(highest.degree);
     return currentLevel > highestLevel ? edu : highest;
-  }, educationInfo[0]);
+  }, educationWithDegrees[0]);
 
-  const summary = educationInfo.map(edu => 
-    `- ${edu.degree}${edu.field ? ` in ${edu.field}` : ''} from ${edu.school}`
-  ).join('\n');
+  const summary = educationInfo.map(edu => {
+    const degreeInfo = edu.degree ? edu.degree : 'Education';
+    return `- ${degreeInfo}${edu.field ? ` in ${edu.field}` : ''} from ${edu.school}`;
+  }).join('\n');
 
   return `Highest Degree: ${highestDegree.degree}${highestDegree.field ? ` in ${highestDegree.field}` : ''}
 
