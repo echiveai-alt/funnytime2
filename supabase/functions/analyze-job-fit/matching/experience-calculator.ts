@@ -1,4 +1,4 @@
-import { Role, RoleWithDuration } from '../types.ts';
+import { Role, RoleWithDuration } from '../types/index.ts';
 
 export function calculateRoleDuration(startDate: string, endDate: string | null): number {
   const start = new Date(startDate);
