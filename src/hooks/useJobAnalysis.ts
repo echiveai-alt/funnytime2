@@ -166,30 +166,49 @@ export const useJobAnalysis = () => {
 
     console.log('Calling unified analyze-job-fit edge function...');
 
-    // ✅ FIX: Include userId in body and move keywordMatchType from header to body
     const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
       body: { 
         jobDescription,
-        userId: session.user.id,        // ✅ Added - CRITICAL FIX
-        keywordMatchType                // ✅ Moved from header to body
+        userId: session.user.id,
+        keywordMatchType
       }
     });
 
-    console.log('Edge function response:', { 
-      hasData: !!data, 
-      hasError: !!error,
-      dataKeys: data ? Object.keys(data) : [],
-      errorDetails: error ? {
-        message: error.message,
-        status: error.status,
-        context: error.context,
-        name: error.name
-      } : null
-    });
+    // ✅ ENHANCED LOGGING
+    console.log('=== EDGE FUNCTION RESPONSE ===');
+    console.log('Has data:', !!data);
+    console.log('Has error:', !!error);
+    
+    if (data) {
+      console.log('Data type:', typeof data);
+      console.log('Data keys:', Object.keys(data));
+      console.log('Full data:', JSON.stringify(data, null, 2));
+      
+      // Check if this is the test response (wrong deployment)
+      if (data.success && data.message === 'Database connection successful!') {
+        console.error('❌ WRONG DEPLOYMENT: Edge Function is returning test response, not analysis!');
+        throw new Error('Edge Function deployment error: Function is returning test data instead of analysis. Please redeploy the production version of index.ts');
+      }
+      
+      // Check for embedded error
+      if (data.error) {
+        console.error('❌ Error embedded in response data:', data.error);
+      }
+      
+      // Check for expected properties
+      console.log('Has overallScore:', 'overallScore' in data, typeof data.overallScore);
+      console.log('Has isFit:', 'isFit' in data, typeof data.isFit);
+      console.log('Has jobRequirements:', 'jobRequirements' in data);
+      console.log('Has matchedRequirements:', 'matchedRequirements' in data);
+    }
+    
+    if (error) {
+      console.error('❌ Error object:', JSON.stringify(error, null, 2));
+    }
+    console.log('=== END RESPONSE ===');
 
     if (error) {
       console.error('Edge function error:', error);
-      console.error('Full error object:', JSON.stringify(error, null, 2));
       
       if (error.message?.includes('FunctionsRelayError')) {
         throw new Error('Edge function not found or not deployed. Please verify the function "analyze-job-fit" is deployed in your Supabase project.');
@@ -203,6 +222,7 @@ export const useJobAnalysis = () => {
       throw error;
     }
 
+    // Check if we got an error in the response data itself
     if (data?.error) {
       console.error('Error in response data:', data.error);
       throw new Error(data.error);
@@ -210,13 +230,22 @@ export const useJobAnalysis = () => {
 
     setAnalysisProgress(90);
 
-    // Validate response
-    if (!data || typeof data.overallScore !== 'number' || typeof data.isFit !== 'boolean') {
-      console.error('Invalid response structure:', data);
-      throw new Error('Invalid analysis response received. Expected overallScore and isFit properties.');
+    // Validate response with more detailed error
+    if (!data) {
+      throw new Error('No data returned from Edge Function');
+    }
+    
+    if (typeof data.overallScore !== 'number') {
+      console.error('Invalid overallScore:', data.overallScore, typeof data.overallScore);
+      throw new Error(`Invalid response: overallScore is ${typeof data.overallScore}, expected number. Response: ${JSON.stringify(data)}`);
+    }
+    
+    if (typeof data.isFit !== 'boolean') {
+      console.error('Invalid isFit:', data.isFit, typeof data.isFit);
+      throw new Error(`Invalid response: isFit is ${typeof data.isFit}, expected boolean. Response: ${JSON.stringify(data)}`);
     }
 
-    console.log('Valid response received:', {
+    console.log('✅ Valid response received:', {
       overallScore: data.overallScore,
       isFit: data.isFit,
       hasResumeBullets: !!data.resumeBullets
