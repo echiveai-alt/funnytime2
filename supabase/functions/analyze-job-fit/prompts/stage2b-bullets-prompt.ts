@@ -38,6 +38,9 @@ export function buildStage2bPrompt(
     : 'Use keywords or their natural variations (managed/led, developed/built, etc.)';
 
   const experiencesText = formatExperiencesText(experiencesByRole);
+  
+  // Count total experiences
+  const totalExperiences = Object.values(experiencesByRole).reduce((sum, exps) => sum + exps.length, 0);
 
   return `You are generating resume bullets for a candidate who matched a job (score >= 80%).
 
@@ -50,17 +53,29 @@ ${experiencesText}
 KEYWORDS TO EMBED:
 ${JSON.stringify(allKeywords, null, 2)}
 
+TOTAL EXPERIENCES TO CONVERT: ${totalExperiences}
+
 ---
 
 BULLET GENERATION RULES:
 
-1. Create EXACTLY ONE bullet for EVERY experience
+1. Create EXACTLY ONE bullet for EVERY experience (NON-NEGOTIABLE)
+   - You must create ${totalExperiences} bullets total
+   - Each experience ID must appear exactly once in your bulletPoints
+   - Count your bullets before responding to ensure ${totalExperiences} bullets were created
+   
 2. Organize by "Company - Role" keys (e.g., "Cadre - Product Manager")
+
 3. Order bullets within each role by relevance (most relevant first)
+
 4. Structure: Result-focused with quantified impact when possible
+
 5. Length: Target ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
+
 6. Keywords: ${keywordInstruction}
+
 7. Only embed keywords that naturally fit the experience content
+
 8. Track which keywords were used and which couldn't fit
 
 QUALITY STANDARDS:
@@ -69,6 +84,12 @@ QUALITY STANDARDS:
 - Focus on outcomes and business impact
 - Make each bullet distinct (no repetitive phrasing)
 - Ensure bullets flow naturally and are grammatically correct
+
+VERIFICATION CHECKLIST (verify before responding):
+✓ Did I create exactly ${totalExperiences} bullets?
+✓ Does each experience ID appear exactly once?
+✓ Are bullets organized by "Company - Role" keys?
+✓ Did I embed keywords naturally where they fit?
 
 REQUIRED JSON FORMAT:
 {
