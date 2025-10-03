@@ -66,9 +66,24 @@ BULLET GENERATION RULES:
    
 2. Organize by "Company - Role" keys (e.g., "Cadre - Product Manager")
 
-3. Order bullets within each role by relevance (most relevant first)
+3. **RELEVANCE SCORING (1-10):**
+   Give each bullet a relevanceScore based on how well it matches the job requirements:
+   - **10**: Directly addresses multiple key job requirements with quantifiable impact
+   - **8-9**: Strongly relevant to main job responsibilities with clear results
+   - **6-7**: Moderately relevant, demonstrates transferable skills
+   - **4-5**: Somewhat relevant, shows related experience
+   - **1-3**: Tangentially relevant or general skills
+   
+   **Prioritize bullets that:**
+   - Include quantitative results (%, $, time saved, growth metrics)
+   - Match critical job requirements from the MATCHED REQUIREMENTS list
+   - Show direct impact and outcomes
+   - Use keywords from the job description
 
 4. Structure: Result-focused with quantified impact when possible
+   - Start with action verb
+   - Include numbers, percentages, time periods, or metrics whenever possible
+   - Show business impact and outcomes
 
 5. Length: Target ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
 
@@ -79,8 +94,8 @@ BULLET GENERATION RULES:
 8. Track which keywords were used and which couldn't fit
 
 QUALITY STANDARDS:
+- **Quantify results whenever possible** (numbers are compelling)
 - Start with strong action verbs
-- Include metrics/numbers when available
 - Focus on outcomes and business impact
 - Make each bullet distinct (no repetitive phrasing)
 - Ensure bullets flow naturally and are grammatically correct
@@ -89,6 +104,8 @@ VERIFICATION CHECKLIST (verify before responding):
 ✓ Did I create exactly ${totalExperiences} bullets?
 ✓ Does each experience ID appear exactly once?
 ✓ Are bullets organized by "Company - Role" keys?
+✓ Did I assign accurate relevanceScore (1-10) to each bullet?
+✓ Did I prioritize quantitative results in my relevance scoring?
 ✓ Did I embed keywords naturally where they fit?
 
 REQUIRED JSON FORMAT:
@@ -99,7 +116,7 @@ REQUIRED JSON FORMAT:
         "text": "Bullet point text here",
         "experienceId": "experience-uuid",
         "keywordsUsed": ["keyword1", "keyword2"],
-        "relevanceScore": 8
+        "relevanceScore": 9
       }
     ],
     "Company2 - Role2": [...]
