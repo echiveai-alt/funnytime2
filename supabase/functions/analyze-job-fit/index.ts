@@ -291,17 +291,60 @@ serve(async (req) => {
 
     // Add resume bullets metadata if generated
     if (bulletData.bulletPoints) {
-      unifiedResults.resumeBullets = {
-        bulletOrganization: Object.entries(bulletData.bulletPoints).map(([roleKey, bullets]) => {
-          const [companyName, roleTitle] = roleKey.split(' - ');
+      // Group bullets by company, maintaining chronological order
+      const bulletsByCompany: Record<string, { 
+        roles: Array<{ 
+          title: string; 
+          bulletPoints: any[]; 
+          startDate: string;
+        }> 
+      }> = {};
+      
+      Object.entries(bulletData.bulletPoints).forEach(([roleKey, bullets]) => {
+        const [companyName, roleTitle] = roleKey.split(' - ');
+        
+        // Find the role's start date for sorting
+        const role = userRoles.find(r => r.company === companyName && r.title === roleTitle);
+        const startDate = role?.start_date || '1900-01-01';
+        
+        if (!bulletsByCompany[companyName]) {
+          bulletsByCompany[companyName] = { roles: [] };
+        }
+        
+        bulletsByCompany[companyName].roles.push({
+          title: roleTitle,
+          bulletPoints: bullets,
+          startDate
+        });
+      });
+      
+      // Sort roles within each company by date (most recent first)
+      Object.values(bulletsByCompany).forEach(company => {
+        company.roles.sort((a, b) => {
+          return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+        });
+      });
+      
+      // Convert to array and sort companies by most recent role start date
+      const bulletOrganization = Object.entries(bulletsByCompany)
+        .map(([companyName, companyData]) => {
+          const mostRecentDate = companyData.roles[0].startDate;
           return {
             name: companyName,
-            roles: [{
-              title: roleTitle,
-              bulletPoints: bullets
-            }]
+            roles: companyData.roles.map(({ title, bulletPoints }) => ({
+              title,
+              bulletPoints
+            })),
+            _sortDate: mostRecentDate // temporary field for sorting
           };
-        }),
+        })
+        .sort((a, b) => {
+          return new Date(b._sortDate).getTime() - new Date(a._sortDate).getTime();
+        })
+        .map(({ name, roles }) => ({ name, roles })); // remove sort field
+      
+      unifiedResults.resumeBullets = {
+        bulletOrganization,
         keywordsUsed: bulletData.keywordsUsed || [],
         keywordsNotUsed: bulletData.keywordsNotUsed || [],
         generatedFrom: {
@@ -315,6 +358,12 @@ serve(async (req) => {
           }
         }
       };
+      
+      logger.info('Bullet organization complete', {
+        userId,
+        companiesCount: bulletOrganization.length,
+        totalRoles: bulletOrganization.reduce((sum, c) => sum + c.roles.length, 0)
+      });
     }
 
     logger.info('Analysis complete - returning results', {
