@@ -1,5 +1,6 @@
 import { callOpenAIWithRetry } from '../utils/openai-client.ts';
 import { buildStage1Prompt, getStage1SystemMessage } from '../prompts/stage1-prompt.ts';
+import { STAGE1_EXTRACTION_SCHEMA } from '../types/json-schemas.ts';
 import { Stage1Results, JobRequirement } from '../types/index.ts';
 import { AI_CONFIG } from '../constants.ts';
 import { Logger } from '../utils/logger.ts';
@@ -69,7 +70,8 @@ export async function extractJobRequirements(
     messages,
     AI_CONFIG.STAGE1_MAX_TOKENS,
     { userId, stage: 'stage1' },
-    validateStage1Response
+    validateStage1Response,
+    STAGE1_EXTRACTION_SCHEMA
   );
 
   logger.info('Stage 1 complete', {
@@ -89,7 +91,8 @@ export async function extractJobRequirements(
       category: req.category,
       importance: req.importance,
       specificRole: (req as any).specificRole || null,
-      minimumYears: (req as any).minimumYears || null
+      minimumYears: (req as any).minimumYears || null,
+      minimumDegreeLevel: (req as any).minimumDegreeLevel || null
     }))
   });
 
