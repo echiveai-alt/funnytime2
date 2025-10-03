@@ -19,35 +19,42 @@ export const STAGE1_EXTRACTION_SCHEMA = {
             enum: ["education_degree", "education_field", "years_experience", "role_title", "technical_skill", "soft_skill", "domain_knowledge"]
           },
           minimumDegreeLevel: {
-            type: "string",
-            enum: ["Other", "Diploma", "Associate", "Bachelor's", "Master's", "PhD"],
+            type: ["string", "null"],
+            enum: ["Other", "Diploma", "Associate", "Bachelor's", "Master's", "PhD", null],
             description: "Required for education_degree category"
           },
           requiredField: {
-            type: "string",
+            type: ["string", "null"],
             description: "Required for education_field category"
           },
           fieldCriteria: {
-            type: "string",
+            type: ["string", "null"],
             description: "Field matching criteria for education_field"
           },
           minimumYears: {
-            type: "number",
+            type: ["number", "null"],
             description: "Required for years_experience category"
           },
           specificRole: {
-            type: "string",
+            type: ["string", "null"],
             description: "For years_experience with specific role requirements"
           },
           requiredTitleKeywords: {
-            type: "array",
-            items: {
-              type: "string"
-            },
+            anyOf: [
+              {
+                type: "array",
+                items: {
+                  type: "string"
+                }
+              },
+              {
+                type: "null"
+              }
+            ],
             description: "For role_title category"
           }
         },
-        required: ["requirement", "importance", "category"],
+        required: ["requirement", "importance", "category", "minimumDegreeLevel", "requiredField", "fieldCriteria", "minimumYears", "specificRole", "requiredTitleKeywords"],
         additionalProperties: false
       }
     },
