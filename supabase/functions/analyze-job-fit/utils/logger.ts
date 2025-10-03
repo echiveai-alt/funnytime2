@@ -42,14 +42,7 @@ export class Logger {
     this.log(LogLevel.WARN, message, context);
   }
   
-  error(message: string, error: Error, context?: LogContext) {
-    this.log(LogLevel.ERROR, message, {
-      ...context,
-      error: {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      }
-    });
+  error(message: string, context?: LogContext) {
+    this.log(LogLevel.ERROR, message, context);
   }
 }

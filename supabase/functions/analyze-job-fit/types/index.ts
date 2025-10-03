@@ -2,8 +2,8 @@
 export interface Education {
   id: string;
   user_id: string;
-  degree: string;
-  field: string;
+  degree: string | null;
+  field: string | null;
   school: string;
   graduation_date: string | null;
   is_expected_graduation: boolean;
