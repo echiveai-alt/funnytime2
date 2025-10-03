@@ -119,7 +119,7 @@ const JobDescription = () => {
       localStorage.removeItem('selectedKeywords'); // Clear any old data
       
       // Trigger the job analysis
-      await analyzeJobFit(jobDescription.trim());
+      await analyzeJobFit(jobDescription.trim(), keywordMatchType);
       
     } catch (error) {
       console.error("Analysis error:", error);
@@ -261,12 +261,12 @@ const JobDescription = () => {
                   
                   <Button
                     type="button"
-                    variant={keywordMatchType === "word-stem" ? "default" : "outline"}
+                    variant={keywordMatchType === "flexible" ? "default" : "outline"}
                     className="h-auto py-4 px-4 w-full"
-                    onClick={() => handleKeywordMatchTypeChange("word-stem")}
+                    onClick={() => handleKeywordMatchTypeChange("flexible")}
                   >
                     <div className="text-left w-full space-y-2">
-                      <div className="font-semibold">Word-Stem Match</div>
+                      <div className="font-semibold">Flexible Match</div>
                       <div className="text-xs font-normal opacity-90 break-words">
                         Matches word roots (e.g., 'manage' = 'managing')
                       </div>
