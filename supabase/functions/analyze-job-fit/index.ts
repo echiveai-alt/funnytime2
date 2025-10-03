@@ -23,7 +23,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// HTTP HANDLER
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -33,6 +32,12 @@ serve(async (req) => {
   try {
     // Parse request body
     const { jobDescription, userId, keywordMatchType = 'flexible' } = await req.json();
+
+    logger.info('Request received', {
+      userId,
+      jdLength: jobDescription?.length,
+      keywordMatchType
+    });
 
     // Validate inputs
     if (!userId) {
@@ -53,7 +58,8 @@ serve(async (req) => {
     // Get OpenAI API key
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+      logger.error('OPENAI_API_KEY not configured', { userId });
+      throw new Error('Server configuration error - OPENAI_API_KEY not set');
     }
 
     // Create Supabase client with user's auth
@@ -123,39 +129,65 @@ serve(async (req) => {
       experiencesCount: experiencesData?.length || 0
     });
 
+    // Check if user has data
+    if (!experiencesData || experiencesData.length === 0) {
+      logger.warn('No experiences found for user', { userId });
+      return new Response(
+        JSON.stringify({ 
+          error: 'No professional experiences found. Please add at least one experience with STAR format details before analyzing job fit.' 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
+    }
+
     // ===== TRANSFORM DATA =====
 
     // Build experiencesByRole structure
     const experiencesByRole: Record<string, ExperienceWithRole[]> = {};
-    (experiencesData || []).forEach((exp: any) => {
-      const roleKey = `${exp.roles.companies.name} - ${exp.roles.title}`;
-      if (!experiencesByRole[roleKey]) {
-        experiencesByRole[roleKey] = [];
-      }
-      experiencesByRole[roleKey].push(exp as ExperienceWithRole);
-    });
+    
+    if (experiencesData && experiencesData.length > 0) {
+      experiencesData.forEach((exp: any) => {
+        // Each experience has nested roles and companies from the join
+        const roleKey = `${exp.roles.companies.name} - ${exp.roles.title}`;
+        if (!experiencesByRole[roleKey]) {
+          experiencesByRole[roleKey] = [];
+        }
+        experiencesByRole[roleKey].push(exp as ExperienceWithRole);
+      });
+    }
 
     // Build userRoles with durations
     const userRoles: RoleWithDuration[] = [];
-    (companiesData || []).forEach((company: any) => {
-      (company.roles || []).forEach((role: any) => {
-        userRoles.push({
-          ...role,
-          company: company.name,
-          durationMonths: calculateRoleDuration(role.start_date, role.end_date),
-          durationYears: Math.floor(calculateRoleDuration(role.start_date, role.end_date) / 12)
-        });
+    
+    if (companiesData && companiesData.length > 0) {
+      companiesData.forEach((company: any) => {
+        // Each company has nested roles from the join
+        if (company.roles && Array.isArray(company.roles)) {
+          company.roles.forEach((role: any) => {
+            const roleDuration = calculateRoleDuration(role.start_date, role.end_date);
+            userRoles.push({
+              ...role,
+              company: company.name,
+              durationMonths: roleDuration,
+              durationYears: Math.floor(roleDuration / 12)
+            } as RoleWithDuration);
+          });
+        }
       });
-    });
+    }
 
-    const educationInfo = (educationData || []) as Education[];
+    const educationInfo: Education[] = (educationData || []) as Education[];
 
     logger.info('Starting analysis', {
       userId,
       experienceRoles: Object.keys(experiencesByRole).length,
       totalExperiences: Object.values(experiencesByRole).flat().length,
       rolesCount: userRoles.length,
-      educationCount: educationInfo.length
+      educationCount: educationInfo.length,
+      keywordMatchType
     });
 
     // ===== RUN ANALYSIS =====
@@ -306,7 +338,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error.message || 'Analysis failed',
         details: error.stack 
       }),
       {
