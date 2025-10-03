@@ -64,7 +64,7 @@ export async function generateBullets(
     AI_CONFIG.STAGE2B_MAX_TOKENS,
     { userId, stage: 'stage2b' },
     validateStage2bResponse,
-    STAGE2B_BULLETS_SCHEMA,
+    undefined,
     AI_CONFIG.TEMPERATURE_BULLETS
   );
 
