@@ -150,7 +150,6 @@ serve(async (req) => {
     
     if (experiencesData && experiencesData.length > 0) {
       experiencesData.forEach((exp: any) => {
-        // Each experience has nested roles and companies from the join
         const roleKey = `${exp.roles.companies.name} - ${exp.roles.title}`;
         if (!experiencesByRole[roleKey]) {
           experiencesByRole[roleKey] = [];
@@ -164,7 +163,6 @@ serve(async (req) => {
     
     if (companiesData && companiesData.length > 0) {
       companiesData.forEach((company: any) => {
-        // Each company has nested roles from the join
         if (company.roles && Array.isArray(company.roles)) {
           company.roles.forEach((role: any) => {
             const roleDuration = calculateRoleDuration(role.start_date, role.end_date);
@@ -190,9 +188,10 @@ serve(async (req) => {
       keywordMatchType
     });
 
-    // ===== RUN ANALYSIS =====
+    // ===== RUN ANALYSIS - THIS IS THE CRITICAL PART =====
 
     // Stage 1: Extract job requirements
+    logger.info('Starting Stage 1: Job requirement extraction', { userId });
     const stage1Results = await extractJobRequirements(
       openaiApiKey,
       jobDescription,
@@ -207,6 +206,7 @@ serve(async (req) => {
     });
 
     // Stage 2a: Match candidate to job
+    logger.info('Starting Stage 2a: Candidate matching', { userId });
     const stage2aResults = await matchCandidateToJob(
       openaiApiKey,
       stage1Results,
@@ -317,7 +317,7 @@ serve(async (req) => {
       };
     }
 
-    logger.info('Analysis complete', {
+    logger.info('Analysis complete - returning results', {
       userId,
       overallScore: unifiedResults.overallScore,
       isFit: unifiedResults.isFit,
