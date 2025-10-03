@@ -18,21 +18,21 @@ interface UnifiedAnalysisResult {
   jobRequirements: Array<any>;
   matchedRequirements: Array<any>;
   unmatchedRequirements: Array<any>;
-  allKeywords: string[]; // All keywords extracted from job description
-  // Only if fit
+  allKeywords: string[];
   bulletPoints?: Record<string, any[]>;
-  keywordsUsed?: string[]; // Keywords embedded in bullets
-  keywordsNotUsed?: string[]; // Keywords that couldn't be embedded
+  keywordsUsed?: string[];
+  keywordsNotUsed?: string[];
   resumeBullets?: {
     bulletOrganization: any[];
     keywordsUsed: string[];
     keywordsNotUsed: string[];
     generatedFrom: any;
   };
-  // Only if not fit
-  matchableKeywords?: string[]; // Keywords found in experiences
-  unmatchableKeywords?: string[]; // Keywords NOT found in experiences
+  matchableKeywords?: string[];
+  unmatchableKeywords?: string[];
   criticalGaps?: string[];
+  absoluteGaps?: string[];
+  absoluteGapExplanation?: string;
   recommendations?: {
     forCandidate: string[];
   };
@@ -40,6 +40,7 @@ interface UnifiedAnalysisResult {
     readyForApplication: boolean;
     readyForBulletGeneration: boolean;
     criticalGaps?: string[];
+    absoluteGaps?: string[];
   };
 }
 
@@ -65,7 +66,6 @@ export const useJobAnalysis = () => {
     console.error('Analysis error:', error);
     console.error('Error details:', JSON.stringify(error, null, 2));
     
-    // Check for function not found/deployed
     if (error?.message?.includes('FunctionsRelayError') || 
         error?.message?.includes('Function not found') ||
         error?.message?.includes('404')) {
@@ -76,7 +76,6 @@ export const useJobAnalysis = () => {
       };
     }
 
-    // Check for configuration errors
     if (error?.message?.includes('CONFIG_ERROR') || 
         error?.message?.includes('Missing required environment variables')) {
       return {
@@ -120,7 +119,6 @@ export const useJobAnalysis = () => {
       };
     }
 
-    // Network errors
     if (error?.message?.includes('fetch') || error?.message?.includes('network')) {
       return {
         code: 'NETWORK_ERROR',
@@ -161,19 +159,20 @@ export const useJobAnalysis = () => {
     console.log('About to invoke edge function with:', {
       functionName: 'analyze-job-fit',
       hasSession: !!session,
-      hasAccessToken: !!session.access_token,
+      userId: session.user.id,
       bodyLength: jobDescription.length,
       keywordMatchType
     });
 
     console.log('Calling unified analyze-job-fit edge function...');
 
+    // ✅ FIX: Include userId in body and move keywordMatchType from header to body
     const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
-      body: { jobDescription },
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        'x-keyword-match-type': keywordMatchType
-      },
+      body: { 
+        jobDescription,
+        userId: session.user.id,        // ✅ Added - CRITICAL FIX
+        keywordMatchType                // ✅ Moved from header to body
+      }
     });
 
     console.log('Edge function response:', { 
@@ -192,7 +191,6 @@ export const useJobAnalysis = () => {
       console.error('Edge function error:', error);
       console.error('Full error object:', JSON.stringify(error, null, 2));
       
-      // Check for specific error types with more detailed messages
       if (error.message?.includes('FunctionsRelayError')) {
         throw new Error('Edge function not found or not deployed. Please verify the function "analyze-job-fit" is deployed in your Supabase project.');
       }
@@ -205,7 +203,6 @@ export const useJobAnalysis = () => {
       throw error;
     }
 
-    // Check if we got an error in the response data itself
     if (data?.error) {
       console.error('Error in response data:', data.error);
       throw new Error(data.error);
@@ -241,18 +238,15 @@ export const useJobAnalysis = () => {
         keywordMatchType
       });
       
-      // Validate input
       const validationError = validateJobDescription(jobDescription);
       if (validationError) {
         throw new Error(validationError);
       }
       
-      // Clear previous data
       clearAllJobAnalysisData();
       storeJobDescription(jobDescription);
       setAnalysisProgress(10);
 
-      // Perform unified analysis (includes bullet generation if fit)
       const data = await retryWithDelay(
         () => performAnalysis(jobDescription, keywordMatchType),
         ANALYSIS_CONSTANTS.MAX_RETRIES
@@ -260,11 +254,9 @@ export const useJobAnalysis = () => {
 
       setAnalysisProgress(95);
 
-      // Store results
       console.log('Storing analysis results...');
       localStorage.setItem('jobAnalysisResult', JSON.stringify(data));
       
-      // Store resume bullets if generated
       if (data.resumeBullets) {
         console.log('Storing resume bullets...');
         localStorage.setItem('resumeBullets', JSON.stringify(data.resumeBullets));
@@ -272,7 +264,6 @@ export const useJobAnalysis = () => {
 
       setAnalysisProgress(100);
 
-      // Navigate to results page for all scores
       console.log(`Score ${data.overallScore}% - ${data.isFit ? 'bullets generated' : 'showing gap analysis'}`);
       
       toast({
