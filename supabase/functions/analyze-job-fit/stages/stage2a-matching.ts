@@ -126,6 +126,43 @@ export async function matchCandidateToJob(
     ...(stage2aResults.matchedRequirements || [])
   ];
 
+  // ===== VALIDATE ALL REQUIREMENTS ARE ACCOUNTED FOR =====
+  const missingFromResponse: UnmatchedRequirement[] = [];
+  stage1ResultsForAI.jobRequirements.forEach(req => {
+    const reqKey = req.requirement.toLowerCase().trim();
+    const isMatched = stage2aResults.matchedRequirements.some(
+      m => m.jobRequirement.toLowerCase().trim() === reqKey
+    );
+    const isUnmatched = stage2aResults.unmatchedRequirements.some(
+      u => u.requirement.toLowerCase().trim() === reqKey
+    );
+    
+    if (!isMatched && !isUnmatched) {
+      missingFromResponse.push({
+        requirement: req.requirement,
+        importance: req.importance
+      });
+      logger.warn('Requirement missing from AI response, adding to unmatched', {
+        userId,
+        requirement: req.requirement,
+        importance: req.importance
+      });
+    }
+  });
+  
+  // Add any missing requirements to unmatched list
+  if (missingFromResponse.length > 0) {
+    stage2aResults.unmatchedRequirements = [
+      ...(stage2aResults.unmatchedRequirements || []),
+      ...missingFromResponse
+    ];
+    
+    logger.info('Added missing requirements to unmatched list', {
+      userId,
+      addedCount: missingFromResponse.length
+    });
+  }
+
   // ===== WEIGHTED SCORING CALCULATION =====
   const allRequirements = stage1Results.jobRequirements;
   
