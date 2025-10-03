@@ -66,6 +66,17 @@ export const useJobAnalysis = () => {
     console.error('Analysis error:', error);
     console.error('Error details:', JSON.stringify(error, null, 2));
     
+    // Check for JSON parsing errors - these should never be retried
+    if (error?.message?.includes('is not valid JSON') || 
+        error?.message?.includes('Unexpected token') ||
+        error?.message?.includes('JSON.parse')) {
+      return {
+        code: 'JSON_PARSE_ERROR',
+        message: 'Server returned invalid response format. Please try again or contact support if this persists.',
+        retryable: false,
+      };
+    }
+    
     if (error?.message?.includes('FunctionsRelayError') || 
         error?.message?.includes('Function not found') ||
         error?.message?.includes('404')) {
@@ -138,7 +149,14 @@ export const useJobAnalysis = () => {
     return fn().catch(error => {
       const errorInfo = handleAnalysisError(error);
       
-      if (retries > 0 && errorInfo.retryable) {
+      // CRITICAL: Don't retry JSON parsing errors or non-retryable errors
+      // This prevents infinite loops when the backend returns malformed JSON
+      if (!errorInfo.retryable) {
+        console.log('Error is not retryable, failing immediately:', errorInfo.code);
+        throw error;
+      }
+      
+      if (retries > 0) {
         console.log(`Retrying analysis, ${retries} attempts remaining...`);
         return new Promise(resolve => {
           setTimeout(() => resolve(retryWithDelay(fn, retries - 1)), ANALYSIS_CONSTANTS.RETRY_DELAY_MS);
@@ -174,7 +192,6 @@ export const useJobAnalysis = () => {
       }
     });
 
-    // ✅ ENHANCED LOGGING
     console.log('=== EDGE FUNCTION RESPONSE ===');
     console.log('Has data:', !!data);
     console.log('Has error:', !!error);
@@ -182,28 +199,26 @@ export const useJobAnalysis = () => {
     if (data) {
       console.log('Data type:', typeof data);
       console.log('Data keys:', Object.keys(data));
-      console.log('Full data:', JSON.stringify(data, null, 2));
       
       // Check if this is the test response (wrong deployment)
       if (data.success && data.message === 'Database connection successful!') {
-        console.error('❌ WRONG DEPLOYMENT: Edge Function is returning test response, not analysis!');
+        console.error('WRONG DEPLOYMENT: Edge Function is returning test response, not analysis!');
         throw new Error('Edge Function deployment error: Function is returning test data instead of analysis. Please redeploy the production version of index.ts');
       }
       
       // Check for embedded error
       if (data.error) {
-        console.error('❌ Error embedded in response data:', data.error);
+        console.error('Error embedded in response data:', data.error);
+        throw new Error(data.error);
       }
       
       // Check for expected properties
       console.log('Has overallScore:', 'overallScore' in data, typeof data.overallScore);
       console.log('Has isFit:', 'isFit' in data, typeof data.isFit);
-      console.log('Has jobRequirements:', 'jobRequirements' in data);
-      console.log('Has matchedRequirements:', 'matchedRequirements' in data);
     }
     
     if (error) {
-      console.error('❌ Error object:', JSON.stringify(error, null, 2));
+      console.error('Error object:', JSON.stringify(error, null, 2));
     }
     console.log('=== END RESPONSE ===');
 
@@ -230,22 +245,22 @@ export const useJobAnalysis = () => {
 
     setAnalysisProgress(90);
 
-    // Validate response with more detailed error
+    // Validate response
     if (!data) {
       throw new Error('No data returned from Edge Function');
     }
     
     if (typeof data.overallScore !== 'number') {
       console.error('Invalid overallScore:', data.overallScore, typeof data.overallScore);
-      throw new Error(`Invalid response: overallScore is ${typeof data.overallScore}, expected number. Response: ${JSON.stringify(data)}`);
+      throw new Error(`Invalid response: overallScore is ${typeof data.overallScore}, expected number.`);
     }
     
     if (typeof data.isFit !== 'boolean') {
       console.error('Invalid isFit:', data.isFit, typeof data.isFit);
-      throw new Error(`Invalid response: isFit is ${typeof data.isFit}, expected boolean. Response: ${JSON.stringify(data)}`);
+      throw new Error(`Invalid response: isFit is ${typeof data.isFit}, expected boolean.`);
     }
 
-    console.log('✅ Valid response received:', {
+    console.log('Valid response received:', {
       overallScore: data.overallScore,
       isFit: data.isFit,
       hasResumeBullets: !!data.resumeBullets
