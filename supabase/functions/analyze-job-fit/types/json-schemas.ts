@@ -101,34 +101,37 @@ export const STAGE2B_BULLETS_SCHEMA = {
   properties: {
     bulletPoints: {
       type: "object",
-      description: "Bullets organized by 'Company - Role' keys",
-      additionalProperties: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            text: {
-              type: "string",
-              description: "The bullet point text"
-            },
-            experienceId: {
-              type: "string",
-              description: "ID of the experience this bullet is based on"
-            },
-            keywordsUsed: {
-              type: "array",
-              items: {
-                type: "string"
+      description: "Bullets organized by 'Company - Role' keys. Dynamic keys are allowed.",
+      // Remove additionalProperties from here since it conflicts with structured outputs
+      patternProperties: {
+        "^.*$": {  // Matches any key
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              text: {
+                type: "string",
+                description: "The bullet point text"
               },
-              description: "Keywords embedded in this bullet"
+              experienceId: {
+                type: "string",
+                description: "ID of the experience this bullet is based on"
+              },
+              keywordsUsed: {
+                type: "array",
+                items: {
+                  type: "string"
+                },
+                description: "Keywords embedded in this bullet"
+              },
+              relevanceScore: {
+                type: "number",
+                description: "Relevance score 1-10"
+              }
             },
-            relevanceScore: {
-              type: "number",
-              description: "Relevance score 1-10"
-            }
-          },
-          required: ["text", "experienceId", "keywordsUsed", "relevanceScore"],
-          additionalProperties: false
+            required: ["text", "experienceId", "keywordsUsed", "relevanceScore"],
+            additionalProperties: false
+          }
         }
       }
     },
