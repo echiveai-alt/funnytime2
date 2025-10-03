@@ -70,7 +70,24 @@ QUALITY STANDARDS:
 - Make each bullet distinct (no repetitive phrasing)
 - Ensure bullets flow naturally and are grammatically correct
 
-The JSON schema enforces the exact structure. Each bullet must have: text, experienceId, keywordsUsed array, and relevanceScore (1-10).`;
+REQUIRED JSON FORMAT:
+{
+  "bulletPoints": {
+    "Company1 - Role1": [
+      {
+        "text": "Bullet point text here",
+        "experienceId": "experience-uuid",
+        "keywordsUsed": ["keyword1", "keyword2"],
+        "relevanceScore": 8
+      }
+    ],
+    "Company2 - Role2": [...]
+  },
+  "keywordsUsed": ["keyword1", "keyword2", "keyword3"],
+  "keywordsNotUsed": ["keyword4", "keyword5"]
+}
+
+CRITICAL: Return valid JSON with these exact top-level keys: bulletPoints, keywordsUsed, keywordsNotUsed.`;
 }
 
 export function getStage2bSystemMessage(): string {

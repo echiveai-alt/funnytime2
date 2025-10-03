@@ -58,13 +58,15 @@ export async function generateBullets(
     }
   ];
 
+  // Note: We don't use STAGE2B_BULLETS_SCHEMA because patternProperties isn't supported in OpenAI structured outputs
+  // Instead, we rely on the explicit JSON format example in the prompt
   const stage2bResults = await callOpenAIWithRetry(
     apiKey,
     messages,
     AI_CONFIG.STAGE2B_MAX_TOKENS,
     { userId, stage: 'stage2b' },
     validateStage2bResponse,
-    undefined,
+    undefined, // No strict schema due to dynamic keys
     AI_CONFIG.TEMPERATURE_BULLETS
   );
 
