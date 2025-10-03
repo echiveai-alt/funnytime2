@@ -82,7 +82,17 @@ export const STAGE2A_MATCHING_SCHEMA = {
       additionalProperties: false
     }
   },
-  required: ["overallScore", "isFit", "fitLevel", "matchedRequirements", "unmatchedRequirements"],
+  // ✅ FIX: ALL properties must be in required array for OpenAI Structured Outputs
+  required: [
+    "overallScore", 
+    "isFit", 
+    "fitLevel", 
+    "matchedRequirements", 
+    "unmatchedRequirements",
+    "absoluteGaps",
+    "criticalGaps", 
+    "recommendations"
+  ],
   additionalProperties: false
 };
 
