@@ -76,12 +76,22 @@ MATCHING INSTRUCTIONS:
    
    For requirements with "or related/similar/adjacent":
    - Find ALL functionally related roles using semantic understanding
+   - "Product management or related" includes: Product Manager, Product Operations Manager, Product Analyst, Technical Product Manager, Associate Product Manager
+   - "Consumer products" includes roles working on consumer-facing products regardless of exact title
    - Check specialty fields - matching keywords indicate relevance
+   - Check experience descriptions - relevant work qualifies even if title differs slightly
+   - Check for semantic matches: "Product Analyst" doing product work IS product-related experience
    - List EVERY qualifying role with company and months
    - Format: Role1 at Company1 (Xmo) + Role2 at Company2 (Ymo) + ... = Total ÷ 12 = Y years
    
+   IMPORTANT: Be inclusive when matching "or related" roles. If a role has:
+   - Related responsibilities in the experience text (e.g., product decisions, roadmap work)
+   - Relevant specialty tags (e.g., "Consumer", "Product", "Growth")
+   - Similar title keywords (Analyst working on products → product-related)
+   Then it DOES qualify for "or related role" requirements.
+   
    For specific roles without "or":
-   - Same process, stricter matching
+   - Same process, stricter matching - title must closely match
    
    For general experience:
    - Use total shown above
@@ -90,13 +100,14 @@ MATCHING INSTRUCTIONS:
    
    Check EVERY role's "Specialty:" field against ALL requirements.
    
-   If requirement mentions: growth, subscription, B2B, B2C, SaaS, streaming, industries, domains
+   If requirement mentions: growth, subscription, B2B, B2C, SaaS, streaming, industries, domains, consumer products
    → Check if ANY role specialty contains matching terms
    → If yes, requirement is MET
    
    Examples:
    - Req: "subscription products" + Specialty: "SaaS, Subscription" = MATCH
    - Req: "growth experience" + Specialty: "Growth, Consumer" = MATCH
+   - Req: "consumer focused products" + Specialty: "Consumer, Subscription" = MATCH
 
 4. SKILLS & COLLABORATION
    - Technical: must appear in experience text
@@ -106,6 +117,11 @@ MATCHING INSTRUCTIONS:
    - Weights: absolute/critical/high=1.0, medium=0.75, low=0.5
    - Score = (matched weight sum / total weight sum) × 100, round to nearest
    - Cap at 79% if missing absolute requirement
+
+6. COMPLETENESS
+   - Every requirement must appear in EITHER matchedRequirements OR unmatchedRequirements
+   - Do not skip any requirements
+   - If uncertain about a match, include it in unmatchedRequirements
 
 OUTPUT REQUIREMENTS (ENFORCED BY SCHEMA):
 
