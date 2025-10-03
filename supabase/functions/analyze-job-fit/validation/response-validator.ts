@@ -1,4 +1,4 @@
-import { Stage2Results, MatchedRequirement, UnmatchedRequirement } from '../types.ts';
+import { Stage2Results, MatchedRequirement, UnmatchedRequirement } from '../types/index.ts';
 import { Logger } from '../utils/logger.ts';
 
 const logger = new Logger();
