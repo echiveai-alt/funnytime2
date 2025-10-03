@@ -6,10 +6,14 @@ const STAGE1_EXTRACTION_RULES = `EXTRACTION RULES:
 
 1. EDUCATION REQUIREMENTS:
    - DEGREE LEVEL: Extract as "education_degree" category
-     * "Bachelor's degree" → minimumDegreeLevel: "Bachelor's"
-     * "Master's degree" → minimumDegreeLevel: "Master's"
+     * Use EXACT degree names from this hierarchy: PhD > Master's > Bachelor's > Associate > Diploma > Other
+     * "Bachelor's degree" or "Bachelor's" → minimumDegreeLevel: "Bachelor's"
+     * "Master's degree" or "Master's" → minimumDegreeLevel: "Master's"
      * "PhD" or "Doctorate" → minimumDegreeLevel: "PhD"
-     * "Associate degree" → minimumDegreeLevel: "Associate"
+     * "Associate degree" or "Associate's" → minimumDegreeLevel: "Associate"
+     * "Diploma" → minimumDegreeLevel: "Diploma"
+     * If unclear → minimumDegreeLevel: "Other"
+     * CRITICAL: Use these EXACT strings - the system compares degrees hierarchically where higher degrees satisfy lower requirements
    
    - FIELD REQUIREMENTS: Extract as "education_field" category if specified
      * "Bachelor's in Computer Science" → requiredField: "Computer Science"

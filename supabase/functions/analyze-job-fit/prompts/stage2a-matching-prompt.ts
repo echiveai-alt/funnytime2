@@ -68,9 +68,17 @@ ${JSON.stringify(stage1Results.jobRequirements, null, 2)}
 
 MATCHING INSTRUCTIONS:
 
-1. EDUCATION FIELD
-   - Use your knowledge to check if candidate's field meets requirement
-   - Note: Degree level already pre-checked
+1. EDUCATION MATCHING
+   
+   DEGREE LEVEL (Pre-checked by system using hierarchy: PhD > Master's > Bachelor's > Associate > Diploma > Other):
+   - System automatically compares degree levels hierarchically
+   - Higher degrees satisfy lower requirements (e.g., Master's meets Bachelor's requirement)
+   - Lower degrees do NOT meet higher requirements (e.g., Bachelor's does NOT meet Master's requirement)
+   - You will only see degree requirements if the system couldn't match them automatically
+   
+   EDUCATION FIELD (You check this):
+   - Use your knowledge to verify if candidate's field of study meets the requirement
+   - Related fields may qualify (e.g., "Computer Engineering" for "Computer Science")
 
 2. YEARS OF EXPERIENCE (CRITICAL - SHOW ALL WORK)
    
