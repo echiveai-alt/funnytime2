@@ -130,7 +130,10 @@ REQUIRED FORMAT: "Role1 at Company1 (12mo) + Role2 at Company2 (15mo) + Role3 at
 
 This calculation is MANDATORY for all experience requirements. The schema will reject responses without it.
 
-For recommendations: only include if score < 80%, provide 2-3 specific recommendations.`;
+For optional fields (return empty arrays/objects if not applicable):
+- absoluteGaps: [] (empty if no absolute requirements are missing)
+- criticalGaps: [] (empty if no critical requirements are missing)
+- recommendations: { "forCandidate": [] } (empty array if score >= 80%)`;
 }
 
 export function getStage2aSystemMessage(): string {
