@@ -172,7 +172,8 @@ export const useJobAnalysis = () => {
       throw new Error('Please log in to analyze job fit');
     }
 
-    setAnalysisProgress(25);
+    // Stage 1: Extracting keywords and requirements (0%)
+    setAnalysisProgress(0);
 
     console.log('About to invoke edge function with:', {
       functionName: 'analyze-job-fit',
@@ -184,6 +185,14 @@ export const useJobAnalysis = () => {
 
     console.log('Calling unified analyze-job-fit edge function...');
 
+    // Simulate stage progression during analysis
+    const progressInterval = setInterval(() => {
+      setAnalysisProgress(prev => {
+        if (prev < 30) return prev + 2; // Stage 1: slowly progress to 30%
+        return prev;
+      });
+    }, 500);
+
     const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
       body: { 
         jobDescription,
@@ -191,6 +200,8 @@ export const useJobAnalysis = () => {
         keywordMatchType
       }
     });
+
+    clearInterval(progressInterval);
 
     console.log('=== EDGE FUNCTION RESPONSE ===');
     console.log('Has data:', !!data);
@@ -243,7 +254,13 @@ export const useJobAnalysis = () => {
       throw new Error(data.error);
     }
 
-    setAnalysisProgress(90);
+    // Stage 1 complete: Move to stage 2a (33%)
+    setAnalysisProgress(33);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Stage 2a: Matching against experiences (66%)
+    setAnalysisProgress(66);
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Validate response
     if (!data) {
@@ -289,14 +306,14 @@ export const useJobAnalysis = () => {
       
       clearAllJobAnalysisData();
       storeJobDescription(jobDescription);
-      setAnalysisProgress(10);
 
       const data = await retryWithDelay(
         () => performAnalysis(jobDescription, keywordMatchType),
         ANALYSIS_CONSTANTS.MAX_RETRIES
       );
 
-      setAnalysisProgress(95);
+      // Stage 2b complete: Final stage (100%)
+      setAnalysisProgress(100);
 
       console.log('Storing analysis results...');
       localStorage.setItem('jobAnalysisResult', JSON.stringify(data));
@@ -305,8 +322,6 @@ export const useJobAnalysis = () => {
         console.log('Storing resume bullets...');
         localStorage.setItem('resumeBullets', JSON.stringify(data.resumeBullets));
       }
-
-      setAnalysisProgress(100);
 
       console.log(`Score ${data.overallScore}% - ${data.isFit ? 'bullets generated' : 'showing gap analysis'}`);
       

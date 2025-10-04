@@ -176,10 +176,10 @@ const JobDescription = () => {
               <div className="space-y-2">
                 <Progress value={analysisProgress} className="w-full h-3" />
                 <p className="text-sm text-muted-foreground">
-                  {analysisProgress < 25 && "Preprocessing job description..."}
-                  {analysisProgress >= 25 && analysisProgress < 75 && "Extracting requirements and matching experiences..."}
-                  {analysisProgress >= 75 && analysisProgress < 90 && "Calculating fit score..."}
-                  {analysisProgress >= 90 && "Finalizing results..."}
+                  {analysisProgress < 33 && "Extracting keywords and requirements"}
+                  {analysisProgress >= 33 && analysisProgress < 66 && "Matching against experiences"}
+                  {analysisProgress >= 66 && analysisProgress < 100 && "Creating bullet points"}
+                  {analysisProgress >= 100 && "Complete!"}
                 </p>
               </div>
               
