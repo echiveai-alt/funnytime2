@@ -193,6 +193,9 @@ const JobDescription = () => {
                   <li className={analysisProgress > 66 ? "font-semibold" : ""}>
                     • Calculating overall job fit percentage
                   </li>
+                  <li className={analysisProgress > 66 ? "font-semibold" : ""}>
+                    • Creating tailored resume bullet points
+                  </li>
                 </ul>
               </div>
             </div>
