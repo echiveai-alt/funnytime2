@@ -25,7 +25,6 @@ const Footer = () => {
               <li><a href="#" className="hover:text-foreground transition-smooth">How It Works</a></li>
               <li><a href="#" className="hover:text-foreground transition-smooth">Features</a></li>
               <li><a href="#" className="hover:text-foreground transition-smooth">Pricing</a></li>
-              <li><a href="#" className="hover:text-foreground transition-smooth">API</a></li>
             </ul>
           </div>
           
