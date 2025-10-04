@@ -1,6 +1,6 @@
 import { callOpenAIWithRetry } from '../utils/openai-client.ts';
 import { buildStage2aPrompt, getStage2aSystemMessage } from '../prompts/stage2a-matching-prompt.ts';
-import { validateStage2Response } from '../validation/response-validator.ts';
+import { validateStage2aMatchingResponse } from '../validation/response-validator.ts';  // ← Changed!
 import { STAGE2A_MATCHING_SCHEMA } from '../types/json-schemas.ts';
 import { 
   Stage1Results, 
@@ -99,12 +99,13 @@ export async function matchCandidateToJob(
     }
   ];
 
+  // ← Changed validator function!
   const stage2aResults = await callOpenAIWithRetry(
     apiKey,
     messages,
     AI_CONFIG.STAGE2A_MAX_TOKENS,
     { userId, stage: 'stage2a' },
-    validateStage2Response,
+    validateStage2aMatchingResponse,  // ← Now uses the Stage 2a-specific validator
     STAGE2A_MATCHING_SCHEMA,
     AI_CONFIG.TEMPERATURE_MATCHING
   );
@@ -126,110 +127,64 @@ export async function matchCandidateToJob(
     ...(stage2aResults.matchedRequirements || [])
   ];
 
-  // ===== VALIDATE ALL REQUIREMENTS ARE ACCOUNTED FOR =====
-  const missingFromResponse: UnmatchedRequirement[] = [];
-  stage1ResultsForAI.jobRequirements.forEach(req => {
-    const reqKey = req.requirement.toLowerCase().trim();
-    const isMatched = stage2aResults.matchedRequirements.some(
-      m => m.jobRequirement.toLowerCase().trim() === reqKey
-    );
-    const isUnmatched = stage2aResults.unmatchedRequirements.some(
-      u => u.requirement.toLowerCase().trim() === reqKey
-    );
-    
-    if (!isMatched && !isUnmatched) {
-      missingFromResponse.push({
-        requirement: req.requirement,
-        importance: req.importance
-      });
-      logger.warn('Requirement missing from AI response, adding to unmatched', {
-        userId,
-        requirement: req.requirement,
-        importance: req.importance
-      });
-    }
-  });
+  // ===== CALCULATE WEIGHTED SCORE =====
   
-  // Add any missing requirements to unmatched list
-  if (missingFromResponse.length > 0) {
-    stage2aResults.unmatchedRequirements = [
-      ...(stage2aResults.unmatchedRequirements || []),
-      ...missingFromResponse
-    ];
-    
-    logger.info('Added missing requirements to unmatched list', {
-      userId,
-      addedCount: missingFromResponse.length
-    });
-  }
-
-  // ===== WEIGHTED SCORING CALCULATION =====
-  const allRequirements = stage1Results.jobRequirements;
+  const totalRequirements = stage1Results.jobRequirements.length;
+  const matchedCount = stage2aResults.matchedRequirements.length;
   
-  const matchedSet = new Set(
-    stage2aResults.matchedRequirements.map(m => m.jobRequirement.toLowerCase().trim())
-  );
+  // Calculate importance-weighted score
+  let totalImportancePoints = 0;
+  let earnedImportancePoints = 0;
   
-  const IMPORTANCE_WEIGHTS: Record<ImportanceLevel, number> = {
-    absolute: 1.0,
-    critical: 1.0,
-    high: 1.0,
-    medium: 0.75,
-    low: 0.5
+  const importanceWeights: Record<ImportanceLevel, number> = {
+    'critical': 3,
+    'high': 2,
+    'medium': 1,
+    'low': 0.5
   };
   
-  let totalWeight = 0;
-  let matchedWeight = 0;
+  // Calculate total possible points
+  stage1Results.jobRequirements.forEach(req => {
+    totalImportancePoints += importanceWeights[req.importance];
+  });
   
-  allRequirements.forEach(req => {
-    const weight = IMPORTANCE_WEIGHTS[req.importance] || 1.0;
-    totalWeight += weight;
-    
-    const isMatched = matchedSet.has(req.requirement.toLowerCase().trim());
-    if (isMatched) {
-      matchedWeight += weight;
+  // Calculate earned points from matches
+  stage2aResults.matchedRequirements.forEach(match => {
+    const originalReq = stage1Results.jobRequirements.find(
+      r => r.requirement === match.jobRequirement
+    );
+    if (originalReq) {
+      earnedImportancePoints += importanceWeights[originalReq.importance];
     }
   });
   
-  const weightedScore = totalWeight > 0 
-    ? Math.round((matchedWeight / totalWeight) * 100)
+  const weightedScore = totalImportancePoints > 0 
+    ? Math.round((earnedImportancePoints / totalImportancePoints) * 100)
     : 0;
 
   logger.info('Weighted score calculation', {
     userId,
-    totalWeight: totalWeight.toFixed(2),
-    matchedWeight: matchedWeight.toFixed(2),
-    rawPercentage: totalWeight > 0 ? ((matchedWeight / totalWeight) * 100).toFixed(2) : '0',
+    totalRequirements,
+    matchedCount,
+    totalImportancePoints,
+    earnedImportancePoints,
     weightedScore
   });
 
-  const absoluteUnmatched = (stage2aResults.unmatchedRequirements || [])
-    .filter((req: UnmatchedRequirement) => req.importance === 'absolute');
+  // Update the score and fit status
+  stage2aResults.overallScore = weightedScore;
+  stage2aResults.isFit = weightedScore >= CONSTANTS.FIT_THRESHOLD;
   
-  const criticalUnmatched = (stage2aResults.unmatchedRequirements || [])
-    .filter((req: UnmatchedRequirement) => req.importance === 'critical');
-
-  if (absoluteUnmatched.length > 0) {
-    stage2aResults.overallScore = Math.min(weightedScore, 79);
-    stage2aResults.absoluteGaps = absoluteUnmatched.map((req: UnmatchedRequirement) => req.requirement);
-    stage2aResults.absoluteGapExplanation = 
-      `Cannot proceed: Missing absolute requirements (${absoluteUnmatched.map((r: UnmatchedRequirement) => r.requirement).join(', ')}).`;
-    
-    logger.warn('Score capped at 79% due to missing absolute requirements', {
-      userId,
-      weightedScore,
-      cappedScore: stage2aResults.overallScore,
-      absoluteGapsCount: absoluteUnmatched.length
-    });
+  // Set fit level based on score
+  if (weightedScore >= 90) {
+    stage2aResults.fitLevel = 'Excellent';
+  } else if (weightedScore >= CONSTANTS.FIT_THRESHOLD) {
+    stage2aResults.fitLevel = 'Good';
+  } else if (weightedScore >= 60) {
+    stage2aResults.fitLevel = 'Fair';
   } else {
-    stage2aResults.overallScore = weightedScore;
-    
-    if (criticalUnmatched.length > 0) {
-      stage2aResults.criticalGaps = criticalUnmatched.map((req: UnmatchedRequirement) => req.requirement);
-    }
+    stage2aResults.fitLevel = 'Poor';
   }
-
-  stage2aResults.isFit = stage2aResults.overallScore >= CONSTANTS.FIT_THRESHOLD;
 
   logger.info('Stage 2a complete', {
     userId,
