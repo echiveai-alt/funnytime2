@@ -29,19 +29,17 @@ interface UnifiedAnalysisResult {
     requirement: string;
     importance: string;
   }>;
-  allKeywords: string[]; // All keywords from job description
-  // Only if fit
+  allKeywords: string[];
   bulletPoints?: Record<string, any[]>;
-  keywordsUsed?: string[]; // Keywords embedded in bullets
-  keywordsNotUsed?: string[]; // Keywords that couldn't be embedded
+  keywordsUsed?: string[];
+  keywordsNotUsed?: string[];
   resumeBullets?: {
     bulletOrganization: any[];
     keywordsUsed: string[];
     keywordsNotUsed: string[];
   };
-  // Only if not fit
-  matchableKeywords?: string[]; // Keywords found in experiences
-  unmatchableKeywords?: string[]; // Keywords NOT found in experiences
+  matchableKeywords?: string[];
+  unmatchableKeywords?: string[];
   criticalGaps?: string[];
   recommendations?: {
     forCandidate: string[];
@@ -243,7 +241,7 @@ export const JobAnalysisResult = () => {
               </>
             )}
 
-            {/* For Non-Fit Candidates: Only show if there are actual matchable/unmatchable keywords */}
+            {/* For Non-Fit Candidates: Show matchable/unmatchable */}
             {!isFit && analysisResult.matchableKeywords && analysisResult.unmatchableKeywords && 
              (analysisResult.matchableKeywords.length > 0 || analysisResult.unmatchableKeywords.length > 0) && (
               <>
@@ -372,8 +370,8 @@ export const JobAnalysisResult = () => {
 
       <Separator />
 
-      {/* Resume Bullets Section - Only show for high scores (>=80%) */}
-      {isFit && analysisResult.resumeBullets && (
+      {/* Resume Bullets Section - FIXED VERSION */}
+      {isFit && analysisResult.resumeBullets?.bulletOrganization && Array.isArray(analysisResult.resumeBullets.bulletOrganization) && analysisResult.resumeBullets.bulletOrganization.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -389,14 +387,14 @@ export const JobAnalysisResult = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  {company.roles.map((role: any, roleIndex: number) => (
+                  {company.roles && Array.isArray(company.roles) && company.roles.map((role: any, roleIndex: number) => (
                     <div key={roleIndex} className="border rounded-lg p-4 bg-card">
                       <div className="mb-3">
                         <h4 className="text-lg font-semibold text-muted-foreground">{role.title}</h4>
                       </div>
                       
                       <div className="space-y-2">
-                        {role.bulletPoints.map((bullet: any, bulletIndex: number) => (
+                        {role.bulletPoints && Array.isArray(role.bulletPoints) && role.bulletPoints.map((bullet: any, bulletIndex: number) => (
                           <div
                             key={bulletIndex}
                             className="flex items-start gap-3 p-3 border rounded-lg bg-background hover:bg-accent/50 transition-colors"
@@ -423,33 +421,43 @@ export const JobAnalysisResult = () => {
                 </div>
               </div>
             ))}
+            
+            <div className="mt-6 flex justify-between items-center border-t pt-4">
+              <div className="text-sm text-muted-foreground">
+                {analysisResult.resumeBullets.bulletOrganization.reduce((total, company) => 
+                  total + (company.roles?.reduce((sum: number, role: any) => sum + (role.bulletPoints?.length || 0), 0) || 0), 0
+                )} bullets generated across {analysisResult.resumeBullets.bulletOrganization.length} companies
+              </div>
+              <Button onClick={() => navigate('/app/resume-bullets')}>
+                <ArrowRight className="w-4 h-4 mr-2" />
+                View All Bullets
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Action Buttons - directly on page without card wrapper */}
-      <div className="flex flex-wrap gap-4 justify-center py-6">
-        {!isFit && (
-          <Button 
-            onClick={() => navigate('/app/experiences')}
-            size="lg"
-            variant="default"
-            className="flex items-center gap-2"
-          >
-            <Users className="w-4 h-4" />
-            Add/Edit Experiences
-          </Button>
-        )}
-        
-        <Button 
-          onClick={() => navigate('/app/job-description')}
-          variant="outline" 
-          size="lg"
-        >
-          <Target className="w-4 h-4 mr-2" />
-          Analyze Another Job
-        </Button>
-      </div>
+      {/* Recommendations - Only for non-fit candidates */}
+      {!isFit && analysisResult.recommendations?.forCandidate && analysisResult.recommendations.forCandidate.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5" />
+              Next Steps to Improve Your Profile
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {analysisResult.recommendations.forCandidate.map((rec, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30">
+                  <CheckCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <p className="text-sm">{rec}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
