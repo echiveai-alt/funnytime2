@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { 
   ArrowLeft, Copy, Check, AlertTriangle, TrendingUp, Target, XCircle,
-  CheckCircle, ArrowRight, Users, FileText, Lightbulb
+  CheckCircle, ArrowRight, FileText, Lightbulb
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useJobAnalysis } from "@/hooks/useJobAnalysis";
 
-// Unified interface matching the new backend response
 interface UnifiedAnalysisResult {
   overallScore: number;
   fitLevel: string;
@@ -107,6 +106,9 @@ export const JobAnalysisResult = () => {
 
   const { overallScore, isFit, fitLevel } = analysisResult;
   const criticalGaps = analysisResult.criticalGaps || [];
+  const allKeywords = analysisResult.allKeywords || [];
+  const matchedRequirements = analysisResult.matchedRequirements || [];
+  const unmatchedRequirements = analysisResult.unmatchedRequirements || [];
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
@@ -168,177 +170,188 @@ export const JobAnalysisResult = () => {
       </Card>
 
       {/* Keywords Analysis Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Job Description Keywords
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => copyToClipboard(
-                analysisResult.allKeywords.join(', '),
-                'allKeywords'
-              )}
-            >
-              {copiedSection === 'allKeywords' ? (
-                <Check className="w-4 h-4 mr-2" />
-              ) : (
-                <Copy className="w-4 h-4 mr-2" />
-              )}
-              Copy All
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* All Keywords */}
-            <div>
-              <h4 className="font-semibold text-sm mb-2">
-                All Extracted Keywords ({analysisResult.allKeywords.length})
-              </h4>
-              <div className="flex flex-wrap gap-1">
-                {analysisResult.allKeywords.map((keyword, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {keyword}
-                  </Badge>
-                ))}
+      {allKeywords.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Job Description Keywords
               </div>
-            </div>
-
-            {/* For Fit Candidates: Show Used vs Not Used */}
-            {isFit && analysisResult.keywordsUsed && (
-              <>
-                <Separator />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 text-green-600">
-                      Keywords Used in Bullets ({analysisResult.keywordsUsed.length})
-                    </h4>
-                    <div className="flex flex-wrap gap-1">
-                      {analysisResult.keywordsUsed.map((keyword, index) => (
-                        <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-300">
-                          {keyword}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2 text-amber-600">
-                      Keywords Not Embedded ({analysisResult.keywordsNotUsed?.length || 0})
-                    </h4>
-                    <div className="flex flex-wrap gap-1">
-                      {analysisResult.keywordsNotUsed?.map((keyword, index) => (
-                        <Badge key={index} variant="outline" className="text-xs bg-amber-50 text-amber-800 border-amber-300">
-                          {keyword}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copyToClipboard(
+                  allKeywords.join(', '),
+                  'allKeywords'
+                )}
+              >
+                {copiedSection === 'allKeywords' ? (
+                  <Check className="w-4 h-4 mr-2" />
+                ) : (
+                  <Copy className="w-4 h-4 mr-2" />
+                )}
+                Copy All
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* All Keywords */}
+              <div>
+                <h4 className="font-semibold text-sm mb-2">
+                  All Extracted Keywords ({allKeywords.length})
+                </h4>
+                <div className="flex flex-wrap gap-1">
+                  {allKeywords.map((keyword, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {keyword}
+                    </Badge>
+                  ))}
                 </div>
-              </>
-            )}
+              </div>
 
-            {/* For Non-Fit Candidates: Show matchable/unmatchable */}
-            {!isFit && analysisResult.matchableKeywords && analysisResult.unmatchableKeywords && 
-             (analysisResult.matchableKeywords.length > 0 || analysisResult.unmatchableKeywords.length > 0) && (
-              <>
-                <Separator />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {analysisResult.matchableKeywords.length > 0 && (
+              {/* For Fit Candidates: Show Used vs Not Used */}
+              {isFit && analysisResult.keywordsUsed && Array.isArray(analysisResult.keywordsUsed) && (
+                <>
+                  <Separator />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <h4 className="font-semibold text-sm mb-2 text-green-600">
-                        Matchable to Your Experience ({analysisResult.matchableKeywords.length})
+                        Keywords Used in Bullets ({analysisResult.keywordsUsed.length})
                       </h4>
                       <div className="flex flex-wrap gap-1">
-                        {analysisResult.matchableKeywords.map((keyword, index) => (
+                        {analysisResult.keywordsUsed.map((keyword, index) => (
                           <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-300">
                             {keyword}
                           </Badge>
                         ))}
                       </div>
                     </div>
-                  )}
-                  {analysisResult.unmatchableKeywords.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2 text-red-600">
-                        Not Found in Experience ({analysisResult.unmatchableKeywords.length})
-                      </h4>
-                      <div className="flex flex-wrap gap-1">
-                        {analysisResult.unmatchableKeywords.map((keyword, index) => (
-                          <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-800 border-red-300">
-                            {keyword}
-                          </Badge>
-                        ))}
+                    {analysisResult.keywordsNotUsed && Array.isArray(analysisResult.keywordsNotUsed) && (
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2 text-amber-600">
+                          Keywords Not Embedded ({analysisResult.keywordsNotUsed.length})
+                        </h4>
+                        <div className="flex flex-wrap gap-1">
+                          {analysisResult.keywordsNotUsed.map((keyword, index) => (
+                            <Badge key={index} variant="outline" className="text-xs bg-amber-50 text-amber-800 border-amber-300">
+                              {keyword}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* For Non-Fit Candidates */}
+              {!isFit && (
+                <>
+                  {(analysisResult.matchableKeywords?.length > 0 || analysisResult.unmatchableKeywords?.length > 0) && (
+                    <>
+                      <Separator />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {analysisResult.matchableKeywords && Array.isArray(analysisResult.matchableKeywords) && analysisResult.matchableKeywords.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold text-sm mb-2 text-green-600">
+                              Matchable to Your Experience ({analysisResult.matchableKeywords.length})
+                            </h4>
+                            <div className="flex flex-wrap gap-1">
+                              {analysisResult.matchableKeywords.map((keyword, index) => (
+                                <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-300">
+                                  {keyword}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {analysisResult.unmatchableKeywords && Array.isArray(analysisResult.unmatchableKeywords) && analysisResult.unmatchableKeywords.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold text-sm mb-2 text-red-600">
+                              Not Found in Experience ({analysisResult.unmatchableKeywords.length})
+                            </h4>
+                            <div className="flex flex-wrap gap-1">
+                              {analysisResult.unmatchableKeywords.map((keyword, index) => (
+                                <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-800 border-red-300">
+                                  {keyword}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
-                </div>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Requirements Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Matched Requirements */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-green-600 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              Matched Requirements ({analysisResult.matchedRequirements.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {analysisResult.matchedRequirements.map((match, index) => (
-                <div key={index} className="border border-green-200 rounded-lg p-3 bg-green-50">
-                  <div className="mb-2">
-                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs">
-                      {match.jobRequirement}
-                    </Badge>
+        {matchedRequirements.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-green-600 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                Matched Requirements ({matchedRequirements.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {matchedRequirements.map((match, index) => (
+                  <div key={index} className="border border-green-200 rounded-lg p-3 bg-green-50">
+                    <div className="mb-2">
+                      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-xs">
+                        {match.jobRequirement}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-green-800">
+                      <span className="font-medium">{match.experienceSource}:</span> {match.experienceEvidence}
+                    </p>
                   </div>
-                  <p className="text-sm text-green-800">
-                    <span className="font-medium">{match.experienceSource}:</span> {match.experienceEvidence}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Unmatched Requirements */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-600 flex items-center gap-2">
-              <XCircle className="w-5 h-5" />
-              Missing Requirements ({analysisResult.unmatchedRequirements.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {analysisResult.unmatchedRequirements.map((req, index) => (
-                <div key={index} className="border border-red-200 rounded-lg p-3 bg-red-50">
-                  <div className="flex items-start justify-between">
-                    <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 text-xs">
-                      {req.requirement}
-                    </Badge>
-                    <Badge className={
-                      req.importance === 'critical' 
-                        ? "bg-red-100 text-red-800 border-red-200 text-xs" 
-                        : "bg-orange-100 text-orange-800 border-orange-200 text-xs"
-                    } variant="secondary">
-                      {req.importance}
-                    </Badge>
+        {unmatchedRequirements.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-red-600 flex items-center gap-2">
+                <XCircle className="w-5 h-5" />
+                Missing Requirements ({unmatchedRequirements.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {unmatchedRequirements.map((req, index) => (
+                  <div key={index} className="border border-red-200 rounded-lg p-3 bg-red-50">
+                    <div className="flex items-start justify-between">
+                      <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 text-xs">
+                        {req.requirement}
+                      </Badge>
+                      <Badge className={
+                        req.importance === 'critical' 
+                          ? "bg-red-100 text-red-800 border-red-200 text-xs" 
+                          : "bg-orange-100 text-orange-800 border-orange-200 text-xs"
+                      } variant="secondary">
+                        {req.importance}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Critical Gaps Warning */}
@@ -370,7 +383,7 @@ export const JobAnalysisResult = () => {
 
       <Separator />
 
-      {/* Resume Bullets Section - FIXED VERSION */}
+      {/* Resume Bullets Section */}
       {isFit && analysisResult.resumeBullets?.bulletOrganization && Array.isArray(analysisResult.resumeBullets.bulletOrganization) && analysisResult.resumeBullets.bulletOrganization.length > 0 && (
         <Card>
           <CardHeader>
@@ -437,8 +450,8 @@ export const JobAnalysisResult = () => {
         </Card>
       )}
 
-      {/* Recommendations - Only for non-fit candidates */}
-      {!isFit && analysisResult.recommendations?.forCandidate && analysisResult.recommendations.forCandidate.length > 0 && (
+      {/* Recommendations */}
+      {!isFit && analysisResult.recommendations?.forCandidate && Array.isArray(analysisResult.recommendations.forCandidate) && analysisResult.recommendations.forCandidate.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
