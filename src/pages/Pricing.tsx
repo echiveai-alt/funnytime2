@@ -116,12 +116,6 @@ const Pricing = () => {
 
           {/* Pro Plan Card */}
           <Card className="p-8 relative border-primary shadow-lg">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              <span className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
-                Most Popular
-              </span>
-            </div>
-
             <div className="mb-6">
               <h3 className="text-2xl font-bold mb-2">Resume Builder Pro</h3>
               <div className="text-4xl font-bold mb-4">
