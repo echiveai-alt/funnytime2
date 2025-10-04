@@ -55,12 +55,33 @@ serve(async (req) => {
       );
     }
 
-    // Get OpenAI API key
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      logger.error('OPENAI_API_KEY not configured', { userId });
-      throw new Error('Server configuration error - OPENAI_API_KEY not set');
+    // ===== API KEY CONFIGURATION WITH FALLBACK =====
+    // Get OpenAI API keys with fallback for backwards compatibility
+    // This allows gradual migration: set stage-specific keys when ready,
+    // or continue using the single OPENAI_API_KEY for all stages
+    const fallbackKey = Deno.env.get('OPENAI_API_KEY');
+    const stage1ApiKey = Deno.env.get('OPENAI_API_KEY_STAGE1') || fallbackKey;
+    const stage2aApiKey = Deno.env.get('OPENAI_API_KEY_STAGE2A') || fallbackKey;
+    const stage2bApiKey = Deno.env.get('OPENAI_API_KEY_STAGE2B') || fallbackKey;
+
+    // Validate at least one key configuration path is available
+    if (!stage1ApiKey || !stage2aApiKey || !stage2bApiKey) {
+      const missing = [];
+      if (!stage1ApiKey) missing.push('OPENAI_API_KEY_STAGE1 or OPENAI_API_KEY');
+      if (!stage2aApiKey) missing.push('OPENAI_API_KEY_STAGE2A or OPENAI_API_KEY');
+      if (!stage2bApiKey) missing.push('OPENAI_API_KEY_STAGE2B or OPENAI_API_KEY');
+      
+      logger.error('Missing API keys', { userId, missing });
+      throw new Error(`Server configuration error - Missing API keys: ${missing.join(', ')}`);
     }
+
+    // Log which keys are being used (for debugging/monitoring)
+    logger.info('API key configuration', {
+      userId,
+      stage1: stage1ApiKey === fallbackKey ? 'using fallback' : 'using dedicated key',
+      stage2a: stage2aApiKey === fallbackKey ? 'using fallback' : 'using dedicated key',
+      stage2b: stage2bApiKey === fallbackKey ? 'using fallback' : 'using dedicated key'
+    });
 
     // Create Supabase client with user's auth
     const supabaseClient = createClient(
@@ -188,12 +209,12 @@ serve(async (req) => {
       keywordMatchType
     });
 
-    // ===== RUN ANALYSIS - THIS IS THE CRITICAL PART =====
+    // ===== RUN ANALYSIS - THREE STAGES WITH DEDICATED API KEYS =====
 
-    // Stage 1: Extract job requirements
+    // Stage 1: Extract job requirements (using stage1ApiKey)
     logger.info('Starting Stage 1: Job requirement extraction', { userId });
     const stage1Results = await extractJobRequirements(
-      openaiApiKey,
+      stage1ApiKey,  // ← Stage-specific API key
       jobDescription,
       userId
     );
@@ -205,10 +226,10 @@ serve(async (req) => {
       jobTitle: stage1Results.jobTitle
     });
 
-    // Stage 2a: Match candidate to job
+    // Stage 2a: Match candidate to job (using stage2aApiKey)
     logger.info('Starting Stage 2a: Candidate matching', { userId });
     const stage2aResults = await matchCandidateToJob(
-      openaiApiKey,
+      stage2aApiKey,  // ← Stage-specific API key
       stage1Results,
       experiencesByRole,
       educationInfo,
@@ -224,7 +245,7 @@ serve(async (req) => {
       unmatchedCount: stage2aResults.unmatchedRequirements.length
     });
 
-    // Stage 2b: Generate bullets (only if fit)
+    // Stage 2b: Generate bullets (only if fit, using stage2bApiKey)
     let bulletData: {
       bulletPoints?: Record<string, any[]>;
       keywordsUsed?: string[];
@@ -235,7 +256,7 @@ serve(async (req) => {
       logger.info('Candidate is a fit - generating bullets', { userId });
       
       bulletData = await generateBullets(
-        openaiApiKey,
+        stage2bApiKey,  // ← Stage-specific API key
         experiencesByRole,
         stage2aResults.matchedRequirements,
         stage1Results.allKeywords,
@@ -275,120 +296,64 @@ serve(async (req) => {
       criticalGaps: stage2aResults.criticalGaps,
       recommendations: stage2aResults.recommendations,
 
-      // Stage 2b
+      // Stage 2b (only if fit)
       bulletPoints: bulletData.bulletPoints,
       keywordsUsed: bulletData.keywordsUsed,
       keywordsNotUsed: bulletData.keywordsNotUsed,
 
-      // Action plan
-      actionPlan: {
-        readyForApplication: stage2aResults.isFit && !stage2aResults.absoluteGaps?.length,
-        readyForBulletGeneration: stage2aResults.isFit,
-        criticalGaps: stage2aResults.criticalGaps || [],
-        absoluteGaps: stage2aResults.absoluteGaps || []
-      }
-    };
-
-    // Add resume bullets metadata if generated
-    if (bulletData.bulletPoints) {
-      // Group bullets by company, maintaining chronological order
-      const bulletsByCompany: Record<string, { 
-        roles: Array<{ 
-          title: string; 
-          bulletPoints: any[]; 
-          startDate: string;
-        }> 
-      }> = {};
-      
-      Object.entries(bulletData.bulletPoints).forEach(([roleKey, bullets]) => {
-        const [companyName, roleTitle] = roleKey.split(' - ');
-        
-        // Find the role's start date for sorting
-        const role = userRoles.find(r => r.company === companyName && r.title === roleTitle);
-        const startDate = role?.start_date || '1900-01-01';
-        
-        if (!bulletsByCompany[companyName]) {
-          bulletsByCompany[companyName] = { roles: [] };
-        }
-        
-        bulletsByCompany[companyName].roles.push({
-          title: roleTitle,
-          bulletPoints: bullets,
-          startDate
-        });
-      });
-      
-      // Sort roles within each company by date (most recent first)
-      Object.values(bulletsByCompany).forEach(company => {
-        company.roles.sort((a, b) => {
-          return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-        });
-      });
-      
-      // Convert to array and sort companies by most recent role start date
-      const bulletOrganization = Object.entries(bulletsByCompany)
-        .map(([companyName, companyData]) => {
-          const mostRecentDate = companyData.roles[0].startDate;
-          return {
-            name: companyName,
-            roles: companyData.roles.map(({ title, bulletPoints }) => ({
-              title,
-              bulletPoints
-            })),
-            _sortDate: mostRecentDate // temporary field for sorting
-          };
-        })
-        .sort((a, b) => {
-          return new Date(b._sortDate).getTime() - new Date(a._sortDate).getTime();
-        })
-        .map(({ name, roles }) => ({ name, roles })); // remove sort field
-      
-      unifiedResults.resumeBullets = {
-        bulletOrganization,
+      // Resume bullets format (for backwards compatibility)
+      resumeBullets: bulletData.bulletPoints ? {
+        bulletOrganization: Object.entries(bulletData.bulletPoints || {}).map(([role, bullets]) => ({
+          role,
+          bullets: bullets.map((b: any) => ({
+            text: b.text,
+            experienceId: b.experienceId,
+            visualWidth: b.visualWidth,
+            quantified: b.quantified,
+            relevance: b.relevance
+          }))
+        })),
         keywordsUsed: bulletData.keywordsUsed || [],
         keywordsNotUsed: bulletData.keywordsNotUsed || [],
         generatedFrom: {
-          totalExperiences: Object.values(experiencesByRole).flat().length,
-          keywordMatchType,
-          scoreThreshold: CONSTANTS.FIT_THRESHOLD,
-          visualWidthRange: {
-            min: CONSTANTS.VISUAL_WIDTH_MIN,
-            max: CONSTANTS.VISUAL_WIDTH_MAX,
-            target: CONSTANTS.VISUAL_WIDTH_TARGET
-          }
+          jobTitle: stage1Results.jobTitle,
+          companySummary: stage1Results.companySummary,
+          timestamp: new Date().toISOString()
         }
-      };
-      
-      logger.info('Bullet organization complete', {
-        userId,
-        companiesCount: bulletOrganization.length,
-        totalRoles: bulletOrganization.reduce((sum, c) => sum + c.roles.length, 0)
-      });
-    }
+      } : undefined,
 
-    logger.info('Analysis complete - returning results', {
+      // Action plan
+      actionPlan: {
+        readyForApplication: stage2aResults.isFit,
+        readyForBulletGeneration: stage2aResults.isFit,
+        criticalGaps: stage2aResults.criticalGaps
+      }
+    };
+
+    logger.info('Analysis complete', {
       userId,
-      overallScore: unifiedResults.overallScore,
+      score: unifiedResults.overallScore,
       isFit: unifiedResults.isFit,
-      hasBullets: !!unifiedResults.bulletPoints,
-      readyForApplication: unifiedResults.actionPlan.readyForApplication
+      bulletsGenerated: !!unifiedResults.bulletPoints
     });
 
-    return new Response(JSON.stringify(unifiedResults), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify(unifiedResults),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    );
 
   } catch (error: any) {
-    logger.error('HTTP handler error', { 
+    logger.error('Analysis failed', {
       error: error.message,
-      stack: error.stack 
+      stack: error.stack
     });
-    
+
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Analysis failed',
-        details: error.stack 
+        error: error.message || 'Analysis failed unexpectedly'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
