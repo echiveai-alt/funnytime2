@@ -66,6 +66,7 @@ export const useJobAnalysis = () => {
     console.error('Analysis error:', error);
     console.error('Error details:', JSON.stringify(error, null, 2));
     
+    // Check for JSON parsing errors - these should never be retried
     if (error?.message?.includes('is not valid JSON') || 
         error?.message?.includes('Unexpected token') ||
         error?.message?.includes('JSON.parse')) {
@@ -148,6 +149,8 @@ export const useJobAnalysis = () => {
     return fn().catch(error => {
       const errorInfo = handleAnalysisError(error);
       
+      // CRITICAL: Don't retry JSON parsing errors or non-retryable errors
+      // This prevents infinite loops when the backend returns malformed JSON
       if (!errorInfo.retryable) {
         console.log('Error is not retryable, failing immediately:', errorInfo.code);
         throw error;
@@ -169,7 +172,7 @@ export const useJobAnalysis = () => {
       throw new Error('Please log in to analyze job fit');
     }
 
-    // Start at 0%
+    // Stage 1: Extracting keywords and requirements (0%)
     setAnalysisProgress(0);
 
     console.log('About to invoke edge function with:', {
@@ -182,94 +185,105 @@ export const useJobAnalysis = () => {
 
     console.log('Calling unified analyze-job-fit edge function...');
 
-    // Multi-stage progress system
-    let currentStage = 1;
-    const stages = [
-      { min: 0, max: 33, duration: 8000 },   // Stage 1: 0-33% over 8 seconds
-      { min: 34, max: 66, duration: 10000 }, // Stage 2a: 34-66% over 10 seconds
-      { min: 67, max: 95, duration: 12000 }, // Stage 2b: 67-95% over 12 seconds
-    ];
-
-    let stageStartTime = Date.now();
-
+    // Simulate stage progression during analysis
     const progressInterval = setInterval(() => {
-      const stage = stages[currentStage - 1];
-      const elapsed = Date.now() - stageStartTime;
-      const stageProgress = Math.min(elapsed / stage.duration, 1); // 0 to 1
-      
-      // Calculate progress within current stage using easing function
-      const easeOutProgress = 1 - Math.pow(1 - stageProgress, 3); // Cubic ease-out
-      const targetProgress = stage.min + (stage.max - stage.min) * easeOutProgress;
-      
-      setAnalysisProgress(Math.min(targetProgress, stage.max));
-
-      // Check if we should move to next stage
-      if (elapsed >= stage.duration && currentStage < stages.length) {
-        currentStage++;
-        stageStartTime = Date.now();
-        setAnalysisProgress(stages[currentStage - 1].min);
-      }
-    }, 100); // Update every 100ms for smoother animation
-
-    try {
-      const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
-        body: { 
-          jobDescription,
-          userId: session.user.id,
-          keywordMatchType
-        }
+      setAnalysisProgress(prev => {
+        if (prev < 30) return prev + 2; // Stage 1: slowly progress to 30%
+        return prev;
       });
+    }, 500);
 
-      clearInterval(progressInterval);
+    const { data, error } = await supabase.functions.invoke('analyze-job-fit', {
+      body: { 
+        jobDescription,
+        userId: session.user.id,
+        keywordMatchType
+      }
+    });
 
-      console.log('=== EDGE FUNCTION RESPONSE ===');
-      console.log('Has data:', !!data);
-      console.log('Has error:', !!error);
+    clearInterval(progressInterval);
+
+    console.log('=== EDGE FUNCTION RESPONSE ===');
+    console.log('Has data:', !!data);
+    console.log('Has error:', !!error);
+    
+    if (data) {
+      console.log('Data type:', typeof data);
+      console.log('Data keys:', Object.keys(data));
       
-      if (data) {
-        console.log('Data type:', typeof data);
-        console.log('Data keys:', Object.keys(data));
-        
-        if (data.success && data.message === 'Database connection successful!') {
-          console.error('WRONG DEPLOYMENT: Edge Function is returning test response, not analysis!');
-          throw new Error('Edge function is not properly deployed. Please redeploy the analyze-job-fit function.');
-        }
+      // Check if this is the test response (wrong deployment)
+      if (data.success && data.message === 'Database connection successful!') {
+        console.error('WRONG DEPLOYMENT: Edge Function is returning test response, not analysis!');
+        throw new Error('Edge Function deployment error: Function is returning test data instead of analysis. Please redeploy the production version of index.ts');
       }
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw error;
-      }
-
-      if (data?.error) {
-        console.error('Error in response data:', data.error);
+      
+      // Check for embedded error
+      if (data.error) {
+        console.error('Error embedded in response data:', data.error);
         throw new Error(data.error);
       }
-
-      // Jump to 100% on completion
-      setAnalysisProgress(100);
       
-      // Small delay for visual feedback
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Check for expected properties
+      console.log('Has overallScore:', 'overallScore' in data, typeof data.overallScore);
+      console.log('Has isFit:', 'isFit' in data, typeof data.isFit);
+    }
+    
+    if (error) {
+      console.error('Error object:', JSON.stringify(error, null, 2));
+    }
+    console.log('=== END RESPONSE ===');
 
-      // Validate response
-      if (!data || typeof data.overallScore !== 'number' || typeof data.isFit !== 'boolean') {
-        console.error('Invalid response structure:', data);
-        throw new Error('Invalid analysis response received. Expected overallScore and isFit properties.');
+    if (error) {
+      console.error('Edge function error:', error);
+      
+      if (error.message?.includes('FunctionsRelayError')) {
+        throw new Error('Edge function not found or not deployed. Please verify the function "analyze-job-fit" is deployed in your Supabase project.');
       }
-
-      console.log('Valid response received:', {
-        overallScore: data.overallScore,
-        isFit: data.isFit,
-        hasResumeBullets: !!data.resumeBullets
-      });
-
-      return data;
       
-    } catch (error) {
-      clearInterval(progressInterval);
+      if (error.context?.body) {
+        console.error('Error response body:', error.context.body);
+        throw new Error(error.context.body.error || error.message);
+      }
+      
       throw error;
     }
+
+    // Check if we got an error in the response data itself
+    if (data?.error) {
+      console.error('Error in response data:', data.error);
+      throw new Error(data.error);
+    }
+
+    // Stage 1 complete: Move to stage 2a (33%)
+    setAnalysisProgress(33);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Stage 2a: Matching against experiences (66%)
+    setAnalysisProgress(66);
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Validate response
+    if (!data) {
+      throw new Error('No data returned from Edge Function');
+    }
+    
+    if (typeof data.overallScore !== 'number') {
+      console.error('Invalid overallScore:', data.overallScore, typeof data.overallScore);
+      throw new Error(`Invalid response: overallScore is ${typeof data.overallScore}, expected number.`);
+    }
+    
+    if (typeof data.isFit !== 'boolean') {
+      console.error('Invalid isFit:', data.isFit, typeof data.isFit);
+      throw new Error(`Invalid response: isFit is ${typeof data.isFit}, expected boolean.`);
+    }
+
+    console.log('Valid response received:', {
+      overallScore: data.overallScore,
+      isFit: data.isFit,
+      hasResumeBullets: !!data.resumeBullets
+    });
+
+    return data;
   };
 
   const analyzeJobFit = async (
@@ -297,6 +311,9 @@ export const useJobAnalysis = () => {
         () => performAnalysis(jobDescription, keywordMatchType),
         ANALYSIS_CONSTANTS.MAX_RETRIES
       );
+
+      // Stage 2b complete: Final stage (100%)
+      setAnalysisProgress(100);
 
       console.log('Storing analysis results...');
       localStorage.setItem('jobAnalysisResult', JSON.stringify(data));
