@@ -75,55 +75,47 @@ serve(async (req) => {
 
     logger.info('Fetching user data', { userId });
 
-    // ===== FETCH USER DATA FROM DATABASE (PARALLEL QUERIES) =====
+    // ===== FETCH USER DATA FROM DATABASE =====
     
-    // OPTIMIZED: Run all queries in parallel instead of sequentially
-    const [
-      { data: educationData, error: educationError },
-      { data: companiesData, error: companiesError },
-      { data: experiencesData, error: experiencesError }
-    ] = await Promise.all([
-      // 1. Fetch Education
-      supabaseClient
-        .from('education')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false }),
-      
-      // 2. Fetch Companies and Roles
-      supabaseClient
-        .from('companies')
-        .select(`
-          *,
-          roles (*)
-        `)
-        .eq('user_id', userId)
-        .order('start_date', { ascending: false }),
-      
-      // 3. Fetch Experiences with Role and Company data
-      supabaseClient
-        .from('experiences')
-        .select(`
-          *,
-          roles (
-            *,
-            companies (*)
-          )
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false})
-    ]);
+    // 1. Fetch Education
+    const { data: educationData, error: educationError } = await supabaseClient
+      .from('education')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-    // Error handling for parallel queries
     if (educationError) {
       logger.error('Failed to fetch education', { userId, error: educationError.message });
       throw new Error(`Failed to fetch education: ${educationError.message}`);
     }
 
+    // 2. Fetch Companies and Roles
+    const { data: companiesData, error: companiesError } = await supabaseClient
+      .from('companies')
+      .select(`
+        *,
+        roles (*)
+      `)
+      .eq('user_id', userId)
+      .order('start_date', { ascending: false });
+
     if (companiesError) {
       logger.error('Failed to fetch companies', { userId, error: companiesError.message });
       throw new Error(`Failed to fetch companies: ${companiesError.message}`);
     }
+
+    // 3. Fetch Experiences with Role and Company data
+    const { data: experiencesData, error: experiencesError } = await supabaseClient
+      .from('experiences')
+      .select(`
+        *,
+        roles (
+          *,
+          companies (*)
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
     if (experiencesError) {
       logger.error('Failed to fetch experiences', { userId, error: experiencesError.message });
@@ -196,7 +188,7 @@ serve(async (req) => {
       keywordMatchType
     });
 
-    // ===== RUN ANALYSIS =====
+    // ===== RUN ANALYSIS - THIS IS THE CRITICAL PART =====
 
     // Stage 1: Extract job requirements
     logger.info('Starting Stage 1: Job requirement extraction', { userId });
@@ -290,49 +282,67 @@ serve(async (req) => {
 
       // Action plan
       actionPlan: {
-        readyForApplication: stage2aResults.isFit,
+        readyForApplication: stage2aResults.isFit && !stage2aResults.absoluteGaps?.length,
         readyForBulletGeneration: stage2aResults.isFit,
         criticalGaps: stage2aResults.criticalGaps || [],
-        absoluteGaps: stage2aResults.absoluteGaps
+        absoluteGaps: stage2aResults.absoluteGaps || []
       }
     };
 
-    // If fit, create resumeBullets structure for UI
-    if (stage2aResults.isFit && bulletData.bulletPoints) {
-      const bulletOrganization: Array<{
-        name: string;
-        roles: Array<{
-          title: string;
-          bulletPoints: any[];
-        }>;
-      }> = [];
-
-      // Group by company
-      const companiesBullets: Record<string, Record<string, any[]>> = {};
+    // Add resume bullets metadata if generated
+    if (bulletData.bulletPoints) {
+      // Group bullets by company, maintaining chronological order
+      const bulletsByCompany: Record<string, { 
+        roles: Array<{ 
+          title: string; 
+          bulletPoints: any[]; 
+          startDate: string;
+        }> 
+      }> = {};
       
       Object.entries(bulletData.bulletPoints).forEach(([roleKey, bullets]) => {
         const [companyName, roleTitle] = roleKey.split(' - ');
         
-        if (!companiesBullets[companyName]) {
-          companiesBullets[companyName] = {};
+        // Find the role's start date for sorting
+        const role = userRoles.find(r => r.company === companyName && r.title === roleTitle);
+        const startDate = role?.start_date || '1900-01-01';
+        
+        if (!bulletsByCompany[companyName]) {
+          bulletsByCompany[companyName] = { roles: [] };
         }
         
-        companiesBullets[companyName][roleTitle] = bullets;
-      });
-
-      // Convert to array format
-      Object.entries(companiesBullets).forEach(([companyName, roles]) => {
-        const rolesArray = Object.entries(roles).map(([roleTitle, bulletPoints]) => ({
+        bulletsByCompany[companyName].roles.push({
           title: roleTitle,
-          bulletPoints
-        }));
-
-        bulletOrganization.push({
-          name: companyName,
-          roles: rolesArray
+          bulletPoints: bullets,
+          startDate
         });
       });
-
+      
+      // Sort roles within each company by date (most recent first)
+      Object.values(bulletsByCompany).forEach(company => {
+        company.roles.sort((a, b) => {
+          return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+        });
+      });
+      
+      // Convert to array and sort companies by most recent role start date
+      const bulletOrganization = Object.entries(bulletsByCompany)
+        .map(([companyName, companyData]) => {
+          const mostRecentDate = companyData.roles[0].startDate;
+          return {
+            name: companyName,
+            roles: companyData.roles.map(({ title, bulletPoints }) => ({
+              title,
+              bulletPoints
+            })),
+            _sortDate: mostRecentDate // temporary field for sorting
+          };
+        })
+        .sort((a, b) => {
+          return new Date(b._sortDate).getTime() - new Date(a._sortDate).getTime();
+        })
+        .map(({ name, roles }) => ({ name, roles })); // remove sort field
+      
       unifiedResults.resumeBullets = {
         bulletOrganization,
         keywordsUsed: bulletData.keywordsUsed || [],
@@ -348,32 +358,37 @@ serve(async (req) => {
           }
         }
       };
+      
+      logger.info('Bullet organization complete', {
+        userId,
+        companiesCount: bulletOrganization.length,
+        totalRoles: bulletOrganization.reduce((sum, c) => sum + c.roles.length, 0)
+      });
     }
 
-    logger.info('Analysis complete', {
+    logger.info('Analysis complete - returning results', {
       userId,
       overallScore: unifiedResults.overallScore,
       isFit: unifiedResults.isFit,
-      hasBullets: !!unifiedResults.resumeBullets
+      hasBullets: !!unifiedResults.bulletPoints,
+      readyForApplication: unifiedResults.actionPlan.readyForApplication
     });
 
-    return new Response(
-      JSON.stringify(unifiedResults),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
-
-  } catch (error) {
-    logger.error('Edge function error', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+    return new Response(JSON.stringify(unifiedResults), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
     });
 
+  } catch (error: any) {
+    logger.error('HTTP handler error', { 
+      error: error.message,
+      stack: error.stack 
+    });
+    
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'An unexpected error occurred' 
+        error: error.message || 'Analysis failed',
+        details: error.stack 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
