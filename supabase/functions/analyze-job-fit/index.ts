@@ -76,12 +76,24 @@ serve(async (req) => {
     }
 
     // Log which keys are being used (for debugging/monitoring)
-    logger.info('API key configuration', {
-      userId,
+    // Using console.log for better visibility in Supabase logs
+    const keyConfig = {
       stage1: stage1ApiKey === fallbackKey ? 'using fallback' : 'using dedicated key',
       stage2a: stage2aApiKey === fallbackKey ? 'using fallback' : 'using dedicated key',
-      stage2b: stage2bApiKey === fallbackKey ? 'using fallback' : 'using dedicated key'
-    });
+      stage2b: stage2bApiKey === fallbackKey ? 'using fallback' : 'using dedicated key',
+      hasFallbackKey: !!fallbackKey,
+      hasStage1Key: !!Deno.env.get('OPENAI_API_KEY_STAGE1'),
+      hasStage2aKey: !!Deno.env.get('OPENAI_API_KEY_STAGE2A'),
+      hasStage2bKey: !!Deno.env.get('OPENAI_API_KEY_STAGE2B')
+    };
+    
+    console.log('='.repeat(70));
+    console.log('🔑 API KEY CONFIGURATION');
+    console.log('='.repeat(70));
+    console.log(JSON.stringify(keyConfig, null, 2));
+    console.log('='.repeat(70));
+    
+    logger.info('API key configuration', { userId, ...keyConfig });
 
     // Create Supabase client with user's auth
     const supabaseClient = createClient(
