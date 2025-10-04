@@ -46,15 +46,21 @@ export function validateJobDescription(jd: string): { valid: boolean; error?: st
   return { valid: true };
 }
 
-export function validateStage2Response(stage2Results: any): Stage2Results {
+/**
+ * Validates Stage 2a response (matching only - no bullets)
+ * This is called after the matching AI call, before bullet generation
+ */
+export function validateStage2aMatchingResponse(
+  stage2Results: any
+): Omit<Stage2Results, 'bulletPoints' | 'keywordsUsed' | 'keywordsNotUsed'> {
   // Basic structure validation
   if (typeof stage2Results.overallScore !== 'number') {
-    logger.warn('Missing or invalid overallScore, defaulting to 0', { stage2Results });
+    logger.warn('Missing or invalid overallScore, defaulting to 0');
     stage2Results.overallScore = 0;
   }
   
   if (typeof stage2Results.isFit !== 'boolean') {
-    logger.warn('Missing or invalid isFit, defaulting to false', { stage2Results });
+    logger.warn('Missing or invalid isFit, defaulting to false');
     stage2Results.isFit = false;
   }
   
@@ -96,22 +102,7 @@ export function validateStage2Response(stage2Results: any): Stage2Results {
     );
   }
 
-  // Validate fit-specific fields
-  if (stage2Results.isFit) {
-    if (!stage2Results.bulletPoints || typeof stage2Results.bulletPoints !== 'object') {
-      logger.warn('Fit candidate missing bulletPoints, defaulting to empty object');
-      stage2Results.bulletPoints = {};
-    }
-    if (!Array.isArray(stage2Results.keywordsUsed)) {
-      logger.warn('Fit candidate missing keywordsUsed array, defaulting to empty array');
-      stage2Results.keywordsUsed = [];
-    }
-    if (!Array.isArray(stage2Results.keywordsNotUsed)) {
-      stage2Results.keywordsNotUsed = [];
-    }
-  }
-
-  // Validate non-fit specific fields
+  // Validate non-fit specific fields (gaps and recommendations)
   if (!stage2Results.isFit) {
     if (!Array.isArray(stage2Results.matchableKeywords)) {
       stage2Results.matchableKeywords = [];
@@ -137,12 +128,51 @@ export function validateStage2Response(stage2Results: any): Stage2Results {
     }
   }
 
-  logger.info('Stage 2 response validation completed', {
+  logger.info('Stage 2a matching validation completed', {
     score: stage2Results.overallScore,
     isFit: stage2Results.isFit,
     matchedCount: stage2Results.matchedRequirements.length,
     unmatchedCount: stage2Results.unmatchedRequirements.length,
     hasRecommendations: !stage2Results.isFit ? stage2Results.recommendations?.forCandidate?.length > 0 : 'N/A'
+  });
+
+  // Return without bulletPoints, keywordsUsed, keywordsNotUsed
+  return stage2Results as Omit<Stage2Results, 'bulletPoints' | 'keywordsUsed' | 'keywordsNotUsed'>;
+}
+
+/**
+ * Validates complete Stage 2 response (with bullets and keywords)
+ * This is called after bullet generation for final validation
+ */
+export function validateStage2Response(stage2Results: any): Stage2Results {
+  // First, validate the matching portion (reuse the logic)
+  const matchingValidated = validateStage2aMatchingResponse(stage2Results);
+  
+  // Copy validated matching results back
+  Object.assign(stage2Results, matchingValidated);
+
+  // NOW validate bullet-specific fields (only if fit)
+  if (stage2Results.isFit) {
+    if (!stage2Results.bulletPoints || typeof stage2Results.bulletPoints !== 'object') {
+      logger.warn('Fit candidate missing bulletPoints, defaulting to empty object');
+      stage2Results.bulletPoints = {};
+    }
+    if (!Array.isArray(stage2Results.keywordsUsed)) {
+      logger.warn('Fit candidate missing keywordsUsed array, defaulting to empty array');
+      stage2Results.keywordsUsed = [];
+    }
+    if (!Array.isArray(stage2Results.keywordsNotUsed)) {
+      logger.warn('Fit candidate missing keywordsNotUsed array, defaulting to empty array');
+      stage2Results.keywordsNotUsed = [];
+    }
+  }
+
+  logger.info('Stage 2 complete validation finished', {
+    score: stage2Results.overallScore,
+    isFit: stage2Results.isFit,
+    hasBullets: !!stage2Results.bulletPoints,
+    bulletCount: stage2Results.bulletPoints ? Object.values(stage2Results.bulletPoints).flat().length : 0,
+    keywordsUsedCount: stage2Results.keywordsUsed?.length || 0
   });
 
   return stage2Results as Stage2Results;
