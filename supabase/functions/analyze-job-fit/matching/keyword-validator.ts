@@ -43,6 +43,12 @@ export function verifyKeywordsInBullets(
   actualKeywordsUsed: string[];
   actualKeywordsNotUsed: string[];
 } {
+  // Create a normalized map: lowercase keyword -> original keyword from job description
+  const keywordMap = new Map<string, string>();
+  allKeywords.forEach(kw => {
+    keywordMap.set(kw.toLowerCase(), kw);
+  });
+  
   const allKeywordsInBullets = new Set<string>();
   const verifiedBullets: Record<string, any[]> = {};
   
@@ -53,7 +59,14 @@ export function verifyKeywordsInBullets(
         isKeywordInText(bullet.text, kw, matchType)
       );
       
-      verifiedKeywords.forEach((kw: string) => allKeywordsInBullets.add(kw));
+      // Add verified keywords using the ORIGINAL case from job description
+      verifiedKeywords.forEach((kw: string) => {
+        const normalizedKw = kw.toLowerCase();
+        const originalKeyword = keywordMap.get(normalizedKw);
+        if (originalKeyword) {
+          allKeywordsInBullets.add(originalKeyword);
+        }
+      });
       
       return {
         ...bullet,
@@ -62,6 +75,7 @@ export function verifyKeywordsInBullets(
     });
   });
   
+  // Now the comparison will work correctly because we're using the original case
   const actualKeywordsUsed = Array.from(allKeywordsInBullets);
   const actualKeywordsNotUsed = allKeywords.filter(kw => !allKeywordsInBullets.has(kw));
   
