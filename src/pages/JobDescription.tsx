@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +12,7 @@ import { Brain, FileText, AlertTriangle } from "lucide-react";
 
 const JobDescription = () => {
   const [jobDescription, setJobDescription] = useState(() => {
+    // Initialize from localStorage
     const stored = localStorage.getItem('jobDescription');
     return stored || "";
   });
@@ -26,10 +28,12 @@ const JobDescription = () => {
   const navigate = useNavigate();
   const { analyzeJobFit, isAnalyzing, analysisProgress, constants } = useJobAnalysis();
 
+  // Update character count when job description changes
   useEffect(() => {
     setCharacterCount(jobDescription.length);
   }, [jobDescription]);
 
+  // Handle navigation error flag
   useEffect(() => {
     const showError = localStorage.getItem('showJobDescriptionError');
     if (showError === 'required') {
@@ -53,12 +57,17 @@ const JobDescription = () => {
     } else if (trimmedDescription.length < constants.MIN_JOB_DESCRIPTION_LENGTH) {
       newErrors.jobDescription = `Job description must be at least ${constants.MIN_JOB_DESCRIPTION_LENGTH} characters (currently ${trimmedDescription.length})`;
     } else {
+      // Additional content validation
       const wordCount = trimmedDescription.split(/\s+/).length;
       if (wordCount < 20) {
         newErrors.jobDescription = "Job description seems too short to contain meaningful requirements";
       } else if (trimmedDescription.length > 10000) {
         newErrors.jobDescription = "Job description is too long. Please provide a more concise version (max 10,000 characters)";
       }
+    }
+    
+    if (trimmedDescription.length < constants.MIN_JOB_DESCRIPTION_LENGTH) {
+      newErrors.jobDescription = `Job description must be at least ${constants.MIN_JOB_DESCRIPTION_LENGTH} characters (currently ${trimmedDescription.length})`;
     }
     
     if (!keywordMatchType) {
@@ -72,6 +81,7 @@ const JobDescription = () => {
   const handleJobDescriptionChange = (value: string) => {
     setJobDescription(value);
     
+    // Clear validation errors as user types
     if (errors.jobDescription) {
       const newErrors = { ...errors };
       delete newErrors.jobDescription;
@@ -82,6 +92,7 @@ const JobDescription = () => {
   const handleKeywordMatchTypeChange = (value: string) => {
     setKeywordMatchType(value);
     
+    // Clear validation errors
     if (errors.keywordMatchType) {
       const newErrors = { ...errors };
       delete newErrors.keywordMatchType;
@@ -102,14 +113,17 @@ const JobDescription = () => {
     }
 
     try {
+      // Store data in localStorage when submitting
       localStorage.setItem('jobDescription', jobDescription.trim());
       localStorage.setItem('keywordMatchType', keywordMatchType);
-      localStorage.removeItem('selectedKeywords');
+      localStorage.removeItem('selectedKeywords'); // Clear any old data
       
+      // Trigger the job analysis
       await analyzeJobFit(jobDescription.trim(), keywordMatchType);
       
     } catch (error) {
       console.error("Analysis error:", error);
+      // Error handling is done in the hook
     }
   };
 
@@ -123,22 +137,15 @@ const JobDescription = () => {
     }
   };
 
-  // Get the current stage message based on progress
-  const getStageMessage = () => {
-    if (analysisProgress <= 33) {
-      return "Extracting keywords and requirements from job description";
-    } else if (analysisProgress <= 66) {
-      return "Reviewing professional experiences and evaluating alignment";
+  const getProgressColor = () => {
+    const progressPercentage = Math.min(100, (characterCount / constants.MIN_JOB_DESCRIPTION_LENGTH) * 100);
+    if (progressPercentage < 100) {
+      return '[&>div]:bg-red-500';
+    } else if (characterCount < 200) {
+      return '[&>div]:bg-yellow-500';
     } else {
-      return "Creating resume points optimized for job description";
+      return '[&>div]:bg-green-500';
     }
-  };
-
-  // Get the current stage number for display
-  const getCurrentStage = () => {
-    if (analysisProgress <= 33) return "Stage 1";
-    if (analysisProgress <= 66) return "Stage 2a";
-    return "Stage 2b";
   };
 
   return (
@@ -167,37 +174,27 @@ const JobDescription = () => {
               </div>
               
               <div className="space-y-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {getCurrentStage()}
-                  </span>
-                  <span className="text-xs font-medium text-primary">
-                    {Math.round(analysisProgress)}%
-                  </span>
-                </div>
                 <Progress value={analysisProgress} className="w-full h-3" />
-                <p className="text-sm font-medium text-muted-foreground mt-3">
-                  {getStageMessage()}
+                <p className="text-sm text-muted-foreground">
+                  {analysisProgress < 33 && "Extracting keywords and requirements"}
+                  {analysisProgress >= 33 && analysisProgress < 66 && "Matching against experiences"}
+                  {analysisProgress >= 66 && analysisProgress < 100 && "Creating bullet points"}
+                  {analysisProgress >= 100 && "Complete!"}
                 </p>
               </div>
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-medium text-blue-900 mb-2">What's happening:</h4>
                 <ul className="space-y-1 text-sm text-blue-800 text-left">
-                  <li className={analysisProgress <= 33 ? "font-semibold" : ""}>
-                    • Extracting key requirements and skills from job description
-                  </li>
-                  <li className={analysisProgress > 33 && analysisProgress <= 66 ? "font-semibold" : ""}>
-                    • Matching against your professional experiences
-                  </li>
-                  <li className={analysisProgress > 66 ? "font-semibold" : ""}>
-                    • Calculating overall job fit percentage
-                  </li>
+                  <li>• Extracting key requirements and skills from job description</li>
+                  <li>• Matching against your professional experiences</li>
+                  <li>• Calculating overall job fit percentage</li>
                 </ul>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Job Description Text Area */}
               <div className="space-y-3">
                 <Label htmlFor="jobDescription" className="text-base font-semibold text-foreground">
                   Job Description Text
@@ -217,6 +214,7 @@ const JobDescription = () => {
                   </div>
                 )}
                 
+                {/* Character count with visual progress */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className={getCharacterCountColor()}>
@@ -234,6 +232,7 @@ const JobDescription = () => {
                 </div>
               </div>
 
+              {/* Keyword Matching Strategy */}
               <div className="space-y-3">
                 <Label className="text-base font-semibold text-foreground">
                   Keyword Matching Strategy
@@ -286,6 +285,7 @@ const JobDescription = () => {
                 )}
               </div>
 
+              {/* Action Button */}
               <div className="flex justify-center items-center py-2">
                 <Button
                   type="submit"
@@ -307,11 +307,13 @@ const JobDescription = () => {
                 </Button>
               </div>
 
+              {/* Help Text */}
               <div className="text-center text-sm text-muted-foreground space-y-1 mb-4">
                 <p>Analysis typically takes 15-45 seconds</p>
                 <p>Higher scores (80%+) automatically generate resume bullets</p>
               </div>
 
+              {/* Information Box */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
