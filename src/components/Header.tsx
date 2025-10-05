@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import keystepLogo from "@/assets/keystep-logo.png";
+import KeystepLogo from "./KeystepLogo";
 
 const Header = () => {
   return (
@@ -8,8 +8,8 @@ const Header = () => {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-gradient-primary rounded-xl shadow-soft p-2">
-              <img src={keystepLogo} alt="keystep.ai logo" className="w-full h-full object-contain brightness-0 invert" />
+            <div className="flex items-center justify-center w-10 h-10 bg-gradient-primary rounded-xl shadow-soft">
+              <KeystepLogo className="w-7 h-7 text-white" />
             </div>
             <span className="text-2xl font-bold text-foreground">keystep.ai</span>
           </div>
