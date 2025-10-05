@@ -58,6 +58,33 @@ const SignUp = () => {
   const onSubmit = async (data: SignUpFormData) => {
     setIsLoading(true);
     try {
+      // First, check if the email is already registered and verified
+      const { data: isVerified, error: checkError } = await supabase
+        .rpc('is_email_verified', { email_to_check: data.email });
+
+      if (checkError) {
+        console.error('Error checking email:', checkError);
+        toast({
+          title: "Error",
+          description: "Unable to verify email availability. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // If email is already verified, show error and don't proceed with signup
+      if (isVerified) {
+        toast({
+          title: "Email already registered",
+          description: "Email already registered and verified. Please sign in instead.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Proceed with signup if email is not verified
       const { error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -137,7 +164,7 @@ const SignUp = () => {
       <Card className="w-full max-w-md p-8 shadow-soft">
         <div className="text-center">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
-            <KeystepLogo className="w-20 h-8 text-primary-foreground" />
+            <KeystepLogo className="w-12 h-5 text-primary-foreground relative left-[3px]" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Check your inbox</h1>
           <p className="text-muted-foreground mb-6">
@@ -181,7 +208,7 @@ const SignUp = () => {
       <Card className="w-full max-w-md p-8 shadow-soft">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
-            <KeystepLogo className="w-20 h-8 text-primary-foreground" />
+            <KeystepLogo className="w-12 h-5 text-primary-foreground relative left-[3px]" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Sign up</h1>
           <p className="text-muted-foreground">

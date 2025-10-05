@@ -49,7 +49,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <Card className="w-full max-w-4xl p-8 shadow-soft">
           <div className="text-center">
             <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
-              <KeystepLogo className="w-12 h-8 text-primary-foreground animate-pulse" />
+              <KeystepLogo className="w-[50px] h-5 text-primary-foreground animate-pulse" />
             </div>
             <p className="text-muted-foreground">Loading...</p>
           </div>
@@ -66,7 +66,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-primary rounded-xl shadow-soft">
-                <KeystepLogo className="w-10 h-6 text-primary-foreground" />
+                <KeystepLogo className="w-10 h-3.5 text-primary-foreground relative left-[3px]" />
               </div>
               <span className="text-2xl font-bold text-foreground">keystep.ai</span>
             </div>

@@ -7,8 +7,8 @@ const Header = () => {
       <div className="max-w-6xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <KeystepLogo className="w-[50px] h-[30px] text-primary" />
+          <div className="flex items-center gap-0">
+            <KeystepLogo className="w-[66px] h-[33px] text-primary relative top-[3px] left-[6px]" />
             <span className="text-2xl font-bold text-foreground">keystep.ai</span>
           </div>
           
