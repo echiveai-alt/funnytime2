@@ -83,7 +83,7 @@ const AuthCallback = () => {
       <Card className="w-full max-w-md p-8 shadow-soft">
         <div className="text-center">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
-            <KeystepLogo className="w-12 h-8 text-primary-foreground animate-pulse" />
+            <KeystepLogo className="w-20 h-8 text-primary-foreground animate-pulse" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Verifying your email</h1>
           <p className="text-muted-foreground">
