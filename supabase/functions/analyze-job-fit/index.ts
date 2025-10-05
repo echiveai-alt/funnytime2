@@ -314,88 +314,25 @@ serve(async (req) => {
       keywordsNotUsed: bulletData.keywordsNotUsed,
 
       // Resume bullets format (for backwards compatibility)
-      // In supabase/functions/analyze-job-fit/index.ts
-// Replace the resumeBullets section with this:
-
-// Resume bullets format (reorganized by company)
-resumeBullets: bulletData.bulletPoints ? (() => {
-  // Group bullets by company
-  const bulletsByCompany: Record<string, { 
-    roles: Array<{ 
-      title: string; 
-      bulletPoints: any[]; 
-      startDate: string;
-    }> 
-  }> = {};
-  
-  Object.entries(bulletData.bulletPoints).forEach(([roleKey, bullets]) => {
-    const [companyName, roleTitle] = roleKey.split(' - ');
-    
-    // Find the role's start date for sorting
-    const role = userRoles.find(r => r.company === companyName && r.title === roleTitle);
-    const startDate = role?.start_date || '1900-01-01';
-    
-    if (!bulletsByCompany[companyName]) {
-      bulletsByCompany[companyName] = { roles: [] };
-    }
-    
-    bulletsByCompany[companyName].roles.push({
-      title: roleTitle,
-      bulletPoints: bullets,
-      startDate
-    });
-  });
-  
-  // Sort roles within each company by date (most recent first)
-  Object.values(bulletsByCompany).forEach(company => {
-    company.roles.sort((a, b) => {
-      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-    });
-  });
-  
-  // Convert to array and sort companies by most recent role start date
-  const bulletOrganization = Object.entries(bulletsByCompany)
-    .map(([companyName, companyData]) => {
-      const mostRecentDate = companyData.roles[0].startDate;
-      return {
-        name: companyName,
-        roles: companyData.roles.map(({ title, bulletPoints }) => ({
-          title,
-          bulletPoints
+      resumeBullets: bulletData.bulletPoints ? {
+        bulletOrganization: Object.entries(bulletData.bulletPoints || {}).map(([role, bullets]) => ({
+          role,
+          bullets: bullets.map((b: any) => ({
+            text: b.text,
+            experienceId: b.experienceId,
+            visualWidth: b.visualWidth,
+            quantified: b.quantified,
+            relevance: b.relevance
+          }))
         })),
-        _sortDate: mostRecentDate
-      };
-    })
-    .sort((a, b) => {
-      return new Date(b._sortDate).getTime() - new Date(a._sortDate).getTime();
-    })
-    .map(({ name, roles }) => ({ name, roles })); // Remove sort field
-  
-  logger.info('Bullet organization complete', {
-    userId,
-    companiesCount: bulletOrganization.length,
-    totalRoles: bulletOrganization.reduce((sum, c) => sum + c.roles.length, 0),
-    totalBullets: bulletOrganization.reduce((sum, c) => 
-      sum + c.roles.reduce((roleSum, r) => roleSum + r.bulletPoints.length, 0), 0
-    )
-  });
-  
-  return {
-    bulletOrganization,
-    keywordsUsed: bulletData.keywordsUsed || [],
-    keywordsNotUsed: bulletData.keywordsNotUsed || [],
-    generatedFrom: {
-      totalExperiences: Object.values(experiencesByRole).flat().length,
-      keywordMatchType,
-      scoreThreshold: 80,
-      visualWidthRange: {
-        min: 70,
-        max: 95,
-        target: 85
-      }
-    }
-  };
-})() : undefined,
+        keywordsUsed: bulletData.keywordsUsed || [],
+        keywordsNotUsed: bulletData.keywordsNotUsed || [],
+        generatedFrom: {
+          jobTitle: stage1Results.jobTitle,
+          companySummary: stage1Results.companySummary,
+          timestamp: new Date().toISOString()
+        }
+      } : undefined,
 
       // Action plan
       actionPlan: {
