@@ -5,25 +5,21 @@ interface KeystepLogoProps {
 const KeystepLogo = ({ className = "w-6 h-6" }: KeystepLogoProps) => {
   return (
     <svg 
-      viewBox="0 0 56 24" 
+      viewBox="0 0 60 28" 
       className={className}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Key head - hollow ring */}
-      <circle cx="12" cy="12" r="12" fill="none" stroke="currentColor" strokeWidth="5"/>
+      {/* Key head - filled circle with ring */}
+      <circle cx="14" cy="14" r="11" fill="currentColor"/>
+      <circle cx="14" cy="14" r="6" fill="var(--background)"/>
       
-      {/* Key shaft */}
-      <rect x="22" y="10" width="18" height="4" rx="1" fill="currentColor"/>
+      {/* Key shaft - thicker */}
+      <rect x="24" y="11" width="20" height="6" rx="1" fill="currentColor"/>
       
-      {/* Key teeth - three bars with gradient overlay */}
-      <rect x="34" y="6" width="4" height="10" fill="currentColor"/>
-      <rect x="34" y="6" width="4" height="4" fill="white" opacity="0.3"/>
-      
-      <rect x="39" y="3" width="4" height="13" fill="currentColor"/>
-      <rect x="39" y="3" width="4" height="5" fill="white" opacity="0.3"/>
-      
-      <rect x="44" y="1" width="4" height="15" fill="currentColor"/>
-      <rect x="44" y="1" width="4" height="6" fill="white" opacity="0.3"/>
+      {/* Key teeth - thicker bars */}
+      <rect x="38" y="6" width="5" height="12" fill="currentColor"/>
+      <rect x="44" y="3" width="5" height="15" fill="currentColor"/>
+      <rect x="50" y="0" width="5" height="18" fill="currentColor"/>
     </svg>
   );
 };
