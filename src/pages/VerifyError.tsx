@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Brain, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import KeystepLogo from "@/components/KeystepLogo";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
@@ -107,7 +108,7 @@ const VerifyError = () => {
       <Card className="w-full max-w-md p-8 shadow-soft">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center w-16 h-16 bg-destructive rounded-xl shadow-soft mx-auto mb-6">
-            <Brain className="w-8 h-8 text-destructive-foreground" />
+            <KeystepLogo className="w-12 h-8 text-destructive-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Verification failed</h1>
           <Alert className="mb-6 text-left">

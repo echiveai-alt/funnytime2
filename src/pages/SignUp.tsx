@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Brain, Eye, EyeOff, Check, X } from "lucide-react";
+import { Eye, EyeOff, Check, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import KeystepLogo from "@/components/KeystepLogo";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -136,7 +137,7 @@ const SignUp = () => {
       <Card className="w-full max-w-md p-8 shadow-soft">
         <div className="text-center">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
-            <Brain className="w-8 h-8 text-primary-foreground" />
+            <KeystepLogo className="w-12 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Check your inbox</h1>
           <p className="text-muted-foreground mb-6">
@@ -180,7 +181,7 @@ const SignUp = () => {
       <Card className="w-full max-w-md p-8 shadow-soft">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
-            <Brain className="w-8 h-8 text-primary-foreground" />
+            <KeystepLogo className="w-12 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Sign up</h1>
           <p className="text-muted-foreground">

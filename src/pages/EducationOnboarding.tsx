@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Brain, GraduationCap, Info } from "lucide-react";
+import { GraduationCap, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import KeystepLogo from "@/components/KeystepLogo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -225,7 +226,7 @@ const EducationOnboarding = () => {
         <Card className="w-full max-w-2xl p-8 shadow-soft">
           <div className="text-center">
             <div className="flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-xl shadow-soft mx-auto mb-6">
-              <Brain className="w-8 h-8 text-primary-foreground animate-pulse" />
+              <KeystepLogo className="w-12 h-8 text-primary-foreground animate-pulse" />
             </div>
             <p className="text-muted-foreground">Loading...</p>
           </div>
