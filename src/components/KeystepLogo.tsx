@@ -9,8 +9,9 @@ const KeystepLogo = ({ className = "w-6 h-6" }: KeystepLogoProps) => {
       className={className}
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Key head - ring stroke only */}
+      {/* Key head - target design */}
       <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="6"/>
+      <circle cx="12" cy="12" r="4" fill="currentColor"/>
       
       {/* Key shaft */}
       <rect x="20" y="9" width="18" height="6" rx="1" fill="currentColor"/>
