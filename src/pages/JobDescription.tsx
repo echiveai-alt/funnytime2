@@ -128,9 +128,9 @@ const JobDescription = () => {
     if (analysisProgress <= 33) {
       return "Extracting keywords and requirements from job description";
     } else if (analysisProgress <= 66) {
-      return "Reviewing professional experiences and evaluating alignment";
+      return "Extracting and reviewing professional experiences";
     } else {
-      return "Creating resume points optimized for job description";
+      return "Evaluating and scoring alignment";
     }
   };
 
@@ -192,9 +192,6 @@ const JobDescription = () => {
                   </li>
                   <li className={analysisProgress > 66 ? "font-semibold" : ""}>
                     • Calculating overall job fit percentage
-                  </li>
-                  <li className={analysisProgress > 66 ? "font-semibold" : ""}>
-                    • Creating tailored resume bullet points
                   </li>
                 </ul>
               </div>
