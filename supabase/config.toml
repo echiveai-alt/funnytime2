@@ -22,12 +22,20 @@ pop3_port = 54326
 
 [storage]
 enabled = true
-port = 54327
-image_transformation.enabled = true
+# Removed: port = 54327 (no longer valid)
+file_size_limit = "50MiB"
+
+[storage.image_transformation]
+enabled = true
 
 [auth]
 enabled = true
-port = 54328
+# Removed: port = 54328 (no longer valid)
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["https://localhost:5173"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
 
 [auth.email]
 enable_signup = true
@@ -36,11 +44,9 @@ enable_confirmations = true
 
 [edge_runtime]
 enabled = true
-port = 54329
-
-[[edge_runtime.policy]]
-id = "policy_0"
-allowed_paths = ["https://*", "http://*"]
+# Removed: port = 54329 (no longer valid)
+policy = "per_worker"
+inspector_port = 8083
 
 [functions.analyze-job-fit]
 verify_jwt = true

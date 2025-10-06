@@ -149,7 +149,7 @@ export async function generateBullets(
         exceedsMax: width > CONSTANTS.VISUAL_WIDTH_MAX,
         belowMin: width < CONSTANTS.VISUAL_WIDTH_MIN,
         isWithinRange: width >= CONSTANTS.VISUAL_WIDTH_MIN && width <= CONSTANTS.VISUAL_WIDTH_MAX,
-        hasQuantitativeResult: hasQuant, // Add this flag for UI display if needed
+        hasQuantitativeResult: hasQuant,
       };
     });
     

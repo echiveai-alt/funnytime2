@@ -1,7 +1,7 @@
 import { MatchedRequirement, ExperienceWithRole } from '../types/index.ts';
 import { CONSTANTS } from '../constants.ts';
 
-const STAGE2B_SYSTEM_CONTEXT = `You generate resume bullets from candidate experiences. Embed keywords naturally. Temperature is 0.15 for consistent quality with slight variation.`;
+const STAGE2B_SYSTEM_CONTEXT = `You generate resume bullets using a hybrid structure: impact-first when metrics exist (Reduced costs by 15% by...), action-first when qualitative (Developed system that improved...). Always choose the structure that makes the accomplishment most compelling. Embed keywords naturally. Temperature is 0.15 for consistent quality with slight variation.`;
 
 function formatExperiencesText(experiencesByRole: Record<string, ExperienceWithRole[]>): string {
   return Object.entries(experiencesByRole)
@@ -80,25 +80,93 @@ BULLET GENERATION RULES:
    - Show direct impact and outcomes
    - Use keywords from the job description
 
-4. Structure: Result-focused with quantified impact when possible
-   - Start with action verb
-   - Include numbers, percentages, time periods, or metrics whenever possible
-   - Show business impact and outcomes
+4. **BULLET STRUCTURE - HYBRID APPROACH (SMART FORMATTING):**
+   
+   Use the appropriate structure based on whether the experience has quantifiable results:
+   
+   **OPTION A: Impact-First (When there's a clear metric)**
+   Use this when Result contains: percentages, dollar amounts, time savings, growth numbers
+   
+   Formula: [IMPACT with METRIC] + by/through + [ACTION] + [METHODS/TECH]
+   
+   Impact verbs: Increased, Reduced, Improved, Grew, Decreased, Generated, Saved, Achieved, Accelerated
+   
+   ✅ Examples:
+   - "Reduced digital acquisition costs by 15% by analyzing attribution channels using Amplitude and optimizing poor-performing sources"
+   - "Increased sales conversion by 10% by developing interactive investment memo that enhanced user understanding of financial metrics"
+   - "Grew user acquisition by 70% by leading funnel optimization efforts and implementing cross-functional solutions"
+   - "Saved $2M annually by negotiating vendor contracts and consolidating software licenses across departments"
+   
+   **OPTION B: Action-First (When there's NO clear metric)**
+   Use this when Result is qualitative (improved quality, enhanced experience, established process)
+   
+   Formula: [ACTION verb] + [WHAT] + that/by + [QUALITATIVE IMPACT]
+   
+   Action verbs: Developed, Built, Created, Designed, Led, Established, Implemented, Launched
+   
+   ✅ Examples:
+   - "Developed acquisition dashboards using Amplitude that improved data-driven decision-making and KPI awareness across leadership"
+   - "Created experimentation playbook that simplified A/B test design and embedded insights into PRDs as part of development process"
+   - "Designed scalable data infrastructure by collaborating with engineering to create single source of truth for user funnels"
+   - "Established quarterly roadmap prioritization using modified RICE methodology, aligning stakeholders on execution"
+   
+   **DECISION CRITERIA:**
+   
+   Check the Result field for these patterns:
+   - Has number + % → Use Impact-First (Option A)
+   - Has $ amount → Use Impact-First (Option A)
+   - Has "X% increase/decrease/improvement" → Use Impact-First (Option A)
+   - Has time metric (saved 20 hours, reduced from 5 days to 2) → Use Impact-First (Option A)
+   - Has growth numbers (2x, 10x, doubled) → Use Impact-First (Option A)
+   
+   If Result has NONE of the above:
+   - Has qualitative improvement (improved, enhanced, streamlined) → Use Action-First (Option B)
+   - Describes capability/process established → Use Action-First (Option B)
+   
+   **COMPARISON:**
+   
+   Same experience, two approaches:
+   
+   WITH METRIC (Result: "15% reduction in costs"):
+   ✅ Impact-First: "Reduced costs by 15% by implementing automated workflow using Python"
+   ❌ Action-First: "Implemented automated workflow using Python that reduced costs by 15%" ← WRONG, metric exists
+   
+   NO METRIC (Result: "Improved data quality"):
+   ✅ Action-First: "Implemented data validation pipeline that improved data quality and reliability"
+   ❌ Impact-First: "Improved data quality by implementing validation pipeline" ← Less compelling without metric
 
-5. Length: Target ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
+5. **CONTEXT MINING FROM SITUATION, TASK, ACTION:**
+   - Review Situation, Task, and Action fields for additional context and keyword opportunities
+   - Include contextual details (from S, T, A) ONLY when:
+     ✓ It enables you to naturally use an unused keyword
+     ✓ It adds necessary clarity to the accomplishment
+     ✓ It doesn't make the bullet exceed ${CONSTANTS.VISUAL_WIDTH_MAX} characters
+   
+   Examples:
+   - Good: "Reduced page load time by 40% by migrating legacy jQuery codebase to React" (context "legacy jQuery" enables keyword "React" naturally)
+   - Bad: "Working in a fast-paced startup environment, reduced page load time by 40%" (context doesn't add value or keywords)
 
-6. Keywords: ${keywordInstruction}
+6. **LENGTH & FLOW:**
+   - Target ${CONSTANTS.VISUAL_WIDTH_TARGET} characters (range: ${CONSTANTS.VISUAL_WIDTH_MIN}-${CONSTANTS.VISUAL_WIDTH_MAX})
+   - Ensure natural readability - avoid awkward phrasing
+   - Include context only if it adds value (scale, constraints, keywords)
 
-7. Only embed keywords that naturally fit the experience content
+7. **Keywords:** ${keywordInstruction}
 
-8. Track which keywords were used and which couldn't fit
+8. Only embed keywords that naturally fit the experience content
+
+9. Track which keywords were used and which couldn't fit
 
 QUALITY STANDARDS:
-- **Quantify results whenever possible** (numbers are compelling)
-- Start with strong action verbs
-- Focus on outcomes and business impact
+- **Use hybrid structure intelligently:**
+  - Impact-first (Reduced/Increased/Improved X by Y%) when Result has metrics
+  - Action-first (Developed/Built/Created X that improved Y) when Result is qualitative
+- **Quantify results whenever possible** (%, $, time, growth metrics)
+- Choose structure that makes each accomplishment most compelling
+- Embed keywords naturally in the action/technology portion
 - Make each bullet distinct (no repetitive phrasing)
 - Ensure bullets flow naturally and are grammatically correct
+- Every bullet should clearly show value delivered
 
 VERIFICATION CHECKLIST (verify before responding):
 ✓ Did I create exactly ${totalExperiences} bullets?
@@ -106,7 +174,30 @@ VERIFICATION CHECKLIST (verify before responding):
 ✓ Are bullets organized by "Company - Role" keys?
 ✓ Did I assign accurate relevanceScore (1-10) to each bullet?
 ✓ Did I prioritize quantitative results in my relevance scoring?
+✓ **For each bullet with a metric - did I use impact-first structure?**
+✓ **For each bullet without metrics - did I use action-first structure?**
+✓ Does each bullet use the structure that makes it most compelling?
 ✓ Did I embed keywords naturally where they fit?
+
+**STRUCTURE SELECTION EXAMPLES:**
+
+Experience: "Result: Increased conversion by 10%"
+→ Use Impact-First: "Increased conversion by 10% by developing interactive investment memo"
+
+Experience: "Result: Improved data quality and accessibility"  
+→ Use Action-First: "Designed data infrastructure that improved quality and accessibility"
+
+Experience: "Result: Reduced load time by 60%"
+→ Use Impact-First: "Reduced page load time by 60% by implementing Redis caching layer"
+
+Experience: "Result: Simplified A/B testing process"
+→ Use Action-First: "Created experimentation playbook that simplified A/B testing across teams"
+
+Experience: "Result: Saved $500K annually"
+→ Use Impact-First: "Saved $500K annually by renegotiating vendor contracts and consolidating licenses"
+
+Experience: "Result: Established clear roadmap prioritization"
+→ Use Action-First: "Established roadmap prioritization using RICE methodology, aligning stakeholders"
 
 REQUIRED JSON FORMAT:
 {
