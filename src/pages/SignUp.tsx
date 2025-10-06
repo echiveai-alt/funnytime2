@@ -59,7 +59,7 @@ const SignUp = () => {
     setIsLoading(true);
     try {
       // First, check if the email is already registered and verified
-      const { data: isVerified, error: checkError } = await supabase
+        const { data: isVerified, error: checkError } = await (supabase as any)
         .rpc('is_email_verified', { email_to_check: data.email });
 
       if (checkError) {

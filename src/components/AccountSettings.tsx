@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,9 +24,33 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [productId, setProductId] = useState<string | null>(null);
   
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const PRO_PRODUCT_ID = "prod_TAAd7lxlcZ8UzM";
+  const PRO_PRICE_ID = "price_1SDqIHJImOFj8wr7WMQsFhRT";
+
+  useEffect(() => {
+    const checkSubscription = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-subscription');
+        if (error) throw error;
+        
+        setIsSubscribed(data?.subscribed || false);
+        setProductId(data?.product_id || null);
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+      }
+    };
+
+    if (isOpen) {
+      checkSubscription();
+    }
+  }, [isOpen]);
 
   const validatePassword = (password: string) => {
     const requirements = [];
@@ -117,6 +141,30 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
       setPasswordMessageType("error");
     } finally {
       setPasswordLoading(false);
+    }
+  };
+
+  const handleUpgradeToPro = async () => {
+    setUpgradeLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId: PRO_PRICE_ID }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error: any) {
+      console.error('Upgrade error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start checkout process",
+        variant: "destructive",
+      });
+    } finally {
+      setUpgradeLoading(false);
     }
   };
 
@@ -279,16 +327,28 @@ export const AccountSettings = ({ isOpen, onClose }: AccountSettingsProps) => {
             <div className="space-y-2 pt-4 border-t">
               <Label>Subscription</Label>
               <p className="text-sm text-muted-foreground">
-                Should you cancel, your subscription will remain active until the next billing cycle
+                {isSubscribed && productId === PRO_PRODUCT_ID 
+                  ? "You have an active Pro subscription. Should you cancel, your subscription will remain active until the next billing cycle"
+                  : "Upgrade to Pro for unlimited resume bullet point generation and job matching"}
               </p>
-              <Button 
-                variant="outline"
-                onClick={handleCancelSubscription}
-                disabled={subscriptionLoading}
-                className="w-full"
-              >
-                {subscriptionLoading ? "Canceling..." : "Cancel Subscription"}
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="default"
+                  onClick={handleUpgradeToPro}
+                  disabled={upgradeLoading || (isSubscribed && productId === PRO_PRODUCT_ID)}
+                  className="flex-1"
+                >
+                  {upgradeLoading ? "Processing..." : "Upgrade to Pro"}
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={handleCancelSubscription}
+                  disabled={subscriptionLoading || !isSubscribed}
+                  className="flex-1"
+                >
+                  {subscriptionLoading ? "Canceling..." : "Cancel Subscription"}
+                </Button>
+              </div>
             </div>
 
             {/* Delete Account */}

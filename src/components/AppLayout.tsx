@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { MainTabs } from "@/components/experiences/MainTabs";
 import { AccountSettings } from "@/components/AccountSettings";
+import { TrialExpiredModal } from "@/components/TrialExpiredModal";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -16,7 +18,15 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [showTrialExpired, setShowTrialExpired] = useState(false);
+  const { isTrialExpired, isLoading: trialLoading } = useTrialStatus();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!trialLoading && isTrialExpired) {
+      setShowTrialExpired(true);
+    }
+  }, [isTrialExpired, trialLoading]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -96,6 +106,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <AccountSettings 
         isOpen={showAccountSettings}
         onClose={() => setShowAccountSettings(false)}
+      />
+      
+      {/* Trial Expired Modal */}
+      <TrialExpiredModal
+        isOpen={showTrialExpired}
+        onClose={() => setShowTrialExpired(false)}
       />
     </div>
   );

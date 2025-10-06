@@ -36,6 +36,11 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+     // Parse request body to get priceId
+    const { priceId } = await req.json();
+    const finalPriceId = priceId || "price_1SDqIHJImOFj8wr7WMQsFhRT";
+    logStep("Price ID to use", { priceId: finalPriceId });
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { 
       apiVersion: "2025-08-27.basil" 
     });
@@ -47,25 +52,7 @@ serve(async (req) => {
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Found existing customer", { customerId });
-      
-      // Check if they already have an active subscription
-      const subscriptions = await stripe.subscriptions.list({
-        customer: customerId,
-        status: "active",
-        limit: 1,
-      });
-      
-      if (subscriptions.data.length > 0) {
-        logStep("User already has active subscription");
-        return new Response(
-          JSON.stringify({ error: "You already have an active subscription" }), 
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
-          }
-        );
-      }
-    } else {
+   } else {
       logStep("No existing customer found");
     }
 
@@ -74,7 +61,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price: "price_1SDqIHJImOFj8wr7WMQsFhRT",
+          price: finalPriceId,
           quantity: 1,
         },
       ],
