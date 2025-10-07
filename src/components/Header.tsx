@@ -14,10 +14,10 @@ const Header = () => {
           
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-smooth">
+            <a href="/#how-it-works" className="text-muted-foreground hover:text-foreground transition-smooth">
               How It Works
             </a>
-            <a href="#benefits" className="text-muted-foreground hover:text-foreground transition-smooth">
+            <a href="/#benefits" className="text-muted-foreground hover:text-foreground transition-smooth">
               Benefits
             </a>
             <a href="/pricing" className="text-muted-foreground hover:text-foreground transition-smooth">

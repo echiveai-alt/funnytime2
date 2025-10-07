@@ -9,7 +9,7 @@ const Footer = () => {
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
               <div className="flex items-center justify-center w-10 h-10 bg-gradient-primary rounded-xl shadow-soft">
-                <KeystepLogo className="w-10 h-4 text-primary-foreground" />
+                <KeystepLogo className="w-10 h-4 text-primary-foreground relative left-[3px]" />
               </div>
               <span className="text-2xl font-bold text-foreground">keystep.ai</span>
             </div>
@@ -22,9 +22,9 @@ const Footer = () => {
           <div>
             <h3 className="font-semibold text-foreground mb-4">Product</h3>
             <ul className="space-y-2 text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-smooth">How It Works</a></li>
-              <li><a href="#" className="hover:text-foreground transition-smooth">Features</a></li>
-              <li><a href="#" className="hover:text-foreground transition-smooth">Pricing</a></li>
+              <li><a href="/#how-it-works" className="hover:text-foreground transition-smooth">How It Works</a></li>
+              <li><a href="/#benefits" className="hover:text-foreground transition-smooth">Features</a></li>
+              <li><a href="/pricing" className="hover:text-foreground transition-smooth">Pricing</a></li>
             </ul>
           </div>
           
